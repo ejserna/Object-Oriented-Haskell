@@ -14,250 +14,354 @@ import Data.Decimal
 }
 
 
-%name ObjectiveOrientedHaskell
+%name ooh
 %tokentype { Token }
 %error { parseError }
 %token
-  float_literal { TFloatLiteral _ $$ }
-  integer_literal     { TIntLiteral _ $$ }
+  "="                 { TEquals _ }
+  ","                 { TComma _ }
   "if"                { TIf _ }
   "else"              { TElse _ }
-  "program"				    { TProgram _ }
-  ";"                 { TSemiColon _ }
-  "var"               { TVar _ }
-  ":"                 { TColon _ }
-  "int"               { TInt _ }
-  "float"             { TFloat _ }
-  "="                 { TEquals _ }
-  "{"                 { TLeftBrace _ }
-  "}"                 { TRightBrace _ }
-  "print"             { TPrint _ }
-  "("                 { TLeftParen _ }
-  ")"                 { TRightParen _ }
-  ">"                 { TGreaterThan _ }
-  "<"                 { TLowerThan _ }
-  "<>"                { TNotEqual _ }
-  ","                 { TComma _ }
+  "case"              { TCase _ }
+  "of"                { TOf _ }
+  "otherwise"         { TOtherwise _ }
+  "for"               { TFor _ }
+  "while"             { TWhile _ }
+  "read"              { TRead _ }
+  "display"           { TDisplay _ }
   "+"                 { TPlus _ }
   "-"                 { TMinus _ }
   "*"                 { TMultiply _ }
   "/"                 { TDivide _ }
-  identifier          { TIdent _ $$ }
+  "++"                { TPlusPlus _ }
+  "--"                { TMinusMinus _ }
+  "^"                 { TPower _ }
+  "!"                 { TNot _ }
+  "True"              { TTrue _ }
+  "False"             { TTrue _ }
+  ">"                 { TGreaterThan _ }
+  "<"                 { TLessThan _ }
+  ">="                { TGreaterEqualThan _ }
+  "<="                { TLessEqualThan _ }
+  "=="                { TDoubleEqual _ }
+  "!="                { TNotEqual _ }
+  "&&"                { TAnd _ }
+  "||"                { TOr _ }
+  "main"              { TMain _ }
+  "class"             { TClass _ }
+  ":"                 { TColon _ }
+  "[+]"               { TPublic _ }
+  "[-]"               { TPrivate _ }
+  "=>"                { TEqualsRightArrow _ }
+  "->"                { TDashRightArrow _ }
+  "::"                { TDoubleColon _ }
+  "["                 { TLeftBracket _ }
+  "]"                 { TRightBracket _ }
+  "List"              { TList _ }
+  ".."                { TDoublePoint _ }
+  ";"                 { TSemiColon _ }
+  "{"                 { TRightBrace _ }
+  "}"                 { TLeftBrace _ }
+  "("                 { TLeftParen _ }
+  ")"                 { TRightParen _ }
+  "Int"               { TInt _ }
+  "Integer"           { TInteger _ }
+  "Double"            { TDouble _ }
+  "Money"             { TMoney _ }
+  "String"            { TString _ }
+  "Bool"              { TBool _ }
+  "Nothing"           { TString _ }
+  decimal_literal     { TDecimalLiteral _ $$ }
+  integer_literal     { TIntegerLiteral _ $$ }  
+  var_identifier      { TVarIdent _ $$ }
+  class_identifier    { TClassIdent _ $$ }
   string_literal      { TStringLiteral _ $$ }
 %%
 
-Prog : 
-        "program" identifier ";" Vars Bloque { ProgVars $2 $4 $5}
-      | "program" identifier ";" Bloque { ProgBloque $2 $4 }
+Program : 
+          FunctionsVariablesClasses "main" Block {Program $1 $3}
 
-Vars : 
-    "var" VarIds { Vars $2 }
+FunctionsVariablesClasses :
+         {- empty -} { FVCEmpty }
+        | FunctionsVariablesClasses Function {FVCFunction $1 $2}
+        | FunctionsVariablesClasses Variable {FVCVariable $1 $2}
+        | FunctionsVariablesClasses Class {FVCClass $1 $2}
 
+Function : 
+          var_identifier "=>" TypeFuncReturn "::" TypeFuncParams var_identifier Params Block  {Function $1 $3 $5 $6 $7 $8}
+        | var_identifier "=>" TypeFuncReturn Block  {FunctionEmptyParams $1 $3 $4}
 
--- var_ids es una regla auxiliar de vars, para así poder poner varias variales separadas por ;
-VarIds : {- empty -} { VarIdsEmpty }
-      | VarIds VarId   { VarIds $1 $2 }
+Params : 
+        {- empty -} { ParamsEmpty }
+        |  Params "->" TypeFuncParams var_identifier {Params $1 $3 $4}
 
-VarId : 
-      identifier Ids ":" Tipo ";" { VarId $1 $2 $4 }
+TypeFuncReturn : 
+          Primitive ClosingBracketsNoIdentifier {TypeFuncReturnPrimitive $1 $2}
+        | class_identifier ClosingBracketsNoIdentifier {TypeFuncReturnClassId $1 $2}
+        | ListType {TypeFuncReturnList $1}
+        | "Nothing" {TypeFuncReturnNothing}
 
--- ids es una regla auxiliar de ids, para poder poner varias variabbles de un mismo tipo separadas por ,.
--- La caracteristica comun que tienen estas variables es que comparten el tipo que se les asigne en var_ids
-Ids : 
-    {- empty -} { IdsEmpty }
-    | Ids "," identifier  { Ids $1 $3 }
+TypeFuncParams :
+          Primitive ClosingBracketsNoIdentifier { TypeFuncParamsPrimitive $1 $2}
+        | class_identifier ClosingBracketsNoIdentifier { TypeFuncParamsClassId $1 $2}
+        | ListType {TypeFuncParamsList $1}
 
+ClosingBracketsNoIdentifier :
+          {- empty -} { ClosingBracketsNoIdentifierEmpty }
+        | ClosingBracketsNoIdentifier "[" "]" {ClosingBracketsNoIdentifier $1 }
 
-Tipo : 
-    "int" { TypeInt }
-  | "float" { TypeFloat }     
+Primitive :
+          "Int" {PrimitiveInt}
+        | "Double" {PrimitiveDouble}
+        | "Money" {PrimitiveMoney}
+        | "String" {PrimitiveString}
+        | "Bool" {PrimitiveBool}
 
+Type :
+          Primitive ArrayIndexes {TypePrimitive $1 $2}
+        | class_identifier ArrayIndexes {TypeClassId $1 $2}
 
-Bloque :
-      "{" Estatutos "}" { Bloque $2 }    
+ArrayIndexes :
+          {- empty -} { ArrayIndexesEmpty }
+        | ArrayIndexes "[" var_identifier "]"  {ArrayIndexesIdentifier $1 $3 }
+        | ArrayIndexes "[" integer_literal "]" {ArrayIndexesIntLiteral $1 $3 }
 
--- estatutos es una regla auxiliar de bloque para poder poner varios en un bloque
-Estatutos : 
-  {- empty -} { EstatutosEmpty }
-  | Estatutos Estatuto { Estatutos $1 $2 }
+ListType :
+          "List" "of" class_identifier {ListTypeClassId $3}
+        | "List" "of" Primitive {ListTypePrimitive $3}
 
-Estatuto :
-    Asignacion { EstatutoAsig $1 }
-  | Condicion  { EstatutoCond $1 }
-  | Escritura  { EstatutoEsc $1 }
+Variable :
+          Type var_identifier VarIdentifiers ";" {VariableNoAssignment $1 $2 $3 }
+        | Type var_identifier "=" LiteralOrVariable ";" {VariableLiteralOrVariable $1 $2 $4 }
+        | Type var_identifier "=" ArrayAssignment1D ";" {VariableAssignment1D $1 $2 $4 }
+        | Type var_identifier "=" ArrayAssignment2D ";" {VariableAssignment2D $1 $2 $4 }
+        | ListType var_identifier "=" ListAssignment ";" {VariableListAssignment $1 $2 $4}
+        | ListType var_identifier ";" {VariableList $1 $2}
 
+VarIdentifiers :
+        {- empty -} { VarIdentifiersEmpty }
+      | VarIdentifiers "," var_identifier {VarIdentifiers $1 $3 }
 
-Asignacion : 
-    identifier "=" Expresion ";" { Asignacion $1 $3 }
+ArrayAssignment1D :
+        "[" var_identifier Array1DAssignments "]" {ArrayAssignmentVarIdentifier $2 $3 }
+      | "[" integer_literal Array1DAssignments "]" {ArrayAssignmentIntLiteral $2 $3 }
+      | "["  "]" {ArrayAssignment1DEmpty}
 
-Expresion : 
-      Exp ">" Exp { ExpresionGreater $1 $3 }
-    | Exp "<" Exp { ExpresionLower $1 $3 }
-    | Exp "=" Exp { ExpresionEquals $1 $3 }
-    | Exp "<>" Exp{ ExpresionNotEquals $1 $3 }
-    | Exp { Expresion $1 }
+Array1DAssignments :
+        {- empty -} { Array1DAssignmentsEmpty }
+      | Array1DAssignments "," integer_literal {Array1DAssignmentsInteger $1 $3 }
+      | Array1DAssignments "," var_identifier {Array1DAssignmentsVarIdentifier $1 $3}
 
-Exp :
-  Term Exps { Exp $1 $2 }
+ArrayAssignment2D :
+        "[" ArrayAssignment1D Array2DAssignments"]" {ArrayAssignment2D $2 $3 }
 
-Exps : 
-  {- empty -} { ExpsEmpty }
-  | Exps "+" Term  { ExpsPlus $1 $3 }
-  | Exps "-" Term  { ExpsMinus $1 $3 }
+Array2DAssignments :
+        {- empty -} { Array2DAssignmentsEmpty }
+      | Array2DAssignments "," ArrayAssignment1D {Array2DAssignments $1 $3 }
 
-Term :
-    Fact Terms { Term $1 $2}
+ListAssignment : 
+        ArrayAssignment1D {ListAssignmentArray $1}
+      | "[" integer_literal ".." integer_literal "]" {ListAssignmentRange $2 $4}
 
-Terms : 
-  {- empty -} { TermsEmpty }
-  | Terms "*" Fact { TermsMult $1 $3 }
-  | Terms "/" Fact { TermsDiv $1 $3 }
+Class : 
+        "class" class_identifier ":" class_identifier ClassBlock {ClassInheritance $2 $4 $5}
+      | "class" class_identifier ClassBlock {ClassNormal $2 $3}
 
-Fact :
-    "(" Expresion ")" { FactExp $2 }
-  | "+" VarCte        { FactPos $2 }
-  | "-" VarCte        { FactNeg $2 }
-  | VarCte            { FactCte $1 }
+ClassBlock :
+        "{" ClassAttributes ClassConstructor ClassFunctions "}" {ClassBlock $2 $3 $4}
 
-VarCte :
-    identifier { VarCteId $1 }
-  | integer_literal { VarCteInt $1 }
-  | float_literal {VarCteFloat $1 }
+ClassAttributes :
+        {- empty -} { ClassAttributesEmpty }
+      | ClassAttributes ClassAttribute {ClassAttributes $1 $2}
 
-Condicion :
-        "if" "(" Expresion ")" Bloque ";" { CondicionIf $3 $5 }
-      | "if" "(" Expresion ")" Bloque "else" Bloque ";" { CondicionIfElse $3 $5 $7 }
+ClassAttribute :
+        "[+]" Type var_identifier ";" {ClassAttributeTypePublic $2 $3}
+      | "[+]" ListType var_identifier ";" {ClassAttributeListPublic $2 $3}
+      | "[-]" Type var_identifier ";" {ClassAttributeTypePrivate $2 $3}
+      | "[-]" ListType var_identifier ";" {ClassAttributeListPrivate $2 $3}
 
-Escritura :
-        "print" "(" Expresion Escrituras ")" ";" { EscrituraPrintExpresion $3 $4 }
-      | "print" "(" string_literal Escrituras ")" ";" { EscrituraPrintStrings $3 $4 }
+ClassFunctions :
+        {- empty -} { ClassFunctionsEmpty }
+      | ClassFunctions ClassFunction {ClassFunctions $1 $2}
 
--- escrituras permite poner varias escritura separadas por coma
-Escrituras : {- empty -} { EscriturasEmpty }
-      | Escrituras "," Expresion { EscriturasExpresiones $1 $3 }
-      | Escrituras "," string_literal { EscriturasStrings $1 $3 } 
+ClassFunction :
+        "[+]" Function {ClassFunctionPublic $2}
+      | "[-]" Function {ClassFunctionPrivate $2}
+
+ClassConstructor :
+       {- empty -} { ClassConstructorEmpty }
+      | TypeFuncParams var_identifier Params Block {ClassConstructor $1 $2 $3 $4}
+
+LiteralOrVariable :
+        var_identifier {VarIdentifier $1}
+      | integer_literal {IntegerLiteral $1}
+      | decimal_literal {DecimalLiteral $1}
+      | string_literal {StringLiteral $1}
+
+Block :
+    "{" "}" {Block}
 
 {
 parseError :: [Token] -> a
 parseError tokenList = let pos = tokenPosn(head(tokenList)) 
   in 
-  error ("parse error at line " ++ show(getLineNum(pos)) ++ " and column " ++ show(getColumnNum(pos)))
+  error ("Parse error at line " ++ show(getLineNum(pos)) ++ " and column " ++ show(getColumnNum(pos)))
 
--- A continuacion se realiza el data model de la gramatica. Esto sirve para crear el AST.
+-- Esta sección tiene las producciones semánticas para producir el árbol abstracto de sintaxis 
 
 data Program 
-    = ProgVars String Vars Bloque
-    | ProgBloque String Bloque
+    = Program FunctionsVariablesClasses Block
   deriving (Show, Eq)
 
-data Vars
-    = Vars VarIds
+data FunctionsVariablesClasses 
+    = FVCFunction FunctionsVariablesClasses Function
+    | FVCVariable FunctionsVariablesClasses Variable
+    | FVCClass FunctionsVariablesClasses Class
+    | FVCEmpty
   deriving (Show, Eq)
 
-data VarIds
-    = VarIds VarIds VarId
-    | VarIdsEmpty
+data Function 
+    = Function String TypeFuncReturn TypeFuncParams String Params Block
+    | FunctionEmptyParams String TypeFuncReturn Block
   deriving (Show, Eq)
 
-data VarId
-    = VarId String Ids Tipo
+data Params 
+    = ParamsEmpty
+    | Params Params TypeFuncParams String
   deriving (Show, Eq)
 
-data Ids
-    = Ids Ids String
-    | IdsEmpty
+data TypeFuncReturn 
+    = TypeFuncReturnPrimitive Primitive ClosingBracketsNoIdentifier
+    | TypeFuncReturnClassId String ClosingBracketsNoIdentifier
+    | TypeFuncReturnList ListType
+    | TypeFuncReturnNothing
   deriving (Show, Eq)
 
-data Tipo
-    = TypeInt
-    | TypeFloat
+data TypeFuncParams 
+    = TypeFuncParamsPrimitive Primitive ClosingBracketsNoIdentifier
+    | TypeFuncParamsClassId String ClosingBracketsNoIdentifier
+    | TypeFuncParamsList ListType
   deriving (Show, Eq)
 
-data Bloque
-    = Bloque Estatutos
+data ClosingBracketsNoIdentifier 
+    = ClosingBracketsNoIdentifierEmpty
+    | ClosingBracketsNoIdentifier ClosingBracketsNoIdentifier
   deriving (Show, Eq)
 
-data Estatutos
-    = Estatutos Estatutos Estatuto
-    | EstatutosEmpty
+data Primitive 
+    = PrimitiveInt
+    | PrimitiveDouble
+    | PrimitiveMoney
+    | PrimitiveString
+    | PrimitiveBool
   deriving (Show, Eq)
 
-data Estatuto
-    = EstatutoAsig Asignacion
-    | EstatutoCond Condicion
-    | EstatutoEsc Escritura
+data Type 
+    = TypePrimitive Primitive ArrayIndexes
+    | TypeClassId String ArrayIndexes
   deriving (Show, Eq)
 
-data Asignacion
-    = Asignacion String Expresion
+data ArrayIndexes 
+    = ArrayIndexesEmpty
+    | ArrayIndexesIdentifier ArrayIndexes String
+    | ArrayIndexesIntLiteral ArrayIndexes Integer
   deriving (Show, Eq)
 
-data Expresion
-    = ExpresionGreater Exp Exp
-    | ExpresionLower Exp Exp
-    | ExpresionEquals Exp Exp
-    | ExpresionNotEquals Exp Exp
-    | Expresion Exp
+data ListType 
+    = ListTypeClassId String
+    | ListTypePrimitive Primitive
   deriving (Show, Eq)
 
-data Exp
-    = Exp Term Exps
+data Variable 
+    = VariableNoAssignment Type String VarIdentifiers
+    | VariableLiteralOrVariable Type String LiteralOrVariable
+    | VariableAssignment1D Type String ArrayAssignment1D
+    | VariableAssignment2D Type String ArrayAssignment2D
+    | VariableListAssignment ListType String ListAssignment
+    | VariableList ListType String
   deriving (Show, Eq)
 
-data Exps
-    = ExpsEmpty
-    | ExpsPlus Exps Term
-    | ExpsMinus Exps Term
+data VarIdentifiers 
+    = VarIdentifiersEmpty
+    | VarIdentifiers VarIdentifiers String
   deriving (Show, Eq)
 
-data Term
-    = Term Fact Terms
-    deriving (Show, Eq)
-
-data Terms
-    = TermsEmpty
-    | TermsMult Terms Fact
-    | TermsDiv Terms Fact
+data ArrayAssignment1D 
+    = ArrayAssignmentVarIdentifier String Array1DAssignments
+    | ArrayAssignmentIntLiteral Integer Array1DAssignments
+    | ArrayAssignment1DEmpty
   deriving (Show, Eq)
 
-data Fact
-    = FactExp Expresion
-    | FactPos VarCte
-    | FactNeg VarCte
-    | FactCte VarCte
+data Array1DAssignments 
+    = Array1DAssignmentsEmpty
+    | Array1DAssignmentsInteger Array1DAssignments Integer
+    | Array1DAssignmentsVarIdentifier Array1DAssignments String
   deriving (Show, Eq)
 
-data VarCte 
-    = VarCteId String
-    | VarCteInt Int
-    | VarCteFloat Decimal
-    deriving (Show, Eq)
-
-data Condicion 
-    = CondicionIf Expresion Bloque
-    | CondicionIfElse Expresion Bloque Bloque
+data ArrayAssignment2D 
+    = ArrayAssignment2D ArrayAssignment1D Array2DAssignments
   deriving (Show, Eq)
 
-data Escritura 
-    = EscrituraPrintExpresion Expresion Escrituras
-    | EscrituraPrintStrings String Escrituras
+data Array2DAssignments 
+    = Array2DAssignmentsEmpty
+    | Array2DAssignments Array2DAssignments ArrayAssignment1D
   deriving (Show, Eq)
 
-data Escrituras
-    = EscriturasExpresiones Escrituras Expresion
-    | EscriturasStrings Escrituras String
-    | EscriturasEmpty
+data ListAssignment 
+    = ListAssignmentArray ArrayAssignment1D
+    | ListAssignmentRange Integer Integer
   deriving (Show, Eq)
 
+data Class 
+    = ClassInheritance String String ClassBlock
+    | ClassNormal String ClassBlock
+  deriving (Show, Eq)
 
--- Funcion que se utiliza para obtener el nombre del programa que se parseo
-getProgramName :: Program -> String
-getProgramName (ProgVars name _ _) = name
-getProgramName (ProgBloque name _) = name
+data ClassBlock 
+    = ClassBlock ClassAttributes ClassConstructor ClassFunctions
+  deriving (Show, Eq)
+
+data ClassAttributes 
+    = ClassAttributesEmpty
+    | ClassAttributes ClassAttributes ClassAttribute
+  deriving (Show, Eq)
+
+data ClassAttribute 
+    = ClassAttributeTypePublic Type String
+    | ClassAttributeListPublic ListType String
+    | ClassAttributeTypePrivate Type String
+    | ClassAttributeListPrivate ListType String
+  deriving (Show, Eq)
+
+data ClassFunctions 
+    = ClassFunctionsEmpty
+    | ClassFunctions ClassFunctions ClassFunction
+  deriving (Show, Eq)
+
+data ClassFunction 
+    = ClassFunctionPublic Function
+    | ClassFunctionPrivate Function
+  deriving (Show, Eq)
+
+data ClassConstructor 
+    = ClassConstructorEmpty
+    | ClassConstructor TypeFuncParams String Params Block
+  deriving (Show, Eq)
+
+data LiteralOrVariable 
+    = VarIdentifier String
+    | IntegerLiteral Integer
+    | DecimalLiteral Decimal
+    | StringLiteral String
+  deriving (Show, Eq)
+
+data Block 
+    = Block
+  deriving (Show, Eq)  
+
 
 main = do 
   inStr <- getContents
-  let parseTree = patito (alexScanTokens2 inStr)
-  putStrLn ("Parsing Success: program " ++ getProgramName(parseTree) )
-  putStrLn ("Parsing Success: program " ++ show(parseTree) )
+  let parseTree = ooh (alexScanTokens2 inStr)
+  putStrLn ("SUCCESS " ++ show(parseTree) )
 }

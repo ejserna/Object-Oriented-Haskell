@@ -39,8 +39,8 @@ tokens :-
   "--"                              { \p s -> TMinusMinus p }
   "^"                               { \p s -> TPower p }
   "!"                               { \p s -> TNot p }
-  "true"                            { \p s -> TTrue p }
-  "false"                           { \p s -> TFalse p }
+  "True"                            { \p s -> TTrue p }
+  "False"                           { \p s -> TFalse p }
   ">"                               { \p s -> TGreaterThan p }
   "<"                               { \p s -> TLessThan p }
   ">="                              { \p s -> TGreaterEqualThan p }
@@ -71,7 +71,9 @@ tokens :-
   "Double"                          { \p s -> TDouble p }
   "Money"                           { \p s -> TMoney p }
   "String"                          { \p s -> TString p }
-  $digit+\.$digit+                  { \p s -> TDecimalLiteral p (read ( (take 255 s) ) ) } -- numero decimal
+  "Bool"                            { \p s -> TBool p }
+  "Nothing"                         { \p s -> TNothing p }
+  $digit+\.$digit+                  { \p s -> TDecimalLiteral  p (read (getLast255Decimals s) ) } -- numero decimal
   $digit+                           { \p s -> TIntegerLiteral p (read s) }                 -- numero entero
   [$alphaLower \_][$alphaLower $digit $alphaUpper \_]*   { \p s -> TVarIdent p s }
   [$alphaUpper][$alphaLower]*                            { \p s -> TClassIdent p s }      
@@ -87,6 +89,7 @@ data Token =
       TIf AlexPosn                  |
       TElse AlexPosn                |
       TCase AlexPosn                |
+      TOf AlexPosn                  |
       TOtherwise AlexPosn           |
       TFor AlexPosn                 |
       TWhile AlexPosn               |
@@ -132,8 +135,10 @@ data Token =
       TDouble AlexPosn              |
       TMoney AlexPosn               |
       TString AlexPosn              |
+      TBool AlexPosn                |
+      TNothing AlexPosn             |
       TDecimalLiteral AlexPosn Decimal |
-      TIntegerLiteral AlexPosn Int  |
+      TIntegerLiteral AlexPosn Integer  |
       TVarIdent AlexPosn String     |
       TClassIdent AlexPosn String   |
       TStringLiteral AlexPosn String                 
@@ -145,6 +150,7 @@ tokenPosn (TComma p) = p
 tokenPosn (TIf p) = p
 tokenPosn (TElse p) = p
 tokenPosn (TCase p) = p
+tokenPosn (TOf p) = p
 tokenPosn (TOtherwise p) = p
 tokenPosn (TFor p) = p
 tokenPosn (TWhile p) = p
@@ -190,6 +196,8 @@ tokenPosn (TInteger p) = p
 tokenPosn (TDouble p) = p
 tokenPosn (TMoney p) = p
 tokenPosn (TString p) = p
+tokenPosn (TBool p) = p
+tokenPosn (TNothing p) = p
 tokenPosn (TDecimalLiteral p num) = p
 tokenPosn (TIntegerLiteral p num) = p
 tokenPosn (TVarIdent p str) = p
@@ -204,13 +212,18 @@ getLineNum (AlexPn offset lineNum colNum) = lineNum
 getColumnNum :: AlexPosn -> Int
 getColumnNum (AlexPn offset lineNum colNum) = colNum
 
+-- Debido a que el tipo de dato Data.Decimal sólo puede tener 255 decimales, se tienen que recortar los sobrantes. Para eso se busca recursivamente el
+-- caracter de punto ('.') y una vez encontrado, se concatenan los 255 decimales siguientes en el número
+getLast255Decimals :: String  -> String
+getLast255Decimals ('.' : xs) = "." ++ (take 255 xs) 
+getLast255Decimals (x : xs) = [x] ++ (getLast255Decimals xs)
 
 -- A continuación, la siguiente función monad se encarga de leer el input de entrada str
 alexScanTokens2 str = go (alexStartPos,'\n',[],str)
   where go inp@(pos,_,_,str) =
           case alexScan inp 0 of
                 AlexEOF -> []
-                AlexError _ -> error ("lexical error @ line " ++ show (getLineNum(pos)) ++ " and column " ++ show (getColumnNum(pos)))
+                AlexError _ -> error ("Unrecognized token @ line " ++ show (getLineNum(pos)) ++ " and column " ++ show (getColumnNum(pos)))
                 AlexSkip  inp' len     -> go inp'
                 AlexToken inp' len act -> act pos (take len str) : go inp'
 }
