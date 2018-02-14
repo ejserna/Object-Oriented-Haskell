@@ -60,8 +60,8 @@ import Data.Decimal
   "List"              { TList _ }
   ".."                { TDoublePoint _ }
   ";"                 { TSemiColon _ }
-  "{"                 { TRightBrace _ }
-  "}"                 { TLeftBrace _ }
+  "{"                 { TLeftBrace _ }
+  "}"                 { TRightBrace _ }
   "("                 { TLeftParen _ }
   ")"                 { TRightParen _ }
   "Int"               { TInt _ }
@@ -116,6 +116,7 @@ Primitive :
         | "Money" {PrimitiveMoney}
         | "String" {PrimitiveString}
         | "Bool" {PrimitiveBool}
+        | "Integer" {PrimitiveInteger}
 
 Type :
           Primitive ArrayIndexes {TypePrimitive $1 $2}
@@ -169,16 +170,15 @@ Class :
 
 ClassBlock :
         "{" ClassAttributes ClassConstructor ClassFunctions "}" {ClassBlock $2 $3 $4}
+      | "{" "}" {ClassBlockEmpty}
 
 ClassAttributes :
         {- empty -} { ClassAttributesEmpty }
       | ClassAttributes ClassAttribute {ClassAttributes $1 $2}
 
 ClassAttribute :
-        "[+]" Type var_identifier ";" {ClassAttributeTypePublic $2 $3}
-      | "[+]" ListType var_identifier ";" {ClassAttributeListPublic $2 $3}
-      | "[-]" Type var_identifier ";" {ClassAttributeTypePrivate $2 $3}
-      | "[-]" ListType var_identifier ";" {ClassAttributeListPrivate $2 $3}
+        "[+]" Variable {ClassAttributePublic $2 }
+      | "[-]" Variable {ClassAttributePrivate $2 }
 
 ClassFunctions :
         {- empty -} { ClassFunctionsEmpty }
@@ -189,8 +189,8 @@ ClassFunction :
       | "[-]" Function {ClassFunctionPrivate $2}
 
 ClassConstructor :
-       {- empty -} { ClassConstructorEmpty }
-      | TypeFuncParams var_identifier Params Block {ClassConstructor $1 $2 $3 $4}
+        "::" TypeFuncParams var_identifier Params Block {ClassConstructor $2 $3 $4 $5}
+      | "::" Block { ClassConstructorEmpty }
 
 LiteralOrVariable :
         var_identifier {VarIdentifier $1}
@@ -254,6 +254,7 @@ data Primitive
     | PrimitiveMoney
     | PrimitiveString
     | PrimitiveBool
+    | PrimitiveInteger
   deriving (Show, Eq)
 
 data Type 
@@ -319,6 +320,7 @@ data Class
 
 data ClassBlock 
     = ClassBlock ClassAttributes ClassConstructor ClassFunctions
+    | ClassBlockEmpty
   deriving (Show, Eq)
 
 data ClassAttributes 
@@ -327,10 +329,8 @@ data ClassAttributes
   deriving (Show, Eq)
 
 data ClassAttribute 
-    = ClassAttributeTypePublic Type String
-    | ClassAttributeListPublic ListType String
-    | ClassAttributeTypePrivate Type String
-    | ClassAttributeListPrivate ListType String
+    = ClassAttributePublic Variable
+    | ClassAttributePrivate Variable
   deriving (Show, Eq)
 
 data ClassFunctions 
@@ -362,6 +362,7 @@ data Block
 
 main = do 
   inStr <- getContents
+  putStrLn(show(inStr))
   let parseTree = ooh (alexScanTokens2 inStr)
   putStrLn ("SUCCESS " ++ show(parseTree) )
 }
