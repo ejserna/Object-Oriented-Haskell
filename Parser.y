@@ -114,10 +114,6 @@ TypeFuncParams :
           Primitive ArrayIndexesDeclaration { TypeFuncParamsPrimitive $1 $2}
         | class_identifier ArrayIndexesDeclaration { TypeFuncParamsClassId $1 $2}
 
--- ClosingBracketsNoIdentifier :
---           {- empty -} {  [] }
---         | ClosingBracketsNoIdentifier "[" "]" { "[]" : $1 }
-
 Primitive :
           "Int" {PrimitiveInt}
         | "Double" {PrimitiveDouble}
@@ -133,6 +129,11 @@ Type :
 ArrayIndexesDeclaration :
           {- empty -} { [] }
         |  "[" integer_literal "]" ArrayIndexesDeclaration { ("[",$2,"]") : $4 }
+
+ArrayIndexesExpression :
+          "[" integer_literal "]" ArrayIndexesExpression { (ArrayAccessLiteral $2) : $4 } 
+        | "[" var_identifier "]" ArrayIndexesExpression { (ArrayAccessVar $2) : $4 }
+        -- | "[" Expression "]" ArrayIndexesExpression { (ArrayAccessExoression $2) : $4 }   
 
 ListType :
           "List" "of" class_identifier {ListTypeClassId $3}
@@ -307,6 +308,11 @@ data Block
     = Block
   deriving (Show, Eq)  
 
+data ArrayAccess
+    = ArrayAccessLiteral Integer
+    | ArrayAccessVar String
+  deriving (Show,Eq)
+    -- | ArrayAccessExpression Expression
 
 main = do 
   inStr <- getContents
