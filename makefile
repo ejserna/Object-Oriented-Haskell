@@ -22,3 +22,4 @@ clean:
 	rm -f *.o
 	rm -f *.info
 	rm -f ObjectiveOrientedHaskell
+	rm -f DS_Store
