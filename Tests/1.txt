@@ -39,6 +39,9 @@ List of Integer i = [1..2];
 List of Int p = [1..1000];
 List of Animal pi,po,pu;
 Money djklsdskldsak;
+Animal a;
+Wok w = Wok();
+Wok w1 = Wok("perro","gato",a,1222,122.222);
 main{
     
 }

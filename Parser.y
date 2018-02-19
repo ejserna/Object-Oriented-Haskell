@@ -141,11 +141,21 @@ ListType :
 
 Variable :
           Type var_identifier VarIdentifiers ";" {VariableNoAssignment $1 $2 $3 }
-        | Type var_identifier "=" LiteralOrVariable ";" {VariableLiteralOrVariable $1 $2 $4 }
+        | Type var_identifier "=" LiteralOrVariable ";" {VariableAssignmentLiteralOrVariable $1 $2 $4 }
         | Type var_identifier "=" ArrayAssignment1D ";" {VariableAssignment1D $1 $2 $4 }
         | Type var_identifier "=" ArrayAssignment2D ";" {VariableAssignment2D $1 $2 $4 }
+        | Type var_identifier "=" ObjectCreation ";" {VariableAssignmentObject $1 $2 $4 }
         | ListType var_identifier "=" ListAssignment ";" {VariableListAssignment $1 $2 $4}
         | ListType var_identifier VarIdentifiers ";" {VariableListNoAssignment $1 $2 $3}
+
+ObjectCreation : 
+          class_identifier "(" LiteralOrVariable ObjectCreationParams")" { ObjectCreation $1 ( (ParamsLiteralOrVariable $3) : $4) }
+        | class_identifier "(" ")" { ObjectCreation $1 [] }
+
+ObjectCreationParams :
+          {-empty-} {[]}
+        | "," LiteralOrVariable ObjectCreationParams { (ParamsLiteralOrVariable $2) : $3} 
+        -- | Expression "," ObjectCreationParams { (ParamsExpression $1) : $3} 
 
 VarIdentifiers :
         {- empty -} { [] }
@@ -255,11 +265,16 @@ data ListType
 
 data Variable 
     = VariableNoAssignment Type String [String]
-    | VariableLiteralOrVariable Type String LiteralOrVariable
+    | VariableAssignmentLiteralOrVariable Type String LiteralOrVariable
     | VariableAssignment1D Type String [LiteralOrVariable]
     | VariableAssignment2D Type String [[LiteralOrVariable]]
+    | VariableAssignmentObject Type String ObjectCreation
     | VariableListAssignment ListType String ListAssignment
     | VariableListNoAssignment ListType String [String]
+  deriving (Show, Eq)
+
+data ObjectCreation 
+    = ObjectCreation String [Params]
   deriving (Show, Eq)
 
 data ListAssignment 
@@ -311,8 +326,13 @@ data Block
 data ArrayAccess
     = ArrayAccessLiteral Integer
     | ArrayAccessVar String
-  deriving (Show,Eq)
     -- | ArrayAccessExpression Expression
+  deriving (Show,Eq)
+
+data Params
+    = ParamsLiteralOrVariable LiteralOrVariable
+    -- | ParamsExpression Expression
+  deriving (Show,Eq)
 
 main = do 
   inStr <- getContents
