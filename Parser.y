@@ -11,9 +11,8 @@
 module Main where
 import Scanner
 import Data.Decimal
+import Text.Show.Pretty
 }
-
-
 %name ooh
 %tokentype { Token }
 %error { parseError }
@@ -71,6 +70,9 @@ import Data.Decimal
   "String"            { TString _ }
   "Bool"              { TBool _ }
   "Nothing"           { TString _ }
+  "return"            { TReturn _ }
+  "."                 { TPoint _ }
+  "%"                 { TMod _ }
   decimal_literal     { TDecimalLiteral _ $$ }
   integer_literal     { TIntegerLiteral _ $$ }  
   var_identifier      { TVarIdent _ $$ }
@@ -78,37 +80,43 @@ import Data.Decimal
   string_literal      { TStringLiteral _ $$ }
 %%
 
-Program : 
-          FunctionsVariablesClasses "main" Block {Program $1 $3}
 
-FunctionsVariablesClasses :
-         {- empty -} { FVCEmpty }
-        | FunctionsVariablesClasses Function {FVCFunction $1 $2}
-        | FunctionsVariablesClasses Variable {FVCVariable $1 $2}
-        | FunctionsVariablesClasses Class {FVCClass $1 $2}
+
+Program : 
+          Classes Functions Variables "main" Block {Program $1 $2 $3 $5}
+
+Classes : 
+        {- empty -} {[]}
+      | Class Classes { $1 : $2}
+
+Functions :
+        {- empty -} {[]}
+      | Function Functions { $1 : $2}  
+
+Variables :
+        {- empty -} {[]}
+      | Variable Variables { $1 : $2}  
 
 Function : 
-          var_identifier "=>" TypeFuncReturn "::" TypeFuncParams var_identifier Params Block  {Function $1 $3 $5 $6 $7 $8}
+          var_identifier "=>" TypeFuncReturn "::" TypeFuncParams var_identifier Params Block  {Function $1 $3 (($5,$6) : $7) $8}
         | var_identifier "=>" TypeFuncReturn Block  {FunctionEmptyParams $1 $3 $4}
 
 Params : 
-        {- empty -} { ParamsEmpty }
-        |  Params "->" TypeFuncParams var_identifier {Params $1 $3 $4}
+        {- empty -} { [] }
+        |  "->" TypeFuncParams var_identifier Params { ($2,$3) : $4 }
 
 TypeFuncReturn : 
-          Primitive ClosingBracketsNoIdentifier {TypeFuncReturnPrimitive $1 $2}
-        | class_identifier ClosingBracketsNoIdentifier {TypeFuncReturnClassId $1 $2}
-        | ListType {TypeFuncReturnList $1}
+          Primitive {TypeFuncReturnPrimitive $1}
+        | class_identifier {TypeFuncReturnClassId $1}
         | "Nothing" {TypeFuncReturnNothing}
 
 TypeFuncParams :
-          Primitive ClosingBracketsNoIdentifier { TypeFuncParamsPrimitive $1 $2}
-        | class_identifier ClosingBracketsNoIdentifier { TypeFuncParamsClassId $1 $2}
-        | ListType {TypeFuncParamsList $1}
+          Primitive ArrayIndexesDeclaration { TypeFuncParamsPrimitive $1 $2}
+        | class_identifier ArrayIndexesDeclaration { TypeFuncParamsClassId $1 $2}
 
-ClosingBracketsNoIdentifier :
-          {- empty -} { ClosingBracketsNoIdentifierEmpty }
-        | ClosingBracketsNoIdentifier "[" "]" {ClosingBracketsNoIdentifier $1 }
+-- ClosingBracketsNoIdentifier :
+--           {- empty -} {  [] }
+--         | ClosingBracketsNoIdentifier "[" "]" { "[]" : $1 }
 
 Primitive :
           "Int" {PrimitiveInt}
@@ -119,13 +127,12 @@ Primitive :
         | "Integer" {PrimitiveInteger}
 
 Type :
-          Primitive ArrayIndexes {TypePrimitive $1 $2}
-        | class_identifier ArrayIndexes {TypeClassId $1 $2}
+          Primitive ArrayIndexesDeclaration {TypePrimitive $1 $2}
+        | class_identifier ArrayIndexesDeclaration {TypeClassId $1 $2}
 
-ArrayIndexes :
-          {- empty -} { ArrayIndexesEmpty }
-        | ArrayIndexes "[" var_identifier "]"  {ArrayIndexesIdentifier $1 $3 }
-        | ArrayIndexes "[" integer_literal "]" {ArrayIndexesIntLiteral $1 $3 }
+ArrayIndexesDeclaration :
+          {- empty -} { [] }
+        |  "[" integer_literal "]" ArrayIndexesDeclaration { ("[",$2,"]") : $4 }
 
 ListType :
           "List" "of" class_identifier {ListTypeClassId $3}
@@ -137,28 +144,26 @@ Variable :
         | Type var_identifier "=" ArrayAssignment1D ";" {VariableAssignment1D $1 $2 $4 }
         | Type var_identifier "=" ArrayAssignment2D ";" {VariableAssignment2D $1 $2 $4 }
         | ListType var_identifier "=" ListAssignment ";" {VariableListAssignment $1 $2 $4}
-        | ListType var_identifier ";" {VariableList $1 $2}
+        | ListType var_identifier VarIdentifiers ";" {VariableListNoAssignment $1 $2 $3}
 
 VarIdentifiers :
-        {- empty -} { VarIdentifiersEmpty }
-      | VarIdentifiers "," var_identifier {VarIdentifiers $1 $3 }
+        {- empty -} { [] }
+      |  "," var_identifier VarIdentifiers { $2 : $3 }
 
 ArrayAssignment1D :
-        "[" var_identifier Array1DAssignments "]" {ArrayAssignmentVarIdentifier $2 $3 }
-      | "[" integer_literal Array1DAssignments "]" {ArrayAssignmentIntLiteral $2 $3 }
-      | "["  "]" {ArrayAssignment1DEmpty}
+        "[" LiteralOrVariable Array1DAssignments "]" { $2 : $3 }
+      | "["  "]" {[]}
 
 Array1DAssignments :
-        {- empty -} { Array1DAssignmentsEmpty }
-      | Array1DAssignments "," integer_literal {Array1DAssignmentsInteger $1 $3 }
-      | Array1DAssignments "," var_identifier {Array1DAssignmentsVarIdentifier $1 $3}
+        {- empty -} { [] }
+      |  "," LiteralOrVariable Array1DAssignments { $2 : $3 }
 
 ArrayAssignment2D :
-        "[" ArrayAssignment1D Array2DAssignments"]" {ArrayAssignment2D $2 $3 }
+        "[" ArrayAssignment1D Array2DAssignments"]" { $2 : $3 }
 
 Array2DAssignments :
-        {- empty -} { Array2DAssignmentsEmpty }
-      | Array2DAssignments "," ArrayAssignment1D {Array2DAssignments $1 $3 }
+        {- empty -} { [] }
+      |  "," ArrayAssignment1D Array2DAssignments { $2 : $3 }
 
 ListAssignment : 
         ArrayAssignment1D {ListAssignmentArray $1}
@@ -168,28 +173,26 @@ Class :
         "class" class_identifier ":" class_identifier ClassBlock {ClassInheritance $2 $4 $5}
       | "class" class_identifier ClassBlock {ClassNormal $2 $3}
 
-ClassBlock :
-        "{" ClassAttributes ClassConstructor ClassFunctions "}" {ClassBlock $2 $3 $4}
-      | "{" "}" {ClassBlockEmpty}
 
-ClassAttributes :
-        {- empty -} { ClassAttributesEmpty }
-      | ClassAttributes ClassAttribute {ClassAttributes $1 $2}
+ClassBlock : 
+        "{" ClassMembers ClassConstructor ClassMembers "}" {ClassBlock $2 $3 $4}
+      | "{" ClassMembers "}" {ClassBlockNoConstructor $2}
+
+ClassMembers : 
+        {- empty -} {[]} 
+      | ClassAttribute ClassMembers { (ClassMemberAttribute $1) : $2} 
+      | ClassFunction ClassMembers { (ClassMemberFunction $1) : $2}
 
 ClassAttribute :
         "[+]" Variable {ClassAttributePublic $2 }
       | "[-]" Variable {ClassAttributePrivate $2 }
-
-ClassFunctions :
-        {- empty -} { ClassFunctionsEmpty }
-      | ClassFunctions ClassFunction {ClassFunctions $1 $2}
 
 ClassFunction :
         "[+]" Function {ClassFunctionPublic $2}
       | "[-]" Function {ClassFunctionPrivate $2}
 
 ClassConstructor :
-        "::" TypeFuncParams var_identifier Params Block {ClassConstructor $2 $3 $4 $5}
+        "::" TypeFuncParams var_identifier Params Block {ClassConstructor (($2,$3) : $4) $5}
       | "::" Block { ClassConstructorEmpty }
 
 LiteralOrVariable :
@@ -198,7 +201,7 @@ LiteralOrVariable :
       | decimal_literal {DecimalLiteral $1}
       | string_literal {StringLiteral $1}
 
-Block :
+Block:
     "{" "}" {Block}
 
 {
@@ -210,42 +213,24 @@ parseError tokenList = let pos = tokenPosn(head(tokenList))
 -- Esta sección tiene las producciones semánticas para producir el árbol abstracto de sintaxis 
 
 data Program 
-    = Program FunctionsVariablesClasses Block
-  deriving (Show, Eq)
-
-data FunctionsVariablesClasses 
-    = FVCFunction FunctionsVariablesClasses Function
-    | FVCVariable FunctionsVariablesClasses Variable
-    | FVCClass FunctionsVariablesClasses Class
-    | FVCEmpty
+    = Program [Class] [Function] [Variable] Block
   deriving (Show, Eq)
 
 data Function 
-    = Function String TypeFuncReturn TypeFuncParams String Params Block
+    = Function String TypeFuncReturn [(TypeFuncParams,String)] Block
     | FunctionEmptyParams String TypeFuncReturn Block
   deriving (Show, Eq)
 
-data Params 
-    = ParamsEmpty
-    | Params Params TypeFuncParams String
-  deriving (Show, Eq)
-
 data TypeFuncReturn 
-    = TypeFuncReturnPrimitive Primitive ClosingBracketsNoIdentifier
-    | TypeFuncReturnClassId String ClosingBracketsNoIdentifier
-    | TypeFuncReturnList ListType
+    = TypeFuncReturnPrimitive Primitive 
+    | TypeFuncReturnClassId String
     | TypeFuncReturnNothing
   deriving (Show, Eq)
 
 data TypeFuncParams 
-    = TypeFuncParamsPrimitive Primitive ClosingBracketsNoIdentifier
-    | TypeFuncParamsClassId String ClosingBracketsNoIdentifier
+    = TypeFuncParamsPrimitive Primitive [(String,Integer,String)]
+    | TypeFuncParamsClassId String [(String,Integer,String)]
     | TypeFuncParamsList ListType
-  deriving (Show, Eq)
-
-data ClosingBracketsNoIdentifier 
-    = ClosingBracketsNoIdentifierEmpty
-    | ClosingBracketsNoIdentifier ClosingBracketsNoIdentifier
   deriving (Show, Eq)
 
 data Primitive 
@@ -258,14 +243,8 @@ data Primitive
   deriving (Show, Eq)
 
 data Type 
-    = TypePrimitive Primitive ArrayIndexes
-    | TypeClassId String ArrayIndexes
-  deriving (Show, Eq)
-
-data ArrayIndexes 
-    = ArrayIndexesEmpty
-    | ArrayIndexesIdentifier ArrayIndexes String
-    | ArrayIndexesIntLiteral ArrayIndexes Integer
+    = TypePrimitive Primitive [(String,Integer,String)]
+    | TypeClassId String [(String,Integer,String)] 
   deriving (Show, Eq)
 
 data ListType 
@@ -274,42 +253,16 @@ data ListType
   deriving (Show, Eq)
 
 data Variable 
-    = VariableNoAssignment Type String VarIdentifiers
+    = VariableNoAssignment Type String [String]
     | VariableLiteralOrVariable Type String LiteralOrVariable
-    | VariableAssignment1D Type String ArrayAssignment1D
-    | VariableAssignment2D Type String ArrayAssignment2D
+    | VariableAssignment1D Type String [LiteralOrVariable]
+    | VariableAssignment2D Type String [[LiteralOrVariable]]
     | VariableListAssignment ListType String ListAssignment
-    | VariableList ListType String
-  deriving (Show, Eq)
-
-data VarIdentifiers 
-    = VarIdentifiersEmpty
-    | VarIdentifiers VarIdentifiers String
-  deriving (Show, Eq)
-
-data ArrayAssignment1D 
-    = ArrayAssignmentVarIdentifier String Array1DAssignments
-    | ArrayAssignmentIntLiteral Integer Array1DAssignments
-    | ArrayAssignment1DEmpty
-  deriving (Show, Eq)
-
-data Array1DAssignments 
-    = Array1DAssignmentsEmpty
-    | Array1DAssignmentsInteger Array1DAssignments Integer
-    | Array1DAssignmentsVarIdentifier Array1DAssignments String
-  deriving (Show, Eq)
-
-data ArrayAssignment2D 
-    = ArrayAssignment2D ArrayAssignment1D Array2DAssignments
-  deriving (Show, Eq)
-
-data Array2DAssignments 
-    = Array2DAssignmentsEmpty
-    | Array2DAssignments Array2DAssignments ArrayAssignment1D
+    | VariableListNoAssignment ListType String [String]
   deriving (Show, Eq)
 
 data ListAssignment 
-    = ListAssignmentArray ArrayAssignment1D
+    = ListAssignmentArray [LiteralOrVariable]
     | ListAssignmentRange Integer Integer
   deriving (Show, Eq)
 
@@ -319,23 +272,18 @@ data Class
   deriving (Show, Eq)
 
 data ClassBlock 
-    = ClassBlock ClassAttributes ClassConstructor ClassFunctions
-    | ClassBlockEmpty
+    = ClassBlock [ClassMember] ClassConstructor [ClassMember]
+    | ClassBlockNoConstructor [ClassMember]
   deriving (Show, Eq)
 
-data ClassAttributes 
-    = ClassAttributesEmpty
-    | ClassAttributes ClassAttributes ClassAttribute
-  deriving (Show, Eq)
+data ClassMember
+    = ClassMemberAttribute ClassAttribute
+    | ClassMemberFunction ClassFunction
+  deriving (Show, Eq) 
 
 data ClassAttribute 
     = ClassAttributePublic Variable
     | ClassAttributePrivate Variable
-  deriving (Show, Eq)
-
-data ClassFunctions 
-    = ClassFunctionsEmpty
-    | ClassFunctions ClassFunctions ClassFunction
   deriving (Show, Eq)
 
 data ClassFunction 
@@ -345,7 +293,7 @@ data ClassFunction
 
 data ClassConstructor 
     = ClassConstructorEmpty
-    | ClassConstructor TypeFuncParams String Params Block
+    | ClassConstructor [(TypeFuncParams,String)] Block
   deriving (Show, Eq)
 
 data LiteralOrVariable 
@@ -365,4 +313,5 @@ main = do
   putStrLn(show(inStr))
   let parseTree = ooh (alexScanTokens2 inStr)
   putStrLn ("SUCCESS " ++ show(parseTree) )
+  putStrLn $ ppShow $ parseTree
 }

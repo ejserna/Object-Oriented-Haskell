@@ -73,6 +73,9 @@ tokens :-
   "String"                          { \p s -> TString p }
   "Bool"                            { \p s -> TBool p }
   "Nothing"                         { \p s -> TNothing p }
+  "return"                          { \p s -> TReturn p }
+  "."                               { \p s -> TPoint p }
+  "%"                               { \p s -> TMod p }
   $digit+\.$digit+                  { \p s -> TDecimalLiteral  p (read (getLast255Decimals s) ) } -- numero decimal
   $digit+                           { \p s -> TIntegerLiteral p (read s) }                 -- numero entero
   [$alphaLower \_][$alphaLower $digit $alphaUpper \_]*   { \p s -> TVarIdent p s }
@@ -137,6 +140,9 @@ data Token =
       TString AlexPosn              |
       TBool AlexPosn                |
       TNothing AlexPosn             |
+      TReturn AlexPosn              |
+      TPoint AlexPosn               |
+      TMod AlexPosn                 |
       TDecimalLiteral AlexPosn Decimal |
       TIntegerLiteral AlexPosn Integer  |
       TVarIdent AlexPosn String     |
@@ -198,6 +204,9 @@ tokenPosn (TMoney p) = p
 tokenPosn (TString p) = p
 tokenPosn (TBool p) = p
 tokenPosn (TNothing p) = p
+tokenPosn (TReturn p) = p
+tokenPosn (TPoint p) = p
+tokenPosn (TMod p) = p
 tokenPosn (TDecimalLiteral p num) = p
 tokenPosn (TIntegerLiteral p num) = p
 tokenPosn (TVarIdent p str) = p
