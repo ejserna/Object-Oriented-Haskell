@@ -78,6 +78,19 @@ import Text.Show.Pretty
   var_identifier      { TVarIdent _ $$ }
   class_identifier    { TClassIdent _ $$ }
   string_literal      { TStringLiteral _ $$ }
+
+  %left     "||"
+  %left     "&&"
+
+  -- -- -- Compare
+  %left     "=="
+  %nonassoc "<" "<=" ">" ">=" "!=" "!"
+
+  -- -- Arithmetic
+  %left     "+" "-"
+  %left     "*" "/" "%"
+  %right    "^"
+  %left NEG
 %%
 
 
@@ -133,7 +146,7 @@ ArrayIndexesDeclaration :
 ArrayIndexesExpression :
           "[" integer_literal "]" ArrayIndexesExpression { (ArrayAccessLiteral $2) : $4 } 
         | "[" var_identifier "]" ArrayIndexesExpression { (ArrayAccessVar $2) : $4 }
-        -- | "[" Expression "]" ArrayIndexesExpression { (ArrayAccessExoression $2) : $4 }   
+        | "[" Expression "]" ArrayIndexesExpression { (ArrayAccessExpression $2) : $4 }   
 
 ListType :
           "List" "of" class_identifier {ListTypeClassId $3}
@@ -213,7 +226,129 @@ LiteralOrVariable :
       | string_literal {StringLiteral $1}
 
 Block:
-    "{" "}" {Block}
+    "{" BlockStatement "}" {Block $2}
+
+BlockStatement :
+        {- empty -} { [] }
+      | Statement BlockStatement {$1 : $2}
+
+Statement :
+        Assignment ";" {AssignStatement $1}
+      | Display ";"    {DisplayStatement $1}
+      | Reading ";"       {ReadStatement $1}
+      | DoublePlusMinus ";" {DPMStatement $1}
+      | FunctionCall ";"     {FunctionCallStatement $1}
+      | Return ";"     {ReturnStatement $1}
+      | Variable ";"   {VariableStatement $1}
+      | Condition  {ConditionStatement $1}
+      | Cycle      {CycleStatement $1}
+
+Assignment :
+        var_identifier "=" LiteralOrVariable {VarAssignLiteralOrVariable $1 $3}
+      | var_identifier "=" Expression        {VarAssignExpression $1 $3}
+      | var_identifier "=" FunctionCall      {VarAssignFunctionCall $1 $3}
+      | var_identifier "=" ObjectMember      {VarAssignObjMem $1 $3}
+      | ObjectMember "=" LiteralOrVariable   {ObjMemAssignLiteralOrVariable $1 $3}
+      | ObjectMember "=" Expression          {ObjMemAssignExpression $1 $3}
+      | ObjectMember "=" FunctionCall        {ObjMemAssignFunctionCall $1 $3}
+      | ObjectMember "=" ObjectMember        {ObjMemAssignObjMem $1 $3}
+      | var_identifier ArrayIndexesExpression "=" LiteralOrVariable     {VarArrayAssignLiteralOrVariable $1 $2 $4}
+      | var_identifier ArrayIndexesExpression "=" Expression       {VarArrayAssignExpression $1 $2 $4}
+      | var_identifier ArrayIndexesExpression "=" FunctionCall     {VarArrayAssignFunctionCall $1 $2 $4}
+      | var_identifier ArrayIndexesExpression "=" ObjectMember     {VarArrayAssignObjMem $1 $2 $4}
+      | ObjectMember ArrayIndexesExpression "=" LiteralOrVariable     {ObjMemArrayAssignLiteralOrVariable $1 $2 $4}
+      | ObjectMember ArrayIndexesExpression "=" Expression     {ObjMemArrayAssignExpression $1 $2 $4}
+      | ObjectMember ArrayIndexesExpression "=" FunctionCall     {ObjMemArrayAssignFunctionCall $1 $2 $4}
+      | ObjectMember ArrayIndexesExpression "=" ObjectMember     {ObjMemArrayAssignObjMem $1 $2 $4}
+
+Reading :
+  "read" "(" var_identifier ")" {Reading $3}
+
+Display :
+        "display" "(" integer_literal ")" {DisplayInt $3}
+      | "display" "(" decimal_literal ")" {DisplayDec $3}
+      | "display" "(" string_literal ")"  {DisplayString $3}
+      | "display" "(" var_identifier ")"  {DisplayVar $3}
+      | "display" "(" ObjectMember ")"    {DisplayObjMem $3}
+      | "display" "(" FunctionCall ")"    {DisplayFunctionCall $3}
+      | "display" "(" var_identifier ArrayIndexesExpression ")" {DisplayVarArray $3 $4}
+      | "display" "(" ObjectMember ArrayIndexesExpression ")" {DisplayObjMemArray $3 $4}
+
+Expression :
+      Expression ">" Expression { ExpressionGreater $1 $3 }
+    | Expression "<" Expression { ExpressionLower $1 $3 }
+    | Expression ">=" Expression { ExpressionGreaterEq $1 $3 }
+    | Expression "<=" Expression { ExpressionLowerEq $1 $3 }
+    | Expression "=" Expression { ExpressionEquals $1 $3 }
+    | Expression "==" Expression { ExpressionEqEq $1 $3 }
+    | Expression "!=" Expression { ExpressionNotEq $1 $3 }
+    | Expression "&&" Expression { ExpressionAnd $1 $3 }
+    | Expression "||" Expression { ExpressionOr $1 $3 }
+    | Expression "+" Expression {ExpressionPlus $1 $3}
+    | Expression "-" Expression {ExpressionMinus $1 $3}
+    | Expression "/" Expression {ExpressionDiv $1 $3}
+    | Expression "*" Expression {ExpressionMult $1 $3}
+    | Expression "^" Expression {ExpressionPow $1 $3}
+    | Expression "%" Expression {ExpressionMod $1 $3}
+    | var_identifier ArrayIndexesExpression {ExpressionVarArray $1 $2}
+    | var_identifier {ExpressionVar $1}
+    | integer_literal {ExpressionInt $1}
+    | decimal_literal {ExpressionDec $1}
+    | "!" Expression  {ExpressionNot $2}
+    | "True"          {ExpressionTrue}
+    | "False"         {ExpressionFalse}
+    | "-" Expression %prec NEG {ExpressionNeg $2}
+    | "(" Expression ")" {ExpressionPars $2}
+
+Condition :
+      If      {ConditionIf $1}
+   {- | Case    {ConditionCase $1} -}
+
+If :
+  "if" "(" Expression ")" Block "else" Block {If $3 $5 $7}
+
+{-Case :
+    "case" var_identifier "of" "{" CaseBlock "otherwise" "=>" CaseStatement "end" ";" "}"
+
+CaseBlock :
+
+  | LiteralOrVariable "=>" CaseStatement "end" ";" CaseBlock
+
+CaseStatement :
+    
+    | Statement CaseStatement -}
+Cycle :
+    While {CycleWhile $1}
+  | For   {CycleFor $1}
+
+While :
+    "while" "(" Expression ")" Block {While $3 $5}
+
+For :
+    "for" "(" integer_literal ".." integer_literal ")" Block {For $3 $5}
+
+DoublePlusMinus :
+        var_identifier "++" {DoublePP $1}
+      | var_identifier "--" {DoubleMM $1}
+
+FunctionCall :
+        ObjectMember "(" FunctionCallParam ")" {FunctionCallObjMem $1 $3}
+      | var_identifier "(" FunctionCallParam ")" {FunctionCallVar $1 $3}
+
+FunctionCallParam :
+        LiteralOrVariable                       {FunctionCallLitOrVarParam $1}
+      | Expression                              {FunctionCallExpParam $1}
+
+
+ObjectMember :
+        var_identifier "." var_identifier {ObjectMember $1 $3}
+
+Return :
+        "return" LiteralOrVariable {ReturnLitOrVar $2}
+      | "return" FunctionCall      {ReturnFunctionCall $2}
+      | "return" Expression        {ReturnExp $2}
+
+
 
 {
 parseError :: [Token] -> a
@@ -320,19 +455,141 @@ data LiteralOrVariable
   deriving (Show, Eq)
 
 data Block 
-    = Block
+    = Block [Statement]
   deriving (Show, Eq)  
 
 data ArrayAccess
     = ArrayAccessLiteral Integer
     | ArrayAccessVar String
-    -- | ArrayAccessExpression Expression
+    | ArrayAccessExpression Expression
   deriving (Show,Eq)
 
 data Params
     = ParamsLiteralOrVariable LiteralOrVariable
     -- | ParamsExpression Expression
   deriving (Show,Eq)
+
+data Statement
+    = AssignStatement Assignment
+    | DisplayStatement Display
+    | ReadStatement Reading
+    | DPMStatement DoublePlusMinus
+    | FunctionCallStatement FunctionCall
+    | ReturnStatement Return
+    | VariableStatement Variable
+    | ConditionStatement Condition
+    | CycleStatement Cycle
+  deriving (Show,Eq)
+
+data Assignment
+    = VarAssignLiteralOrVariable String LiteralOrVariable
+    | VarAssignExpression String Expression
+    | VarAssignFunctionCall String FunctionCall
+    | VarAssignObjMem String ObjectMember
+    | ObjMemAssignLiteralOrVariable ObjectMember LiteralOrVariable
+    | ObjMemAssignExpression ObjectMember Expression
+    | ObjMemAssignFunctionCall ObjectMember FunctionCall
+    | ObjMemAssignObjMem ObjectMember ObjectMember
+    | VarArrayAssignLiteralOrVariable String ArrayAccess LiteralOrVariable
+    | VarArrayAssignExpression String [ArrayAccess] Expression
+    | VarArrayAssignFunctionCall String [ArrayAccess] FunctionCall
+    | VarArrayAssignObjMem String [ArrayAccess] ObjectMember
+    | ObjMemArrayAssignLiteralOrVariable ObjectMember [ArrayAccess] LiteralOrVariable
+    | ObjMemArrayAssignExpression ObjectMember [ArrayAccess] Expression
+    | ObjMemArrayAssignFunctionCall ObjectMember [ArrayAccess] FunctionCall
+    | ObjMemArrayAssignObjMem ObjectMember [ArrayAccess] ObjectMember
+  deriving(Show,Eq)
+
+data Reading
+    = Reading String
+  deriving(Show,Eq)
+
+data Display
+    = DisplayInt Integer
+    | DisplayDec Decimal
+    | DisplayString String
+    | DisplayVar String
+    | DisplayObjMem ObjectMember
+    | DisplayFunctionCall FunctionCall
+    | DisplayVarArray String [ArrayAccess]
+    | DisplayObjMemArray ObjectMember [ArrayAccess]
+  deriving(Show,Eq) 
+
+data Expression
+    = ExpressionGreater Expression Expression
+    | ExpressionLower Expression Expression
+    | ExpressionGreaterEq Expression Expression
+    | ExpressionLowerEq Expression Expression
+    | ExpressionEquals Expression Expression
+    | ExpressionEqEq Expression Expression 
+    | ExpressionNotEq Expression Expression 
+    | ExpressionAnd Expression Expression
+    | ExpressionOr Expression Expression 
+    | ExpressionPlus Expression Expression 
+    | ExpressionMinus Expression Expression
+    | ExpressionDiv Expression Expression
+    | ExpressionMult Expression Expression
+    | ExpressionPow Expression Expression
+    | ExpressionMod Expression Expression
+    | ExpressionVarArray String [ArrayAccess]
+    | ExpressionVar String
+    | ExpressionInt Integer
+    | ExpressionDec Decimal
+    | ExpressionNot Expression 
+    | ExpressionTrue
+    | ExpressionFalse 
+    | ExpressionNeg Expression 
+    | ExpressionPars Expression 
+  deriving(Show, Eq)
+
+data Condition
+    = ConditionIf If
+  deriving(Show,Eq)
+
+data If
+    = If Expression Block Block
+  deriving(Show,Eq)
+
+data Cycle
+    = CycleWhile While
+    | CycleFor For
+  deriving(Show,Eq)
+
+data While
+    = While Expression Block
+  deriving(Show,Eq)
+
+data For
+    = For Integer Integer
+  deriving(Show,Eq)
+
+data DoublePlusMinus
+    = DoublePP String
+    | DoubleMM String
+  deriving(Show,Eq)
+
+data FunctionCall
+    = FunctionCallObjMem ObjectMember FunctionCallParam
+    | FunctionCallVar String FunctionCallParam
+  deriving(Show,Eq)
+
+data FunctionCallParam
+    = FunctionCallLitOrVarParam LiteralOrVariable
+    | FunctionCallExpParam Expression 
+    | FunctionCallLitOrVarMult LiteralOrVariable
+    | FunctionCallExpMult Expression
+  deriving(Show,Eq)
+
+data ObjectMember
+    = ObjectMember String String
+  deriving(Show,Eq)
+
+data Return
+    = ReturnLitOrVar LiteralOrVariable
+    | ReturnFunctionCall FunctionCall
+    | ReturnExp Expression 
+  deriving(Show,Eq)
+
 
 main = do 
   inStr <- getContents

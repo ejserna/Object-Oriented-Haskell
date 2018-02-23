@@ -42,6 +42,7 @@ Money djklsdskldsak;
 Animal a;
 Wok w = Wok();
 Wok w1 = Wok("perro","gato",a,1222,122.222);
+Int djklsdskldsak = 2;
 main{
     
 }
