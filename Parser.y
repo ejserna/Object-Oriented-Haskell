@@ -238,28 +238,28 @@ Statement :
       | Reading ";"       {ReadStatement $1}
       | DoublePlusMinus ";" {DPMStatement $1}
       | FunctionCall ";"     {FunctionCallStatement $1}
-      | Return ";"     {ReturnStatement $1}
-      | Variable ";"   {VariableStatement $1}
-      | Condition  {ConditionStatement $1}
-      | Cycle      {CycleStatement $1}
+      -- | Return ";"     {ReturnStatement $1}
+      -- | Variable ";"   {VariableStatement $1}
+      -- | Condition  {ConditionStatement $1}
+      -- | Cycle      {CycleStatement $1}
 
 Assignment :
         var_identifier "=" LiteralOrVariable {VarAssignLiteralOrVariable $1 $3}
-      | var_identifier "=" Expression        {VarAssignExpression $1 $3}
-      | var_identifier "=" FunctionCall      {VarAssignFunctionCall $1 $3}
-      | var_identifier "=" ObjectMember      {VarAssignObjMem $1 $3}
-      | ObjectMember "=" LiteralOrVariable   {ObjMemAssignLiteralOrVariable $1 $3}
-      | ObjectMember "=" Expression          {ObjMemAssignExpression $1 $3}
-      | ObjectMember "=" FunctionCall        {ObjMemAssignFunctionCall $1 $3}
-      | ObjectMember "=" ObjectMember        {ObjMemAssignObjMem $1 $3}
-      | var_identifier ArrayIndexesExpression "=" LiteralOrVariable     {VarArrayAssignLiteralOrVariable $1 $2 $4}
-      | var_identifier ArrayIndexesExpression "=" Expression       {VarArrayAssignExpression $1 $2 $4}
-      | var_identifier ArrayIndexesExpression "=" FunctionCall     {VarArrayAssignFunctionCall $1 $2 $4}
-      | var_identifier ArrayIndexesExpression "=" ObjectMember     {VarArrayAssignObjMem $1 $2 $4}
-      | ObjectMember ArrayIndexesExpression "=" LiteralOrVariable     {ObjMemArrayAssignLiteralOrVariable $1 $2 $4}
-      | ObjectMember ArrayIndexesExpression "=" Expression     {ObjMemArrayAssignExpression $1 $2 $4}
-      | ObjectMember ArrayIndexesExpression "=" FunctionCall     {ObjMemArrayAssignFunctionCall $1 $2 $4}
-      | ObjectMember ArrayIndexesExpression "=" ObjectMember     {ObjMemArrayAssignObjMem $1 $2 $4}
+      -- | var_identifier "=" Expression        {VarAssignExpression $1 $3}
+      -- | var_identifier "=" FunctionCall      {VarAssignFunctionCall $1 $3}
+      -- | var_identifier "=" ObjectMember      {VarAssignObjMem $1 $3}
+      -- | ObjectMember "=" LiteralOrVariable   {ObjMemAssignLiteralOrVariable $1 $3}
+      -- | ObjectMember "=" Expression          {ObjMemAssignExpression $1 $3}
+      -- | ObjectMember "=" FunctionCall        {ObjMemAssignFunctionCall $1 $3}
+      -- | ObjectMember "=" ObjectMember        {ObjMemAssignObjMem $1 $3}
+      -- | var_identifier ArrayIndexesExpression "=" LiteralOrVariable     {VarArrayAssignLiteralOrVariable $1 $2 $4}
+      -- | var_identifier ArrayIndexesExpression "=" Expression       {VarArrayAssignExpression $1 $2 $4}
+      -- | var_identifier ArrayIndexesExpression "=" FunctionCall     {VarArrayAssignFunctionCall $1 $2 $4}
+      -- | var_identifier ArrayIndexesExpression "=" ObjectMember     {VarArrayAssignObjMem $1 $2 $4}
+      -- | ObjectMember ArrayIndexesExpression "=" LiteralOrVariable     {ObjMemArrayAssignLiteralOrVariable $1 $2 $4}
+      -- | ObjectMember ArrayIndexesExpression "=" Expression     {ObjMemArrayAssignExpression $1 $2 $4}
+      -- | ObjectMember ArrayIndexesExpression "=" FunctionCall     {ObjMemArrayAssignFunctionCall $1 $2 $4}
+      -- | ObjectMember ArrayIndexesExpression "=" ObjectMember     {ObjMemArrayAssignObjMem $1 $2 $4}
 
 Reading :
   "read" "(" var_identifier ")" {Reading $3}
@@ -267,19 +267,18 @@ Reading :
 Display :
         "display" "(" integer_literal ")" {DisplayInt $3}
       | "display" "(" decimal_literal ")" {DisplayDec $3}
-      | "display" "(" string_literal ")"  {DisplayString $3}
-      | "display" "(" var_identifier ")"  {DisplayVar $3}
-      | "display" "(" ObjectMember ")"    {DisplayObjMem $3}
-      | "display" "(" FunctionCall ")"    {DisplayFunctionCall $3}
-      | "display" "(" var_identifier ArrayIndexesExpression ")" {DisplayVarArray $3 $4}
-      | "display" "(" ObjectMember ArrayIndexesExpression ")" {DisplayObjMemArray $3 $4}
+      -- | "display" "(" string_literal ")"  {DisplayString $3}
+      -- | "display" "(" var_identifier ")"  {DisplayVar $3}
+      -- | "display" "(" ObjectMember ")"    {DisplayObjMem $3}
+      -- | "display" "(" FunctionCall ")"    {DisplayFunctionCall $3}
+      -- | "display" "(" var_identifier ArrayIndexesExpression ")" {DisplayVarArray $3 $4}
+      -- | "display" "(" ObjectMember ArrayIndexesExpression ")" {DisplayObjMemArray $3 $4}
 
 Expression :
       Expression ">" Expression { ExpressionGreater $1 $3 }
     | Expression "<" Expression { ExpressionLower $1 $3 }
     | Expression ">=" Expression { ExpressionGreaterEq $1 $3 }
     | Expression "<=" Expression { ExpressionLowerEq $1 $3 }
-    | Expression "=" Expression { ExpressionEquals $1 $3 }
     | Expression "==" Expression { ExpressionEqEq $1 $3 }
     | Expression "!=" Expression { ExpressionNotEq $1 $3 }
     | Expression "&&" Expression { ExpressionAnd $1 $3 }
@@ -290,15 +289,14 @@ Expression :
     | Expression "*" Expression {ExpressionMult $1 $3}
     | Expression "^" Expression {ExpressionPow $1 $3}
     | Expression "%" Expression {ExpressionMod $1 $3}
-    | var_identifier ArrayIndexesExpression {ExpressionVarArray $1 $2}
-    | var_identifier {ExpressionVar $1}
-    | integer_literal {ExpressionInt $1}
-    | decimal_literal {ExpressionDec $1}
-    | "!" Expression  {ExpressionNot $2}
-    | "True"          {ExpressionTrue}
-    | "False"         {ExpressionFalse}
-    | "-" Expression %prec NEG {ExpressionNeg $2}
-    | "(" Expression ")" {ExpressionPars $2}
+    | LiteralOrVariable {}
+    -- | LiteralOrVariable ArrayIndexesExpression {ExpressionVarArray $1 $2}
+    -- | LiteralOrVariable ArrayIndexesExpression {}
+    -- | "!" Expression  {ExpressionNot $2}
+    -- | "True"          {ExpressionTrue}
+    -- | "False"         {ExpressionFalse}
+    -- | "-" Expression %prec NEG {ExpressionNeg $2}
+    -- | "(" Expression ")" {ExpressionPars $2}
 
 Condition :
       If      {ConditionIf $1}
@@ -332,13 +330,14 @@ DoublePlusMinus :
       | var_identifier "--" {DoubleMM $1}
 
 FunctionCall :
-        ObjectMember "(" FunctionCallParam ")" {FunctionCallObjMem $1 $3}
-      | var_identifier "(" FunctionCallParam ")" {FunctionCallVar $1 $3}
+         ObjectMember "(" Expression CallParams ")" { }--FunctionCallObjMem $1 $3}
+      | var_identifier "("  Expression CallParams ")" { } --FunctionCallVar $1 $3}
 
-FunctionCallParam :
-        LiteralOrVariable                       {FunctionCallLitOrVarParam $1}
-      | Expression                              {FunctionCallExpParam $1}
 
+
+CallParams :
+        {-empty -} {}
+      | "," Expression CallParams {}
 
 ObjectMember :
         var_identifier "." var_identifier {ObjectMember $1 $3}
@@ -490,7 +489,7 @@ data Assignment
     | ObjMemAssignExpression ObjectMember Expression
     | ObjMemAssignFunctionCall ObjectMember FunctionCall
     | ObjMemAssignObjMem ObjectMember ObjectMember
-    | VarArrayAssignLiteralOrVariable String ArrayAccess LiteralOrVariable
+    | VarArrayAssignLiteralOrVariable String [ArrayAccess] LiteralOrVariable
     | VarArrayAssignExpression String [ArrayAccess] Expression
     | VarArrayAssignFunctionCall String [ArrayAccess] FunctionCall
     | VarArrayAssignObjMem String [ArrayAccess] ObjectMember
