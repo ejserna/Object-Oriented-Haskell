@@ -144,9 +144,8 @@ ArrayIndexesDeclaration :
         |  "[" integer_literal "]" ArrayIndexesDeclaration { ("[",$2,"]") : $4 }
 
 ArrayIndexesExpression :
-          "[" integer_literal "]" ArrayIndexesExpression { (ArrayAccessLiteral $2) : $4 } 
-        | "[" var_identifier "]" ArrayIndexesExpression { (ArrayAccessVar $2) : $4 }
-        | "[" Expression "]" ArrayIndexesExpression { (ArrayAccessExpression $2) : $4 }   
+          "[" Expression "]"  { [(ArrayAccessExpression $2)]  }   
+        | "[" Expression "]" "[" Expression "]" { (ArrayAccessExpression $2) : (ArrayAccessExpression $5) : [] }
 
 ListType :
           "List" "of" class_identifier {ListTypeClassId $3}
@@ -162,13 +161,13 @@ Variable :
         | ListType var_identifier VarIdentifiers ";" {VariableListNoAssignment $1 $2 $3}
 
 ObjectCreation : 
-          class_identifier "(" LiteralOrVariable ObjectCreationParams")" { ObjectCreation $1 ( (ParamsLiteralOrVariable $3) : $4) }
-        | class_identifier "(" ")" { ObjectCreation $1 [] }
+          class_identifier "(" CallParams ")" { ObjectCreation $1 $3 }
+        | class_identifier "("  ")" { ObjectCreation $1 [] }
 
-ObjectCreationParams :
-          {-empty-} {[]}
-        | "," LiteralOrVariable ObjectCreationParams { (ParamsLiteralOrVariable $2) : $3} 
-        -- | Expression "," ObjectCreationParams { (ParamsExpression $1) : $3} 
+-- ObjectCreationParams :
+--           {-empty-} {[]}
+--         | "," LiteralOrVariable ObjectCreationParams { (ParamsLiteralOrVariable $2) : $3} 
+--         -- | Expression "," ObjectCreationParams { (ParamsExpression $1) : $3} 
 
 VarIdentifiers :
         {- empty -} { [] }
@@ -238,28 +237,24 @@ Statement :
       | Reading ";"       {ReadStatement $1}
       | DoublePlusMinus ";" {DPMStatement $1}
       | FunctionCall ";"     {FunctionCallStatement $1}
-      -- | Return ";"     {ReturnStatement $1}
-      -- | Variable ";"   {VariableStatement $1}
-      -- | Condition  {ConditionStatement $1}
-      -- | Cycle      {CycleStatement $1}
+      | Return ";"     {ReturnStatement $1}
+      | Variable ";"   {VariableStatement $1}
+      | Condition  {ConditionStatement $1}
+      | Cycle      {CycleStatement $1}
 
 Assignment :
-        var_identifier "=" LiteralOrVariable {VarAssignLiteralOrVariable $1 $3}
-      -- | var_identifier "=" Expression        {VarAssignExpression $1 $3}
-      -- | var_identifier "=" FunctionCall      {VarAssignFunctionCall $1 $3}
-      -- | var_identifier "=" ObjectMember      {VarAssignObjMem $1 $3}
-      -- | ObjectMember "=" LiteralOrVariable   {ObjMemAssignLiteralOrVariable $1 $3}
-      -- | ObjectMember "=" Expression          {ObjMemAssignExpression $1 $3}
-      -- | ObjectMember "=" FunctionCall        {ObjMemAssignFunctionCall $1 $3}
-      -- | ObjectMember "=" ObjectMember        {ObjMemAssignObjMem $1 $3}
-      -- | var_identifier ArrayIndexesExpression "=" LiteralOrVariable     {VarArrayAssignLiteralOrVariable $1 $2 $4}
-      -- | var_identifier ArrayIndexesExpression "=" Expression       {VarArrayAssignExpression $1 $2 $4}
-      -- | var_identifier ArrayIndexesExpression "=" FunctionCall     {VarArrayAssignFunctionCall $1 $2 $4}
-      -- | var_identifier ArrayIndexesExpression "=" ObjectMember     {VarArrayAssignObjMem $1 $2 $4}
-      -- | ObjectMember ArrayIndexesExpression "=" LiteralOrVariable     {ObjMemArrayAssignLiteralOrVariable $1 $2 $4}
-      -- | ObjectMember ArrayIndexesExpression "=" Expression     {ObjMemArrayAssignExpression $1 $2 $4}
-      -- | ObjectMember ArrayIndexesExpression "=" FunctionCall     {ObjMemArrayAssignFunctionCall $1 $2 $4}
-      -- | ObjectMember ArrayIndexesExpression "=" ObjectMember     {ObjMemArrayAssignObjMem $1 $2 $4}
+        var_identifier "=" Expression        {VarAssignExpression $1 $3}
+      | var_identifier "=" FunctionCall      {VarAssignFunctionCall $1 $3}
+      | var_identifier "=" ObjectMember      {VarAssignObjMem $1 $3}
+      | ObjectMember "=" Expression   {ObjMemAssignExpression $1 $3}
+      | ObjectMember "=" FunctionCall        {ObjMemAssignFunctionCall $1 $3}
+      | ObjectMember "=" ObjectMember        {ObjMemAssignObjMem $1 $3}
+      | var_identifier ArrayIndexesExpression "=" Expression     {VarArrayAssignExpression $1 $2 $4}
+      | var_identifier ArrayIndexesExpression "=" FunctionCall       {VarArrayAssignFunctionCall $1 $2 $4}
+      | var_identifier ArrayIndexesExpression "=" ObjectMember     {VarArrayAssignObjMem $1 $2 $4}
+      | ObjectMember ArrayIndexesExpression "=" Expression     {ObjMemArrayAssignExpression $1 $2 $4}
+      | ObjectMember ArrayIndexesExpression "=" FunctionCall     {ObjMemArrayAssignFunctionCall $1 $2 $4}
+      | ObjectMember ArrayIndexesExpression "=" ObjectMember     {ObjMemArrayAssignObjMem $1 $2 $4}
 
 Reading :
   "read" "(" var_identifier ")" {Reading $3}
@@ -267,12 +262,12 @@ Reading :
 Display :
         "display" "(" integer_literal ")" {DisplayInt $3}
       | "display" "(" decimal_literal ")" {DisplayDec $3}
-      -- | "display" "(" string_literal ")"  {DisplayString $3}
-      -- | "display" "(" var_identifier ")"  {DisplayVar $3}
-      -- | "display" "(" ObjectMember ")"    {DisplayObjMem $3}
-      -- | "display" "(" FunctionCall ")"    {DisplayFunctionCall $3}
-      -- | "display" "(" var_identifier ArrayIndexesExpression ")" {DisplayVarArray $3 $4}
-      -- | "display" "(" ObjectMember ArrayIndexesExpression ")" {DisplayObjMemArray $3 $4}
+      | "display" "(" string_literal ")"  {DisplayString $3}
+      | "display" "(" var_identifier ")"  {DisplayVar $3}
+      | "display" "(" ObjectMember ")"    {DisplayObjMem $3}
+      | "display" "(" FunctionCall ")"    {DisplayFunctionCall $3}
+      | "display" "(" var_identifier ArrayIndexesExpression ")" {DisplayVarArray $3 $4}
+      | "display" "(" ObjectMember ArrayIndexesExpression ")" {DisplayObjMemArray $3 $4}
 
 Expression :
       Expression ">" Expression { ExpressionGreater $1 $3 }
@@ -289,14 +284,13 @@ Expression :
     | Expression "*" Expression {ExpressionMult $1 $3}
     | Expression "^" Expression {ExpressionPow $1 $3}
     | Expression "%" Expression {ExpressionMod $1 $3}
-    | LiteralOrVariable {}
-    -- | LiteralOrVariable ArrayIndexesExpression {ExpressionVarArray $1 $2}
-    -- | LiteralOrVariable ArrayIndexesExpression {}
-    -- | "!" Expression  {ExpressionNot $2}
-    -- | "True"          {ExpressionTrue}
-    -- | "False"         {ExpressionFalse}
-    -- | "-" Expression %prec NEG {ExpressionNeg $2}
-    -- | "(" Expression ")" {ExpressionPars $2}
+    | LiteralOrVariable {ExpressionLitVar $1}
+    | var_identifier ArrayIndexesExpression {ExpressionVarArray $1 $2}
+    | "!" Expression  {ExpressionNot $2}
+    | "True"          {ExpressionTrue}
+    | "False"         {ExpressionFalse}
+    | "-" Expression %prec NEG {ExpressionNeg $2}
+    | "(" Expression ")" {ExpressionPars $2}
 
 Condition :
       If      {ConditionIf $1}
@@ -315,6 +309,8 @@ CaseBlock :
 CaseStatement :
     
     | Statement CaseStatement -}
+
+
 Cycle :
     While {CycleWhile $1}
   | For   {CycleFor $1}
@@ -330,21 +326,20 @@ DoublePlusMinus :
       | var_identifier "--" {DoubleMM $1}
 
 FunctionCall :
-         ObjectMember "(" Expression CallParams ")" { }--FunctionCallObjMem $1 $3}
-      | var_identifier "("  Expression CallParams ")" { } --FunctionCallVar $1 $3}
-
-
+        ObjectMember "("  CallParams   ")" {FunctionCallObjMem $1 $3 }--FunctionCallObjMem $1 $3}
+      | var_identifier "("  CallParams  ")" {FunctionCallVar $1 $3 }--FunctionCallVar $1 $3}
+      | ObjectMember "(" ")" {FunctionCallObjMem $1 [] }--FunctionCallObjMem $1 $3}
+      | var_identifier "(" ")" {FunctionCallVar $1 [] }--FunctionCallVar $1 $3}
 
 CallParams :
-        {-empty -} {}
-      | "," Expression CallParams {}
+       Expression { [(ParamsExpression $1)] }
+      | "," CallParams   { $2 }
 
 ObjectMember :
         var_identifier "." var_identifier {ObjectMember $1 $3}
 
 Return :
-        "return" LiteralOrVariable {ReturnLitOrVar $2}
-      | "return" FunctionCall      {ReturnFunctionCall $2}
+        "return" FunctionCall      {ReturnFunctionCall $2}
       | "return" Expression        {ReturnExp $2}
 
 
@@ -465,7 +460,7 @@ data ArrayAccess
 
 data Params
     = ParamsLiteralOrVariable LiteralOrVariable
-    -- | ParamsExpression Expression
+    | ParamsExpression Expression
   deriving (Show,Eq)
 
 data Statement
@@ -535,6 +530,7 @@ data Expression
     | ExpressionInt Integer
     | ExpressionDec Decimal
     | ExpressionNot Expression 
+    | ExpressionLitVar LiteralOrVariable
     | ExpressionTrue
     | ExpressionFalse 
     | ExpressionNeg Expression 
@@ -568,8 +564,8 @@ data DoublePlusMinus
   deriving(Show,Eq)
 
 data FunctionCall
-    = FunctionCallObjMem ObjectMember FunctionCallParam
-    | FunctionCallVar String FunctionCallParam
+    = FunctionCallObjMem ObjectMember [Params]
+    | FunctionCallVar String [Params]
   deriving(Show,Eq)
 
 data FunctionCallParam
