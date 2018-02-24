@@ -161,7 +161,7 @@ Variable :
         | ListType var_identifier VarIdentifiers ";" {VariableListNoAssignment $1 $2 $3}
 
 ObjectCreation : 
-          class_identifier "(" CallParams ")" { ObjectCreation $1 $3 }
+          class_identifier "(" Expression CallParams ")" { ObjectCreation $1 ((ParamsExpression $3) : $4) }
         | class_identifier "("  ")" { ObjectCreation $1 [] }
 
 -- ObjectCreationParams :
@@ -238,7 +238,7 @@ Statement :
       | DoublePlusMinus ";" {DPMStatement $1}
       | FunctionCall ";"     {FunctionCallStatement $1}
       | Return ";"     {ReturnStatement $1}
-      | Variable ";"   {VariableStatement $1}
+      | Variable   {VariableStatement $1}
       | Condition  {ConditionStatement $1}
       | Cycle      {CycleStatement $1}
 
@@ -289,7 +289,7 @@ Expression :
     | "!" Expression  {ExpressionNot $2}
     | "True"          {ExpressionTrue}
     | "False"         {ExpressionFalse}
-    | "-" Expression %prec NEG {ExpressionNeg $2}
+    -- | "-" Expression %prec NEG {ExpressionNeg $2}
     | "(" Expression ")" {ExpressionPars $2}
 
 Condition :
@@ -326,14 +326,14 @@ DoublePlusMinus :
       | var_identifier "--" {DoubleMM $1}
 
 FunctionCall :
-        ObjectMember "("  CallParams   ")" {FunctionCallObjMem $1 $3 }--FunctionCallObjMem $1 $3}
-      | var_identifier "("  CallParams  ")" {FunctionCallVar $1 $3 }--FunctionCallVar $1 $3}
+        ObjectMember "(" Expression CallParams")" {FunctionCallObjMem $1 ((ParamsExpression $3) : $4)  }--FunctionCallObjMem $1 $3}
+      | var_identifier "("  Expression  CallParams")" {FunctionCallVar $1  ((ParamsExpression $3) : $4) }--FunctionCallVar $1 $3}
       | ObjectMember "(" ")" {FunctionCallObjMem $1 [] }--FunctionCallObjMem $1 $3}
       | var_identifier "(" ")" {FunctionCallVar $1 [] }--FunctionCallVar $1 $3}
 
 CallParams :
-       Expression { [(ParamsExpression $1)] }
-      | "," CallParams   { $2 }
+      {- empty -}   { []  }
+     | "," Expression CallParams   { (ParamsExpression $2) : $3 }
 
 ObjectMember :
         var_identifier "." var_identifier {ObjectMember $1 $3}
@@ -461,6 +461,7 @@ data ArrayAccess
 data Params
     = ParamsLiteralOrVariable LiteralOrVariable
     | ParamsExpression Expression
+    | ParamsStringLiteral String
   deriving (Show,Eq)
 
 data Statement

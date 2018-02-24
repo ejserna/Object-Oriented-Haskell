@@ -47,7 +47,7 @@ Grammar
 	Variable -> Type var_identifier "=" ObjectCreation ";"   (35)
 	Variable -> ListType var_identifier "=" ListAssignment ";"   (36)
 	Variable -> ListType var_identifier VarIdentifiers ";"   (37)
-	ObjectCreation -> class_identifier "(" CallParams ")"   (38)
+	ObjectCreation -> class_identifier "(" Expression CallParams ")"   (38)
 	ObjectCreation -> class_identifier "(" ")"         (39)
 	VarIdentifiers ->                                  (40)
 	VarIdentifiers -> "," var_identifier VarIdentifiers   (41)
@@ -86,7 +86,7 @@ Grammar
 	Statement -> DoublePlusMinus ";"                   (74)
 	Statement -> FunctionCall ";"                      (75)
 	Statement -> Return ";"                            (76)
-	Statement -> Variable ";"                          (77)
+	Statement -> Variable                              (77)
 	Statement -> Condition                             (78)
 	Statement -> Cycle                                 (79)
 	Assignment -> var_identifier "=" Expression        (80)
@@ -104,44 +104,49 @@ Grammar
 	Reading -> "read" "(" var_identifier ")"           (92)
 	Display -> "display" "(" integer_literal ")"       (93)
 	Display -> "display" "(" decimal_literal ")"       (94)
-	Expression -> Expression ">" Expression            (95)
-	Expression -> Expression "<" Expression            (96)
-	Expression -> Expression ">=" Expression           (97)
-	Expression -> Expression "<=" Expression           (98)
-	Expression -> Expression "==" Expression           (99)
-	Expression -> Expression "!=" Expression           (100)
-	Expression -> Expression "&&" Expression           (101)
-	Expression -> Expression "||" Expression           (102)
-	Expression -> Expression "+" Expression            (103)
-	Expression -> Expression "-" Expression            (104)
-	Expression -> Expression "/" Expression            (105)
-	Expression -> Expression "*" Expression            (106)
-	Expression -> Expression "^" Expression            (107)
-	Expression -> Expression "%" Expression            (108)
-	Expression -> LiteralOrVariable                    (109)
-	Expression -> var_identifier ArrayIndexesExpression   (110)
-	Expression -> "!" Expression                       (111)
-	Expression -> "True"                               (112)
-	Expression -> "False"                              (113)
-	Expression -> "-" Expression                       (114)
-	Expression -> "(" Expression ")"                   (115)
-	Condition -> If                                    (116)
-	If -> "if" "(" Expression ")" Block "else" Block   (117)
-	Cycle -> While                                     (118)
-	Cycle -> For                                       (119)
-	While -> "while" "(" Expression ")" Block          (120)
-	For -> "for" "(" integer_literal ".." integer_literal ")" Block   (121)
-	DoublePlusMinus -> var_identifier "++"             (122)
-	DoublePlusMinus -> var_identifier "--"             (123)
-	FunctionCall -> ObjectMember "(" CallParams ")"    (124)
-	FunctionCall -> var_identifier "(" CallParams ")"   (125)
-	FunctionCall -> ObjectMember "(" ")"               (126)
-	FunctionCall -> var_identifier "(" ")"             (127)
-	CallParams -> Expression                           (128)
-	CallParams -> "," CallParams                       (129)
-	ObjectMember -> var_identifier "." var_identifier   (130)
-	Return -> "return" FunctionCall                    (131)
-	Return -> "return" Expression                      (132)
+	Display -> "display" "(" string_literal ")"        (95)
+	Display -> "display" "(" var_identifier ")"        (96)
+	Display -> "display" "(" ObjectMember ")"          (97)
+	Display -> "display" "(" FunctionCall ")"          (98)
+	Display -> "display" "(" var_identifier ArrayIndexesExpression ")"   (99)
+	Display -> "display" "(" ObjectMember ArrayIndexesExpression ")"   (100)
+	Expression -> Expression ">" Expression            (101)
+	Expression -> Expression "<" Expression            (102)
+	Expression -> Expression ">=" Expression           (103)
+	Expression -> Expression "<=" Expression           (104)
+	Expression -> Expression "==" Expression           (105)
+	Expression -> Expression "!=" Expression           (106)
+	Expression -> Expression "&&" Expression           (107)
+	Expression -> Expression "||" Expression           (108)
+	Expression -> Expression "+" Expression            (109)
+	Expression -> Expression "-" Expression            (110)
+	Expression -> Expression "/" Expression            (111)
+	Expression -> Expression "*" Expression            (112)
+	Expression -> Expression "^" Expression            (113)
+	Expression -> Expression "%" Expression            (114)
+	Expression -> LiteralOrVariable                    (115)
+	Expression -> var_identifier ArrayIndexesExpression   (116)
+	Expression -> "!" Expression                       (117)
+	Expression -> "True"                               (118)
+	Expression -> "False"                              (119)
+	Expression -> "(" Expression ")"                   (120)
+	Condition -> If                                    (121)
+	If -> "if" "(" Expression ")" Block "else" Block   (122)
+	Cycle -> While                                     (123)
+	Cycle -> For                                       (124)
+	While -> "while" "(" Expression ")" Block          (125)
+	For -> "for" "(" integer_literal ".." integer_literal ")" Block   (126)
+	DoublePlusMinus -> var_identifier "++"             (127)
+	DoublePlusMinus -> var_identifier "--"             (128)
+	FunctionCall -> ObjectMember "(" Expression CallParams ")"   (129)
+	FunctionCall -> var_identifier "(" Expression CallParams ")"   (130)
+	FunctionCall -> ObjectMember "(" ")"               (131)
+	FunctionCall -> var_identifier "(" ")"             (132)
+	CallParams ->                                      (133)
+	CallParams -> "," Expression CallParams            (134)
+	ObjectMember -> var_identifier "." var_identifier   (135)
+	Return -> "return" FunctionCall                    (136)
+	Return -> "return" Expression                      (137)
 
 -----------------------------------------------------------------------------
 Terminals
@@ -245,18 +250,18 @@ Non-terminals
 	Statement       rules 71, 72, 73, 74, 75, 76, 77, 78, 79
 	Assignment      rules 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91
 	Reading         rule  92
-	Display         rules 93, 94
-	Expression      rules 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115
-	Condition       rule  116
-	If              rule  117
-	Cycle           rules 118, 119
-	While           rule  120
-	For             rule  121
-	DoublePlusMinus rules 122, 123
-	FunctionCall    rules 124, 125, 126, 127
-	CallParams      rules 128, 129
-	ObjectMember    rule  130
-	Return          rules 131, 132
+	Display         rules 93, 94, 95, 96, 97, 98, 99, 100
+	Expression      rules 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120
+	Condition       rule  121
+	If              rule  122
+	Cycle           rules 123, 124
+	While           rule  125
+	For             rule  126
+	DoublePlusMinus rules 127, 128
+	FunctionCall    rules 129, 130, 131, 132
+	CallParams      rules 133, 134
+	ObjectMember    rule  135
+	Return          rules 136, 137
 
 -----------------------------------------------------------------------------
 States
@@ -1086,7 +1091,7 @@ State 69
 
 	ClassConstructor -> "::" TypeFuncParams . var_identifier Params Block    (rule 62)
 
-	var_identifier shift, and enter state 165
+	var_identifier shift, and enter state 163
 
 
 State 70
@@ -1096,7 +1101,7 @@ State 70
 	"["            shift, and enter state 36
 	var_identifier reduce using rule 25
 
-	ArrayIndexesDeclarationgoto state 164
+	ArrayIndexesDeclarationgoto state 162
 
 State 71
 
@@ -1114,13 +1119,13 @@ State 72
 	"["            shift, and enter state 36
 	var_identifier reduce using rule 25
 
-	ArrayIndexesDeclarationgoto state 163
+	ArrayIndexesDeclarationgoto state 161
 
 State 73
 
 	ClassBlock -> "{" ClassMembers ClassConstructor ClassMembers . "}"    (rule 53)
 
-	"}"            shift, and enter state 162
+	"}"            shift, and enter state 160
 
 
 State 74
@@ -1130,7 +1135,7 @@ State 74
 	"["            shift, and enter state 36
 	var_identifier reduce using rule 25
 
-	ArrayIndexesDeclarationgoto state 161
+	ArrayIndexesDeclarationgoto state 159
 
 State 75
 
@@ -1143,7 +1148,7 @@ State 76
 
 	Variable -> ListType var_identifier "=" ListAssignment . ";"    (rule 36)
 
-	";"            shift, and enter state 160
+	";"            shift, and enter state 158
 
 
 State 77
@@ -1152,24 +1157,28 @@ State 77
 	ArrayAssignment1D -> "[" . "]"                      (rule 43)
 	ListAssignment -> "[" . integer_literal ".." integer_literal "]"    (rule 50)
 
-	"]"            shift, and enter state 153
+	"]"            shift, and enter state 151
 	decimal_literalshift, and enter state 85
-	integer_literalshift, and enter state 159
+	integer_literalshift, and enter state 157
 	var_identifier shift, and enter state 87
 	string_literal shift, and enter state 89
 
-	LiteralOrVariablegoto state 151
+	LiteralOrVariablegoto state 149
 
 State 78
 
 	Variable -> ListType var_identifier VarIdentifiers ";" .    (rule 37)
 
+	"if"           reduce using rule 37
+	"for"          reduce using rule 37
+	"while"        reduce using rule 37
+	"read"         reduce using rule 37
+	"display"      reduce using rule 37
 	"main"         reduce using rule 37
 	"[+]"          reduce using rule 37
 	"[-]"          reduce using rule 37
 	"::"           reduce using rule 37
 	"List"         reduce using rule 37
-	";"            reduce using rule 37
 	"}"            reduce using rule 37
 	"Int"          reduce using rule 37
 	"Integer"      reduce using rule 37
@@ -1177,6 +1186,8 @@ State 78
 	"Money"        reduce using rule 37
 	"String"       reduce using rule 37
 	"Bool"         reduce using rule 37
+	"return"       reduce using rule 37
+	var_identifier reduce using rule 37
 	class_identifierreduce using rule 37
 
 
@@ -1187,34 +1198,34 @@ State 79
 	","            shift, and enter state 53
 	";"            reduce using rule 40
 
-	VarIdentifiers goto state 158
+	VarIdentifiers goto state 156
 
 State 80
 
 	Variable -> Type var_identifier "=" ObjectCreation . ";"    (rule 35)
 
-	";"            shift, and enter state 157
+	";"            shift, and enter state 155
 
 
 State 81
 
 	Variable -> Type var_identifier "=" ArrayAssignment1D . ";"    (rule 33)
 
-	";"            shift, and enter state 156
+	";"            shift, and enter state 154
 
 
 State 82
 
 	Variable -> Type var_identifier "=" ArrayAssignment2D . ";"    (rule 34)
 
-	";"            shift, and enter state 155
+	";"            shift, and enter state 153
 
 
 State 83
 
 	Variable -> Type var_identifier "=" LiteralOrVariable . ";"    (rule 32)
 
-	";"            shift, and enter state 154
+	";"            shift, and enter state 152
 
 
 State 84
@@ -1223,15 +1234,15 @@ State 84
 	ArrayAssignment1D -> "[" . "]"                      (rule 43)
 	ArrayAssignment2D -> "[" . ArrayAssignment1D Array2DAssignments "]"    (rule 46)
 
-	"["            shift, and enter state 152
-	"]"            shift, and enter state 153
+	"["            shift, and enter state 150
+	"]"            shift, and enter state 151
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
 	var_identifier shift, and enter state 87
 	string_literal shift, and enter state 89
 
-	ArrayAssignment1Dgoto state 150
-	LiteralOrVariablegoto state 151
+	ArrayAssignment1Dgoto state 148
+	LiteralOrVariablegoto state 149
 
 State 85
 
@@ -1292,10 +1303,10 @@ State 87
 
 State 88
 
-	ObjectCreation -> class_identifier . "(" CallParams ")"    (rule 38)
+	ObjectCreation -> class_identifier . "(" Expression CallParams ")"    (rule 38)
 	ObjectCreation -> class_identifier . "(" ")"        (rule 39)
 
-	"("            shift, and enter state 149
+	"("            shift, and enter state 147
 
 
 State 89
@@ -1326,12 +1337,16 @@ State 90
 
 	Variable -> Type var_identifier VarIdentifiers ";" .    (rule 31)
 
+	"if"           reduce using rule 31
+	"for"          reduce using rule 31
+	"while"        reduce using rule 31
+	"read"         reduce using rule 31
+	"display"      reduce using rule 31
 	"main"         reduce using rule 31
 	"[+]"          reduce using rule 31
 	"[-]"          reduce using rule 31
 	"::"           reduce using rule 31
 	"List"         reduce using rule 31
-	";"            reduce using rule 31
 	"}"            reduce using rule 31
 	"Int"          reduce using rule 31
 	"Integer"      reduce using rule 31
@@ -1339,21 +1354,38 @@ State 90
 	"Money"        reduce using rule 31
 	"String"       reduce using rule 31
 	"Bool"         reduce using rule 31
+	"return"       reduce using rule 31
+	var_identifier reduce using rule 31
 	class_identifierreduce using rule 31
 
 
 State 91
 
-	Statement -> Variable . ";"                         (rule 77)
+	Statement -> Variable .                             (rule 77)
 
-	";"            shift, and enter state 148
+	"if"           reduce using rule 77
+	"for"          reduce using rule 77
+	"while"        reduce using rule 77
+	"read"         reduce using rule 77
+	"display"      reduce using rule 77
+	"List"         reduce using rule 77
+	"}"            reduce using rule 77
+	"Int"          reduce using rule 77
+	"Integer"      reduce using rule 77
+	"Double"       reduce using rule 77
+	"Money"        reduce using rule 77
+	"String"       reduce using rule 77
+	"Bool"         reduce using rule 77
+	"return"       reduce using rule 77
+	var_identifier reduce using rule 77
+	class_identifierreduce using rule 77
 
 
 State 92
 
 	Block -> "{" BlockStatement . "}"                   (rule 68)
 
-	"}"            shift, and enter state 147
+	"}"            shift, and enter state 146
 
 
 State 93
@@ -1381,7 +1413,7 @@ State 93
 	Type           goto state 15
 	ListType       goto state 16
 	Variable       goto state 91
-	BlockStatement goto state 146
+	BlockStatement goto state 145
 	Statement      goto state 93
 	Assignment     goto state 94
 	Reading        goto state 95
@@ -1400,21 +1432,21 @@ State 94
 
 	Statement -> Assignment . ";"                       (rule 71)
 
-	";"            shift, and enter state 145
+	";"            shift, and enter state 144
 
 
 State 95
 
 	Statement -> Reading . ";"                          (rule 73)
 
-	";"            shift, and enter state 144
+	";"            shift, and enter state 143
 
 
 State 96
 
 	Statement -> Display . ";"                          (rule 72)
 
-	";"            shift, and enter state 143
+	";"            shift, and enter state 142
 
 
 State 97
@@ -1441,24 +1473,24 @@ State 97
 
 State 98
 
-	Condition -> If .                                   (rule 116)
+	Condition -> If .                                   (rule 121)
 
-	"if"           reduce using rule 116
-	"for"          reduce using rule 116
-	"while"        reduce using rule 116
-	"read"         reduce using rule 116
-	"display"      reduce using rule 116
-	"List"         reduce using rule 116
-	"}"            reduce using rule 116
-	"Int"          reduce using rule 116
-	"Integer"      reduce using rule 116
-	"Double"       reduce using rule 116
-	"Money"        reduce using rule 116
-	"String"       reduce using rule 116
-	"Bool"         reduce using rule 116
-	"return"       reduce using rule 116
-	var_identifier reduce using rule 116
-	class_identifierreduce using rule 116
+	"if"           reduce using rule 121
+	"for"          reduce using rule 121
+	"while"        reduce using rule 121
+	"read"         reduce using rule 121
+	"display"      reduce using rule 121
+	"List"         reduce using rule 121
+	"}"            reduce using rule 121
+	"Int"          reduce using rule 121
+	"Integer"      reduce using rule 121
+	"Double"       reduce using rule 121
+	"Money"        reduce using rule 121
+	"String"       reduce using rule 121
+	"Bool"         reduce using rule 121
+	"return"       reduce using rule 121
+	var_identifier reduce using rule 121
+	class_identifierreduce using rule 121
 
 
 State 99
@@ -1485,60 +1517,60 @@ State 99
 
 State 100
 
-	Cycle -> While .                                    (rule 118)
+	Cycle -> While .                                    (rule 123)
 
-	"if"           reduce using rule 118
-	"for"          reduce using rule 118
-	"while"        reduce using rule 118
-	"read"         reduce using rule 118
-	"display"      reduce using rule 118
-	"List"         reduce using rule 118
-	"}"            reduce using rule 118
-	"Int"          reduce using rule 118
-	"Integer"      reduce using rule 118
-	"Double"       reduce using rule 118
-	"Money"        reduce using rule 118
-	"String"       reduce using rule 118
-	"Bool"         reduce using rule 118
-	"return"       reduce using rule 118
-	var_identifier reduce using rule 118
-	class_identifierreduce using rule 118
+	"if"           reduce using rule 123
+	"for"          reduce using rule 123
+	"while"        reduce using rule 123
+	"read"         reduce using rule 123
+	"display"      reduce using rule 123
+	"List"         reduce using rule 123
+	"}"            reduce using rule 123
+	"Int"          reduce using rule 123
+	"Integer"      reduce using rule 123
+	"Double"       reduce using rule 123
+	"Money"        reduce using rule 123
+	"String"       reduce using rule 123
+	"Bool"         reduce using rule 123
+	"return"       reduce using rule 123
+	var_identifier reduce using rule 123
+	class_identifierreduce using rule 123
 
 
 State 101
 
-	Cycle -> For .                                      (rule 119)
+	Cycle -> For .                                      (rule 124)
 
-	"if"           reduce using rule 119
-	"for"          reduce using rule 119
-	"while"        reduce using rule 119
-	"read"         reduce using rule 119
-	"display"      reduce using rule 119
-	"List"         reduce using rule 119
-	"}"            reduce using rule 119
-	"Int"          reduce using rule 119
-	"Integer"      reduce using rule 119
-	"Double"       reduce using rule 119
-	"Money"        reduce using rule 119
-	"String"       reduce using rule 119
-	"Bool"         reduce using rule 119
-	"return"       reduce using rule 119
-	var_identifier reduce using rule 119
-	class_identifierreduce using rule 119
+	"if"           reduce using rule 124
+	"for"          reduce using rule 124
+	"while"        reduce using rule 124
+	"read"         reduce using rule 124
+	"display"      reduce using rule 124
+	"List"         reduce using rule 124
+	"}"            reduce using rule 124
+	"Int"          reduce using rule 124
+	"Integer"      reduce using rule 124
+	"Double"       reduce using rule 124
+	"Money"        reduce using rule 124
+	"String"       reduce using rule 124
+	"Bool"         reduce using rule 124
+	"return"       reduce using rule 124
+	var_identifier reduce using rule 124
+	class_identifierreduce using rule 124
 
 
 State 102
 
 	Statement -> DoublePlusMinus . ";"                  (rule 74)
 
-	";"            shift, and enter state 142
+	";"            shift, and enter state 141
 
 
 State 103
 
 	Statement -> FunctionCall . ";"                     (rule 75)
 
-	";"            shift, and enter state 141
+	";"            shift, and enter state 140
 
 
 State 104
@@ -1549,71 +1581,76 @@ State 104
 	Assignment -> ObjectMember . ArrayIndexesExpression "=" Expression    (rule 89)
 	Assignment -> ObjectMember . ArrayIndexesExpression "=" FunctionCall    (rule 90)
 	Assignment -> ObjectMember . ArrayIndexesExpression "=" ObjectMember    (rule 91)
-	FunctionCall -> ObjectMember . "(" CallParams ")"    (rule 124)
-	FunctionCall -> ObjectMember . "(" ")"              (rule 126)
+	FunctionCall -> ObjectMember . "(" Expression CallParams ")"    (rule 129)
+	FunctionCall -> ObjectMember . "(" ")"              (rule 131)
 
-	"="            shift, and enter state 139
+	"="            shift, and enter state 138
 	"["            shift, and enter state 119
-	"("            shift, and enter state 140
+	"("            shift, and enter state 139
 
-	ArrayIndexesExpressiongoto state 138
+	ArrayIndexesExpressiongoto state 137
 
 State 105
 
 	Statement -> Return . ";"                           (rule 76)
 
-	";"            shift, and enter state 137
+	";"            shift, and enter state 136
 
 
 State 106
 
-	If -> "if" . "(" Expression ")" Block "else" Block    (rule 117)
-
-	"("            shift, and enter state 136
-
-
-State 107
-
-	For -> "for" . "(" integer_literal ".." integer_literal ")" Block    (rule 121)
+	If -> "if" . "(" Expression ")" Block "else" Block    (rule 122)
 
 	"("            shift, and enter state 135
 
 
-State 108
+State 107
 
-	While -> "while" . "(" Expression ")" Block         (rule 120)
+	For -> "for" . "(" integer_literal ".." integer_literal ")" Block    (rule 126)
 
 	"("            shift, and enter state 134
+
+
+State 108
+
+	While -> "while" . "(" Expression ")" Block         (rule 125)
+
+	"("            shift, and enter state 133
 
 
 State 109
 
 	Reading -> "read" . "(" var_identifier ")"          (rule 92)
 
-	"("            shift, and enter state 133
+	"("            shift, and enter state 132
 
 
 State 110
 
 	Display -> "display" . "(" integer_literal ")"      (rule 93)
 	Display -> "display" . "(" decimal_literal ")"      (rule 94)
+	Display -> "display" . "(" string_literal ")"       (rule 95)
+	Display -> "display" . "(" var_identifier ")"       (rule 96)
+	Display -> "display" . "(" ObjectMember ")"         (rule 97)
+	Display -> "display" . "(" FunctionCall ")"         (rule 98)
+	Display -> "display" . "(" var_identifier ArrayIndexesExpression ")"    (rule 99)
+	Display -> "display" . "(" ObjectMember ArrayIndexesExpression ")"    (rule 100)
 
-	"("            shift, and enter state 132
+	"("            shift, and enter state 131
 
 
 State 111
 
-	Return -> "return" . FunctionCall                   (rule 131)
-	Return -> "return" . Expression                     (rule 132)
+	Return -> "return" . FunctionCall                   (rule 136)
+	Return -> "return" . Expression                     (rule 137)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 131
+	var_identifier shift, and enter state 130
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
@@ -1629,11 +1666,11 @@ State 112
 	Assignment -> var_identifier . ArrayIndexesExpression "=" Expression    (rule 86)
 	Assignment -> var_identifier . ArrayIndexesExpression "=" FunctionCall    (rule 87)
 	Assignment -> var_identifier . ArrayIndexesExpression "=" ObjectMember    (rule 88)
-	DoublePlusMinus -> var_identifier . "++"            (rule 122)
-	DoublePlusMinus -> var_identifier . "--"            (rule 123)
-	FunctionCall -> var_identifier . "(" CallParams ")"    (rule 125)
-	FunctionCall -> var_identifier . "(" ")"            (rule 127)
-	ObjectMember -> var_identifier . "." var_identifier    (rule 130)
+	DoublePlusMinus -> var_identifier . "++"            (rule 127)
+	DoublePlusMinus -> var_identifier . "--"            (rule 128)
+	FunctionCall -> var_identifier . "(" Expression CallParams ")"    (rule 130)
+	FunctionCall -> var_identifier . "(" ")"            (rule 132)
+	ObjectMember -> var_identifier . "." var_identifier    (rule 135)
 
 	"="            shift, and enter state 116
 	"++"           shift, and enter state 117
@@ -1655,10 +1692,10 @@ State 114
 
 	Function -> var_identifier "=>" TypeFuncReturn "::" TypeFuncParams var_identifier . Params Block    (rule 8)
 
-	"->"           shift, and enter state 167
+	"->"           shift, and enter state 165
 	"{"            reduce using rule 10
 
-	Params         goto state 216
+	Params         goto state 215
 
 State 115
 
@@ -1666,7 +1703,7 @@ State 115
 	Assignment -> var_identifier ArrayIndexesExpression . "=" FunctionCall    (rule 87)
 	Assignment -> var_identifier ArrayIndexesExpression . "=" ObjectMember    (rule 88)
 
-	"="            shift, and enter state 215
+	"="            shift, and enter state 214
 
 
 State 116
@@ -1675,33 +1712,32 @@ State 116
 	Assignment -> var_identifier "=" . FunctionCall     (rule 81)
 	Assignment -> var_identifier "=" . ObjectMember     (rule 82)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 131
+	var_identifier shift, and enter state 130
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
-	Expression     goto state 212
-	FunctionCall   goto state 213
-	ObjectMember   goto state 214
+	Expression     goto state 211
+	FunctionCall   goto state 212
+	ObjectMember   goto state 213
 
 State 117
 
-	DoublePlusMinus -> var_identifier "++" .            (rule 122)
+	DoublePlusMinus -> var_identifier "++" .            (rule 127)
 
-	";"            reduce using rule 122
+	";"            reduce using rule 127
 
 
 State 118
 
-	DoublePlusMinus -> var_identifier "--" .            (rule 123)
+	DoublePlusMinus -> var_identifier "--" .            (rule 128)
 
-	";"            reduce using rule 123
+	";"            reduce using rule 128
 
 
 State 119
@@ -1709,224 +1745,204 @@ State 119
 	ArrayIndexesExpression -> "[" . Expression "]"      (rule 27)
 	ArrayIndexesExpression -> "[" . Expression "]" "[" Expression "]"    (rule 28)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
-	Expression     goto state 211
+	Expression     goto state 210
 
 State 120
 
-	FunctionCall -> var_identifier "(" . CallParams ")"    (rule 125)
-	FunctionCall -> var_identifier "(" . ")"            (rule 127)
+	FunctionCall -> var_identifier "(" . Expression CallParams ")"    (rule 130)
+	FunctionCall -> var_identifier "(" . ")"            (rule 132)
 
-	","            shift, and enter state 175
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
-	")"            shift, and enter state 210
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
+	")"            shift, and enter state 209
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
-	Expression     goto state 173
-	CallParams     goto state 209
+	Expression     goto state 208
 
 State 121
 
-	ObjectMember -> var_identifier "." . var_identifier    (rule 130)
+	ObjectMember -> var_identifier "." . var_identifier    (rule 135)
 
-	var_identifier shift, and enter state 208
+	var_identifier shift, and enter state 207
 
 
 State 122
 
-	Expression -> LiteralOrVariable .                   (rule 109)
+	Expression -> LiteralOrVariable .                   (rule 115)
 
-	"+"            reduce using rule 109
-	"-"            reduce using rule 109
-	"*"            reduce using rule 109
-	"/"            reduce using rule 109
-	"^"            reduce using rule 109
-	">"            reduce using rule 109
-	"<"            reduce using rule 109
-	">="           reduce using rule 109
-	"<="           reduce using rule 109
-	"=="           reduce using rule 109
-	"!="           reduce using rule 109
-	"&&"           reduce using rule 109
-	"||"           reduce using rule 109
-	"]"            reduce using rule 109
-	";"            reduce using rule 109
-	")"            reduce using rule 109
-	"%"            reduce using rule 109
+	","            reduce using rule 115
+	"+"            reduce using rule 115
+	"-"            reduce using rule 115
+	"*"            reduce using rule 115
+	"/"            reduce using rule 115
+	"^"            reduce using rule 115
+	">"            reduce using rule 115
+	"<"            reduce using rule 115
+	">="           reduce using rule 115
+	"<="           reduce using rule 115
+	"=="           reduce using rule 115
+	"!="           reduce using rule 115
+	"&&"           reduce using rule 115
+	"||"           reduce using rule 115
+	"]"            reduce using rule 115
+	";"            reduce using rule 115
+	")"            reduce using rule 115
+	"%"            reduce using rule 115
 
 
 State 123
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-	Return -> "return" Expression .                     (rule 132)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+	Return -> "return" Expression .                     (rule 137)
 
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           shift, and enter state 205
-	"||"           shift, and enter state 206
-	";"            reduce using rule 132
-	"%"            shift, and enter state 207
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
+	";"            reduce using rule 137
+	"%"            shift, and enter state 206
 
 
 State 124
 
-	Return -> "return" FunctionCall .                   (rule 131)
+	Return -> "return" FunctionCall .                   (rule 136)
 
-	";"            reduce using rule 131
+	";"            reduce using rule 136
 
 
 State 125
 
-	FunctionCall -> ObjectMember . "(" CallParams ")"    (rule 124)
-	FunctionCall -> ObjectMember . "(" ")"              (rule 126)
+	FunctionCall -> ObjectMember . "(" Expression CallParams ")"    (rule 129)
+	FunctionCall -> ObjectMember . "(" ")"              (rule 131)
 
-	"("            shift, and enter state 140
+	"("            shift, and enter state 139
 
 
 State 126
 
-	Expression -> "-" . Expression                      (rule 114)
+	Expression -> "!" . Expression                      (rule 117)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
-	string_literal shift, and enter state 89
-
-	LiteralOrVariablegoto state 122
-	Expression     goto state 193
-
-State 127
-
-	Expression -> "!" . Expression                      (rule 111)
-
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
-	decimal_literalshift, and enter state 85
-	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 192
 
+State 127
+
+	Expression -> "True" .                              (rule 118)
+
+	","            reduce using rule 118
+	"+"            reduce using rule 118
+	"-"            reduce using rule 118
+	"*"            reduce using rule 118
+	"/"            reduce using rule 118
+	"^"            reduce using rule 118
+	">"            reduce using rule 118
+	"<"            reduce using rule 118
+	">="           reduce using rule 118
+	"<="           reduce using rule 118
+	"=="           reduce using rule 118
+	"!="           reduce using rule 118
+	"&&"           reduce using rule 118
+	"||"           reduce using rule 118
+	"]"            reduce using rule 118
+	";"            reduce using rule 118
+	")"            reduce using rule 118
+	"%"            reduce using rule 118
+
+
 State 128
 
-	Expression -> "True" .                              (rule 112)
+	Expression -> "False" .                             (rule 119)
 
-	"+"            reduce using rule 112
-	"-"            reduce using rule 112
-	"*"            reduce using rule 112
-	"/"            reduce using rule 112
-	"^"            reduce using rule 112
-	">"            reduce using rule 112
-	"<"            reduce using rule 112
-	">="           reduce using rule 112
-	"<="           reduce using rule 112
-	"=="           reduce using rule 112
-	"!="           reduce using rule 112
-	"&&"           reduce using rule 112
-	"||"           reduce using rule 112
-	"]"            reduce using rule 112
-	";"            reduce using rule 112
-	")"            reduce using rule 112
-	"%"            reduce using rule 112
+	","            reduce using rule 119
+	"+"            reduce using rule 119
+	"-"            reduce using rule 119
+	"*"            reduce using rule 119
+	"/"            reduce using rule 119
+	"^"            reduce using rule 119
+	">"            reduce using rule 119
+	"<"            reduce using rule 119
+	">="           reduce using rule 119
+	"<="           reduce using rule 119
+	"=="           reduce using rule 119
+	"!="           reduce using rule 119
+	"&&"           reduce using rule 119
+	"||"           reduce using rule 119
+	"]"            reduce using rule 119
+	";"            reduce using rule 119
+	")"            reduce using rule 119
+	"%"            reduce using rule 119
 
 
 State 129
 
-	Expression -> "False" .                             (rule 113)
+	Expression -> "(" . Expression ")"                  (rule 120)
 
-	"+"            reduce using rule 113
-	"-"            reduce using rule 113
-	"*"            reduce using rule 113
-	"/"            reduce using rule 113
-	"^"            reduce using rule 113
-	">"            reduce using rule 113
-	"<"            reduce using rule 113
-	">="           reduce using rule 113
-	"<="           reduce using rule 113
-	"=="           reduce using rule 113
-	"!="           reduce using rule 113
-	"&&"           reduce using rule 113
-	"||"           reduce using rule 113
-	"]"            reduce using rule 113
-	";"            reduce using rule 113
-	")"            reduce using rule 113
-	"%"            reduce using rule 113
-
-
-State 130
-
-	Expression -> "(" . Expression ")"                  (rule 115)
-
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 191
 
-State 131
+State 130
 
 	LiteralOrVariable -> var_identifier .               (rule 64)
-	Expression -> var_identifier . ArrayIndexesExpression    (rule 110)
-	FunctionCall -> var_identifier . "(" CallParams ")"    (rule 125)
-	FunctionCall -> var_identifier . "(" ")"            (rule 127)
-	ObjectMember -> var_identifier . "." var_identifier    (rule 130)
+	Expression -> var_identifier . ArrayIndexesExpression    (rule 116)
+	FunctionCall -> var_identifier . "(" Expression CallParams ")"    (rule 130)
+	FunctionCall -> var_identifier . "(" ")"            (rule 132)
+	ObjectMember -> var_identifier . "." var_identifier    (rule 135)
 
 	"+"            reduce using rule 64
 	"-"            reduce using rule 64
@@ -1949,64 +1965,72 @@ State 131
 
 	ArrayIndexesExpressiongoto state 190
 
-State 132
+State 131
 
 	Display -> "display" "(" . integer_literal ")"      (rule 93)
 	Display -> "display" "(" . decimal_literal ")"      (rule 94)
+	Display -> "display" "(" . string_literal ")"       (rule 95)
+	Display -> "display" "(" . var_identifier ")"       (rule 96)
+	Display -> "display" "(" . ObjectMember ")"         (rule 97)
+	Display -> "display" "(" . FunctionCall ")"         (rule 98)
+	Display -> "display" "(" . var_identifier ArrayIndexesExpression ")"    (rule 99)
+	Display -> "display" "(" . ObjectMember ArrayIndexesExpression ")"    (rule 100)
 
-	decimal_literalshift, and enter state 188
-	integer_literalshift, and enter state 189
+	decimal_literalshift, and enter state 186
+	integer_literalshift, and enter state 187
+	var_identifier shift, and enter state 188
+	string_literal shift, and enter state 189
+
+	FunctionCall   goto state 184
+	ObjectMember   goto state 185
+
+State 132
+
+	Reading -> "read" "(" . var_identifier ")"          (rule 92)
+
+	var_identifier shift, and enter state 183
 
 
 State 133
 
-	Reading -> "read" "(" . var_identifier ")"          (rule 92)
+	While -> "while" "(" . Expression ")" Block         (rule 125)
 
-	var_identifier shift, and enter state 187
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
+	decimal_literalshift, and enter state 85
+	integer_literalshift, and enter state 86
+	var_identifier shift, and enter state 173
+	string_literal shift, and enter state 89
 
+	LiteralOrVariablegoto state 122
+	Expression     goto state 182
 
 State 134
 
-	While -> "while" "(" . Expression ")" Block         (rule 120)
+	For -> "for" "(" . integer_literal ".." integer_literal ")" Block    (rule 126)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
-	decimal_literalshift, and enter state 85
-	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
-	string_literal shift, and enter state 89
+	integer_literalshift, and enter state 181
 
-	LiteralOrVariablegoto state 122
-	Expression     goto state 186
 
 State 135
 
-	For -> "for" "(" . integer_literal ".." integer_literal ")" Block    (rule 121)
+	If -> "if" "(" . Expression ")" Block "else" Block    (rule 122)
 
-	integer_literalshift, and enter state 185
-
-
-State 136
-
-	If -> "if" "(" . Expression ")" Block "else" Block    (rule 117)
-
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
-	Expression     goto state 184
+	Expression     goto state 180
 
-State 137
+State 136
 
 	Statement -> Return ";" .                           (rule 76)
 
@@ -2028,58 +2052,54 @@ State 137
 	class_identifierreduce using rule 76
 
 
-State 138
+State 137
 
 	Assignment -> ObjectMember ArrayIndexesExpression . "=" Expression    (rule 89)
 	Assignment -> ObjectMember ArrayIndexesExpression . "=" FunctionCall    (rule 90)
 	Assignment -> ObjectMember ArrayIndexesExpression . "=" ObjectMember    (rule 91)
 
-	"="            shift, and enter state 183
+	"="            shift, and enter state 179
 
 
-State 139
+State 138
 
 	Assignment -> ObjectMember "=" . Expression         (rule 83)
 	Assignment -> ObjectMember "=" . FunctionCall       (rule 84)
 	Assignment -> ObjectMember "=" . ObjectMember       (rule 85)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 131
+	var_identifier shift, and enter state 130
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
-	Expression     goto state 180
-	FunctionCall   goto state 181
-	ObjectMember   goto state 182
+	Expression     goto state 176
+	FunctionCall   goto state 177
+	ObjectMember   goto state 178
+
+State 139
+
+	FunctionCall -> ObjectMember "(" . Expression CallParams ")"    (rule 129)
+	FunctionCall -> ObjectMember "(" . ")"              (rule 131)
+
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
+	")"            shift, and enter state 175
+	decimal_literalshift, and enter state 85
+	integer_literalshift, and enter state 86
+	var_identifier shift, and enter state 173
+	string_literal shift, and enter state 89
+
+	LiteralOrVariablegoto state 122
+	Expression     goto state 174
 
 State 140
-
-	FunctionCall -> ObjectMember "(" . CallParams ")"    (rule 124)
-	FunctionCall -> ObjectMember "(" . ")"              (rule 126)
-
-	","            shift, and enter state 175
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
-	")"            shift, and enter state 179
-	decimal_literalshift, and enter state 85
-	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
-	string_literal shift, and enter state 89
-
-	LiteralOrVariablegoto state 122
-	Expression     goto state 173
-	CallParams     goto state 178
-
-State 141
 
 	Statement -> FunctionCall ";" .                     (rule 75)
 
@@ -2101,7 +2121,7 @@ State 141
 	class_identifierreduce using rule 75
 
 
-State 142
+State 141
 
 	Statement -> DoublePlusMinus ";" .                  (rule 74)
 
@@ -2123,7 +2143,7 @@ State 142
 	class_identifierreduce using rule 74
 
 
-State 143
+State 142
 
 	Statement -> Display ";" .                          (rule 72)
 
@@ -2145,7 +2165,7 @@ State 143
 	class_identifierreduce using rule 72
 
 
-State 144
+State 143
 
 	Statement -> Reading ";" .                          (rule 73)
 
@@ -2167,7 +2187,7 @@ State 144
 	class_identifierreduce using rule 73
 
 
-State 145
+State 144
 
 	Statement -> Assignment ";" .                       (rule 71)
 
@@ -2189,14 +2209,14 @@ State 145
 	class_identifierreduce using rule 71
 
 
-State 146
+State 145
 
 	BlockStatement -> Statement BlockStatement .        (rule 70)
 
 	"}"            reduce using rule 70
 
 
-State 147
+State 146
 
 	Block -> "{" BlockStatement "}" .                   (rule 68)
 
@@ -2224,81 +2244,56 @@ State 147
 	%eof           reduce using rule 68
 
 
-State 148
+State 147
 
-	Statement -> Variable ";" .                         (rule 77)
-
-	"if"           reduce using rule 77
-	"for"          reduce using rule 77
-	"while"        reduce using rule 77
-	"read"         reduce using rule 77
-	"display"      reduce using rule 77
-	"List"         reduce using rule 77
-	"}"            reduce using rule 77
-	"Int"          reduce using rule 77
-	"Integer"      reduce using rule 77
-	"Double"       reduce using rule 77
-	"Money"        reduce using rule 77
-	"String"       reduce using rule 77
-	"Bool"         reduce using rule 77
-	"return"       reduce using rule 77
-	var_identifier reduce using rule 77
-	class_identifierreduce using rule 77
-
-
-State 149
-
-	ObjectCreation -> class_identifier "(" . CallParams ")"    (rule 38)
+	ObjectCreation -> class_identifier "(" . Expression CallParams ")"    (rule 38)
 	ObjectCreation -> class_identifier "(" . ")"        (rule 39)
 
-	","            shift, and enter state 175
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
-	")"            shift, and enter state 176
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
+	")"            shift, and enter state 172
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
-	Expression     goto state 173
-	CallParams     goto state 174
+	Expression     goto state 171
 
-State 150
+State 148
 
 	ArrayAssignment2D -> "[" ArrayAssignment1D . Array2DAssignments "]"    (rule 46)
 
-	","            shift, and enter state 172
+	","            shift, and enter state 170
 	"]"            reduce using rule 47
 
-	Array2DAssignmentsgoto state 171
+	Array2DAssignmentsgoto state 169
 
-State 151
+State 149
 
 	ArrayAssignment1D -> "[" LiteralOrVariable . Array1DAssignments "]"    (rule 42)
 
-	","            shift, and enter state 170
+	","            shift, and enter state 168
 	"]"            reduce using rule 44
 
-	Array1DAssignmentsgoto state 169
+	Array1DAssignmentsgoto state 167
 
-State 152
+State 150
 
 	ArrayAssignment1D -> "[" . LiteralOrVariable Array1DAssignments "]"    (rule 42)
 	ArrayAssignment1D -> "[" . "]"                      (rule 43)
 
-	"]"            shift, and enter state 153
+	"]"            shift, and enter state 151
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
 	var_identifier shift, and enter state 87
 	string_literal shift, and enter state 89
 
-	LiteralOrVariablegoto state 151
+	LiteralOrVariablegoto state 149
 
-State 153
+State 151
 
 	ArrayAssignment1D -> "[" "]" .                      (rule 43)
 
@@ -2307,16 +2302,20 @@ State 153
 	";"            reduce using rule 43
 
 
-State 154
+State 152
 
 	Variable -> Type var_identifier "=" LiteralOrVariable ";" .    (rule 32)
 
+	"if"           reduce using rule 32
+	"for"          reduce using rule 32
+	"while"        reduce using rule 32
+	"read"         reduce using rule 32
+	"display"      reduce using rule 32
 	"main"         reduce using rule 32
 	"[+]"          reduce using rule 32
 	"[-]"          reduce using rule 32
 	"::"           reduce using rule 32
 	"List"         reduce using rule 32
-	";"            reduce using rule 32
 	"}"            reduce using rule 32
 	"Int"          reduce using rule 32
 	"Integer"      reduce using rule 32
@@ -2324,19 +2323,25 @@ State 154
 	"Money"        reduce using rule 32
 	"String"       reduce using rule 32
 	"Bool"         reduce using rule 32
+	"return"       reduce using rule 32
+	var_identifier reduce using rule 32
 	class_identifierreduce using rule 32
 
 
-State 155
+State 153
 
 	Variable -> Type var_identifier "=" ArrayAssignment2D ";" .    (rule 34)
 
+	"if"           reduce using rule 34
+	"for"          reduce using rule 34
+	"while"        reduce using rule 34
+	"read"         reduce using rule 34
+	"display"      reduce using rule 34
 	"main"         reduce using rule 34
 	"[+]"          reduce using rule 34
 	"[-]"          reduce using rule 34
 	"::"           reduce using rule 34
 	"List"         reduce using rule 34
-	";"            reduce using rule 34
 	"}"            reduce using rule 34
 	"Int"          reduce using rule 34
 	"Integer"      reduce using rule 34
@@ -2344,19 +2349,25 @@ State 155
 	"Money"        reduce using rule 34
 	"String"       reduce using rule 34
 	"Bool"         reduce using rule 34
+	"return"       reduce using rule 34
+	var_identifier reduce using rule 34
 	class_identifierreduce using rule 34
 
 
-State 156
+State 154
 
 	Variable -> Type var_identifier "=" ArrayAssignment1D ";" .    (rule 33)
 
+	"if"           reduce using rule 33
+	"for"          reduce using rule 33
+	"while"        reduce using rule 33
+	"read"         reduce using rule 33
+	"display"      reduce using rule 33
 	"main"         reduce using rule 33
 	"[+]"          reduce using rule 33
 	"[-]"          reduce using rule 33
 	"::"           reduce using rule 33
 	"List"         reduce using rule 33
-	";"            reduce using rule 33
 	"}"            reduce using rule 33
 	"Int"          reduce using rule 33
 	"Integer"      reduce using rule 33
@@ -2364,19 +2375,25 @@ State 156
 	"Money"        reduce using rule 33
 	"String"       reduce using rule 33
 	"Bool"         reduce using rule 33
+	"return"       reduce using rule 33
+	var_identifier reduce using rule 33
 	class_identifierreduce using rule 33
 
 
-State 157
+State 155
 
 	Variable -> Type var_identifier "=" ObjectCreation ";" .    (rule 35)
 
+	"if"           reduce using rule 35
+	"for"          reduce using rule 35
+	"while"        reduce using rule 35
+	"read"         reduce using rule 35
+	"display"      reduce using rule 35
 	"main"         reduce using rule 35
 	"[+]"          reduce using rule 35
 	"[-]"          reduce using rule 35
 	"::"           reduce using rule 35
 	"List"         reduce using rule 35
-	";"            reduce using rule 35
 	"}"            reduce using rule 35
 	"Int"          reduce using rule 35
 	"Integer"      reduce using rule 35
@@ -2384,36 +2401,42 @@ State 157
 	"Money"        reduce using rule 35
 	"String"       reduce using rule 35
 	"Bool"         reduce using rule 35
+	"return"       reduce using rule 35
+	var_identifier reduce using rule 35
 	class_identifierreduce using rule 35
 
 
-State 158
+State 156
 
 	VarIdentifiers -> "," var_identifier VarIdentifiers .    (rule 41)
 
 	";"            reduce using rule 41
 
 
-State 159
+State 157
 
 	ListAssignment -> "[" integer_literal . ".." integer_literal "]"    (rule 50)
 	LiteralOrVariable -> integer_literal .              (rule 65)
 
 	","            reduce using rule 65
 	"]"            reduce using rule 65
-	".."           shift, and enter state 168
+	".."           shift, and enter state 166
 
 
-State 160
+State 158
 
 	Variable -> ListType var_identifier "=" ListAssignment ";" .    (rule 36)
 
+	"if"           reduce using rule 36
+	"for"          reduce using rule 36
+	"while"        reduce using rule 36
+	"read"         reduce using rule 36
+	"display"      reduce using rule 36
 	"main"         reduce using rule 36
 	"[+]"          reduce using rule 36
 	"[-]"          reduce using rule 36
 	"::"           reduce using rule 36
 	"List"         reduce using rule 36
-	";"            reduce using rule 36
 	"}"            reduce using rule 36
 	"Int"          reduce using rule 36
 	"Integer"      reduce using rule 36
@@ -2421,17 +2444,19 @@ State 160
 	"Money"        reduce using rule 36
 	"String"       reduce using rule 36
 	"Bool"         reduce using rule 36
+	"return"       reduce using rule 36
+	var_identifier reduce using rule 36
 	class_identifierreduce using rule 36
 
 
-State 161
+State 159
 
 	ArrayIndexesDeclaration -> "[" integer_literal "]" ArrayIndexesDeclaration .    (rule 26)
 
 	var_identifier reduce using rule 26
 
 
-State 162
+State 160
 
 	ClassBlock -> "{" ClassMembers ClassConstructor ClassMembers "}" .    (rule 53)
 
@@ -2448,38 +2473,38 @@ State 162
 	class_identifierreduce using rule 53
 
 
-State 163
+State 161
 
 	TypeFuncParams -> class_identifier ArrayIndexesDeclaration .    (rule 16)
 
 	var_identifier reduce using rule 16
 
 
-State 164
+State 162
 
 	TypeFuncParams -> Primitive ArrayIndexesDeclaration .    (rule 15)
 
 	var_identifier reduce using rule 15
 
 
-State 165
+State 163
 
 	ClassConstructor -> "::" TypeFuncParams var_identifier . Params Block    (rule 62)
 
-	"->"           shift, and enter state 167
+	"->"           shift, and enter state 165
 	"{"            reduce using rule 10
 
-	Params         goto state 166
+	Params         goto state 164
 
-State 166
+State 164
 
 	ClassConstructor -> "::" TypeFuncParams var_identifier Params . Block    (rule 62)
 
 	"{"            shift, and enter state 49
 
-	Block          goto state 256
+	Block          goto state 261
 
-State 167
+State 165
 
 	Params -> "->" . TypeFuncParams var_identifier Params    (rule 11)
 
@@ -2491,24 +2516,24 @@ State 167
 	"Bool"         shift, and enter state 24
 	class_identifiershift, and enter state 72
 
-	TypeFuncParams goto state 255
+	TypeFuncParams goto state 260
 	Primitive      goto state 70
 
-State 168
+State 166
 
 	ListAssignment -> "[" integer_literal ".." . integer_literal "]"    (rule 50)
 
-	integer_literalshift, and enter state 254
+	integer_literalshift, and enter state 259
 
 
-State 169
+State 167
 
 	ArrayAssignment1D -> "[" LiteralOrVariable Array1DAssignments . "]"    (rule 42)
 
-	"]"            shift, and enter state 253
+	"]"            shift, and enter state 258
 
 
-State 170
+State 168
 
 	Array1DAssignments -> "," . LiteralOrVariable Array1DAssignments    (rule 45)
 
@@ -2517,96 +2542,73 @@ State 170
 	var_identifier shift, and enter state 87
 	string_literal shift, and enter state 89
 
-	LiteralOrVariablegoto state 252
+	LiteralOrVariablegoto state 257
 
-State 171
+State 169
 
 	ArrayAssignment2D -> "[" ArrayAssignment1D Array2DAssignments . "]"    (rule 46)
 
-	"]"            shift, and enter state 251
+	"]"            shift, and enter state 256
 
 
-State 172
+State 170
 
 	Array2DAssignments -> "," . ArrayAssignment1D Array2DAssignments    (rule 48)
 
-	"["            shift, and enter state 152
+	"["            shift, and enter state 150
 
-	ArrayAssignment1Dgoto state 250
+	ArrayAssignment1Dgoto state 255
 
-State 173
+State 171
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-	CallParams -> Expression .                          (rule 128)
+	ObjectCreation -> class_identifier "(" Expression . CallParams ")"    (rule 38)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
 
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           shift, and enter state 205
-	"||"           shift, and enter state 206
-	")"            reduce using rule 128
-	"%"            shift, and enter state 207
+	","            shift, and enter state 222
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
+	")"            reduce using rule 133
+	"%"            shift, and enter state 206
 
+	CallParams     goto state 254
 
-State 174
-
-	ObjectCreation -> class_identifier "(" CallParams . ")"    (rule 38)
-
-	")"            shift, and enter state 249
-
-
-State 175
-
-	CallParams -> "," . CallParams                      (rule 129)
-
-	","            shift, and enter state 175
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
-	decimal_literalshift, and enter state 85
-	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
-	string_literal shift, and enter state 89
-
-	LiteralOrVariablegoto state 122
-	Expression     goto state 173
-	CallParams     goto state 248
-
-State 176
+State 172
 
 	ObjectCreation -> class_identifier "(" ")" .        (rule 39)
 
 	";"            reduce using rule 39
 
 
-State 177
+State 173
 
 	LiteralOrVariable -> var_identifier .               (rule 64)
-	Expression -> var_identifier . ArrayIndexesExpression    (rule 110)
+	Expression -> var_identifier . ArrayIndexesExpression    (rule 116)
 
+	","            reduce using rule 64
 	"+"            reduce using rule 64
 	"-"            reduce using rule 64
 	"*"            reduce using rule 64
@@ -2628,703 +2630,757 @@ State 177
 
 	ArrayIndexesExpressiongoto state 190
 
-State 178
+State 174
 
-	FunctionCall -> ObjectMember "(" CallParams . ")"    (rule 124)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+	FunctionCall -> ObjectMember "(" Expression . CallParams ")"    (rule 129)
 
-	")"            shift, and enter state 247
+	","            shift, and enter state 222
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
+	")"            reduce using rule 133
+	"%"            shift, and enter state 206
+
+	CallParams     goto state 253
+
+State 175
+
+	FunctionCall -> ObjectMember "(" ")" .              (rule 131)
+
+	";"            reduce using rule 131
+	")"            reduce using rule 131
 
 
-State 179
-
-	FunctionCall -> ObjectMember "(" ")" .              (rule 126)
-
-	";"            reduce using rule 126
-
-
-State 180
+State 176
 
 	Assignment -> ObjectMember "=" Expression .         (rule 83)
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
 
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           shift, and enter state 205
-	"||"           shift, and enter state 206
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
 	";"            reduce using rule 83
-	"%"            shift, and enter state 207
+	"%"            shift, and enter state 206
 
 
-State 181
+State 177
 
 	Assignment -> ObjectMember "=" FunctionCall .       (rule 84)
 
 	";"            reduce using rule 84
 
 
-State 182
+State 178
 
 	Assignment -> ObjectMember "=" ObjectMember .       (rule 85)
-	FunctionCall -> ObjectMember . "(" CallParams ")"    (rule 124)
-	FunctionCall -> ObjectMember . "(" ")"              (rule 126)
+	FunctionCall -> ObjectMember . "(" Expression CallParams ")"    (rule 129)
+	FunctionCall -> ObjectMember . "(" ")"              (rule 131)
 
 	";"            reduce using rule 85
-	"("            shift, and enter state 140
+	"("            shift, and enter state 139
 
 
-State 183
+State 179
 
 	Assignment -> ObjectMember ArrayIndexesExpression "=" . Expression    (rule 89)
 	Assignment -> ObjectMember ArrayIndexesExpression "=" . FunctionCall    (rule 90)
 	Assignment -> ObjectMember ArrayIndexesExpression "=" . ObjectMember    (rule 91)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 131
+	var_identifier shift, and enter state 130
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
-	Expression     goto state 244
-	FunctionCall   goto state 245
-	ObjectMember   goto state 246
+	Expression     goto state 250
+	FunctionCall   goto state 251
+	ObjectMember   goto state 252
+
+State 180
+
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+	If -> "if" "(" Expression . ")" Block "else" Block    (rule 122)
+
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
+	")"            shift, and enter state 249
+	"%"            shift, and enter state 206
+
+
+State 181
+
+	For -> "for" "(" integer_literal . ".." integer_literal ")" Block    (rule 126)
+
+	".."           shift, and enter state 248
+
+
+State 182
+
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+	While -> "while" "(" Expression . ")" Block         (rule 125)
+
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
+	")"            shift, and enter state 247
+	"%"            shift, and enter state 206
+
+
+State 183
+
+	Reading -> "read" "(" var_identifier . ")"          (rule 92)
+
+	")"            shift, and enter state 246
+
 
 State 184
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-	If -> "if" "(" Expression . ")" Block "else" Block    (rule 117)
+	Display -> "display" "(" FunctionCall . ")"         (rule 98)
 
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           shift, and enter state 205
-	"||"           shift, and enter state 206
-	")"            shift, and enter state 243
-	"%"            shift, and enter state 207
+	")"            shift, and enter state 245
 
 
 State 185
 
-	For -> "for" "(" integer_literal . ".." integer_literal ")" Block    (rule 121)
+	Display -> "display" "(" ObjectMember . ")"         (rule 97)
+	Display -> "display" "(" ObjectMember . ArrayIndexesExpression ")"    (rule 100)
+	FunctionCall -> ObjectMember . "(" Expression CallParams ")"    (rule 129)
+	FunctionCall -> ObjectMember . "(" ")"              (rule 131)
 
-	".."           shift, and enter state 242
+	"["            shift, and enter state 119
+	"("            shift, and enter state 139
+	")"            shift, and enter state 244
 
+	ArrayIndexesExpressiongoto state 243
 
 State 186
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-	While -> "while" "(" Expression . ")" Block         (rule 120)
+	Display -> "display" "(" decimal_literal . ")"      (rule 94)
 
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           shift, and enter state 205
-	"||"           shift, and enter state 206
-	")"            shift, and enter state 241
-	"%"            shift, and enter state 207
+	")"            shift, and enter state 242
 
 
 State 187
 
-	Reading -> "read" "(" var_identifier . ")"          (rule 92)
+	Display -> "display" "(" integer_literal . ")"      (rule 93)
 
-	")"            shift, and enter state 240
+	")"            shift, and enter state 241
 
 
 State 188
 
-	Display -> "display" "(" decimal_literal . ")"      (rule 94)
+	Display -> "display" "(" var_identifier . ")"       (rule 96)
+	Display -> "display" "(" var_identifier . ArrayIndexesExpression ")"    (rule 99)
+	FunctionCall -> var_identifier . "(" Expression CallParams ")"    (rule 130)
+	FunctionCall -> var_identifier . "(" ")"            (rule 132)
+	ObjectMember -> var_identifier . "." var_identifier    (rule 135)
 
-	")"            shift, and enter state 239
+	"["            shift, and enter state 119
+	"("            shift, and enter state 120
+	")"            shift, and enter state 240
+	"."            shift, and enter state 121
 
+	ArrayIndexesExpressiongoto state 239
 
 State 189
 
-	Display -> "display" "(" integer_literal . ")"      (rule 93)
+	Display -> "display" "(" string_literal . ")"       (rule 95)
 
 	")"            shift, and enter state 238
 
 
 State 190
 
-	Expression -> var_identifier ArrayIndexesExpression .    (rule 110)
+	Expression -> var_identifier ArrayIndexesExpression .    (rule 116)
 
-	"+"            reduce using rule 110
-	"-"            reduce using rule 110
-	"*"            reduce using rule 110
-	"/"            reduce using rule 110
-	"^"            reduce using rule 110
-	">"            reduce using rule 110
-	"<"            reduce using rule 110
-	">="           reduce using rule 110
-	"<="           reduce using rule 110
-	"=="           reduce using rule 110
-	"!="           reduce using rule 110
-	"&&"           reduce using rule 110
-	"||"           reduce using rule 110
-	"]"            reduce using rule 110
-	";"            reduce using rule 110
-	")"            reduce using rule 110
-	"%"            reduce using rule 110
+	","            reduce using rule 116
+	"+"            reduce using rule 116
+	"-"            reduce using rule 116
+	"*"            reduce using rule 116
+	"/"            reduce using rule 116
+	"^"            reduce using rule 116
+	">"            reduce using rule 116
+	"<"            reduce using rule 116
+	">="           reduce using rule 116
+	"<="           reduce using rule 116
+	"=="           reduce using rule 116
+	"!="           reduce using rule 116
+	"&&"           reduce using rule 116
+	"||"           reduce using rule 116
+	"]"            reduce using rule 116
+	";"            reduce using rule 116
+	")"            reduce using rule 116
+	"%"            reduce using rule 116
 
 
 State 191
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-	Expression -> "(" Expression . ")"                  (rule 115)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+	Expression -> "(" Expression . ")"                  (rule 120)
 
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           shift, and enter state 205
-	"||"           shift, and enter state 206
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
 	")"            shift, and enter state 237
-	"%"            shift, and enter state 207
+	"%"            shift, and enter state 206
 
 
 State 192
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-	Expression -> "!" Expression .                      (rule 111)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+	Expression -> "!" Expression .                      (rule 117)
 
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
+	","            reduce using rule 117
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
 	">"            fail
 	"<"            fail
 	">="           fail
 	"<="           fail
-	"=="           reduce using rule 111
+	"=="           reduce using rule 117
 	"!="           fail
-	"&&"           reduce using rule 111
-	"||"           reduce using rule 111
-	"]"            reduce using rule 111
-	";"            reduce using rule 111
-	")"            reduce using rule 111
-	"%"            shift, and enter state 207
+	"&&"           reduce using rule 117
+	"||"           reduce using rule 117
+	"]"            reduce using rule 117
+	";"            reduce using rule 117
+	")"            reduce using rule 117
+	"%"            shift, and enter state 206
 
 
 State 193
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-	Expression -> "-" Expression .                      (rule 114)
+	Expression -> Expression "+" . Expression           (rule 109)
 
-	"+"            reduce using rule 114
-	"-"            reduce using rule 114
-	"*"            reduce using rule 114
-	"/"            reduce using rule 114
-	"^"            reduce using rule 114
-	">"            reduce using rule 114
-	"<"            reduce using rule 114
-	">="           reduce using rule 114
-	"<="           reduce using rule 114
-	"=="           reduce using rule 114
-	"!="           reduce using rule 114
-	"&&"           reduce using rule 114
-	"||"           reduce using rule 114
-	"]"            reduce using rule 114
-	";"            reduce using rule 114
-	")"            reduce using rule 114
-	"%"            reduce using rule 114
-
-
-State 194
-
-	Expression -> Expression "+" . Expression           (rule 103)
-
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 236
 
-State 195
+State 194
 
-	Expression -> Expression "-" . Expression           (rule 104)
+	Expression -> Expression "-" . Expression           (rule 110)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 235
 
-State 196
+State 195
 
-	Expression -> Expression "*" . Expression           (rule 106)
+	Expression -> Expression "*" . Expression           (rule 112)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 234
 
-State 197
+State 196
 
-	Expression -> Expression "/" . Expression           (rule 105)
+	Expression -> Expression "/" . Expression           (rule 111)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 233
 
-State 198
+State 197
 
-	Expression -> Expression "^" . Expression           (rule 107)
+	Expression -> Expression "^" . Expression           (rule 113)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 232
 
-State 199
+State 198
 
-	Expression -> Expression ">" . Expression           (rule 95)
+	Expression -> Expression ">" . Expression           (rule 101)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 231
 
-State 200
+State 199
 
-	Expression -> Expression "<" . Expression           (rule 96)
+	Expression -> Expression "<" . Expression           (rule 102)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 230
 
-State 201
+State 200
 
-	Expression -> Expression ">=" . Expression          (rule 97)
+	Expression -> Expression ">=" . Expression          (rule 103)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 229
 
-State 202
+State 201
 
-	Expression -> Expression "<=" . Expression          (rule 98)
+	Expression -> Expression "<=" . Expression          (rule 104)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 228
 
-State 203
+State 202
 
-	Expression -> Expression "==" . Expression          (rule 99)
+	Expression -> Expression "==" . Expression          (rule 105)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 227
 
-State 204
+State 203
 
-	Expression -> Expression "!=" . Expression          (rule 100)
+	Expression -> Expression "!=" . Expression          (rule 106)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 226
 
-State 205
+State 204
 
-	Expression -> Expression "&&" . Expression          (rule 101)
+	Expression -> Expression "&&" . Expression          (rule 107)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 225
 
-State 206
+State 205
 
-	Expression -> Expression "||" . Expression          (rule 102)
+	Expression -> Expression "||" . Expression          (rule 108)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 224
 
-State 207
+State 206
 
-	Expression -> Expression "%" . Expression           (rule 108)
+	Expression -> Expression "%" . Expression           (rule 114)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
+	var_identifier shift, and enter state 173
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
 	Expression     goto state 223
 
+State 207
+
+	ObjectMember -> var_identifier "." var_identifier .    (rule 135)
+
+	"="            reduce using rule 135
+	"["            reduce using rule 135
+	";"            reduce using rule 135
+	"("            reduce using rule 135
+	")"            reduce using rule 135
+
+
 State 208
 
-	ObjectMember -> var_identifier "." var_identifier .    (rule 130)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+	FunctionCall -> var_identifier "(" Expression . CallParams ")"    (rule 130)
 
-	"="            reduce using rule 130
-	"["            reduce using rule 130
-	";"            reduce using rule 130
-	"("            reduce using rule 130
+	","            shift, and enter state 222
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
+	")"            reduce using rule 133
+	"%"            shift, and enter state 206
 
+	CallParams     goto state 221
 
 State 209
 
-	FunctionCall -> var_identifier "(" CallParams . ")"    (rule 125)
+	FunctionCall -> var_identifier "(" ")" .            (rule 132)
 
-	")"            shift, and enter state 222
+	";"            reduce using rule 132
+	")"            reduce using rule 132
 
 
 State 210
 
-	FunctionCall -> var_identifier "(" ")" .            (rule 127)
+	ArrayIndexesExpression -> "[" Expression . "]"      (rule 27)
+	ArrayIndexesExpression -> "[" Expression . "]" "[" Expression "]"    (rule 28)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
 
-	";"            reduce using rule 127
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
+	"]"            shift, and enter state 220
+	"%"            shift, and enter state 206
 
 
 State 211
 
-	ArrayIndexesExpression -> "[" Expression . "]"      (rule 27)
-	ArrayIndexesExpression -> "[" Expression . "]" "[" Expression "]"    (rule 28)
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
+	Assignment -> var_identifier "=" Expression .       (rule 80)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
 
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           shift, and enter state 205
-	"||"           shift, and enter state 206
-	"]"            shift, and enter state 221
-	"%"            shift, and enter state 207
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
+	";"            reduce using rule 80
+	"%"            shift, and enter state 206
 
 
 State 212
-
-	Assignment -> var_identifier "=" Expression .       (rule 80)
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           shift, and enter state 205
-	"||"           shift, and enter state 206
-	";"            reduce using rule 80
-	"%"            shift, and enter state 207
-
-
-State 213
 
 	Assignment -> var_identifier "=" FunctionCall .     (rule 81)
 
 	";"            reduce using rule 81
 
 
-State 214
+State 213
 
 	Assignment -> var_identifier "=" ObjectMember .     (rule 82)
-	FunctionCall -> ObjectMember . "(" CallParams ")"    (rule 124)
-	FunctionCall -> ObjectMember . "(" ")"              (rule 126)
+	FunctionCall -> ObjectMember . "(" Expression CallParams ")"    (rule 129)
+	FunctionCall -> ObjectMember . "(" ")"              (rule 131)
 
 	";"            reduce using rule 82
-	"("            shift, and enter state 140
+	"("            shift, and enter state 139
 
 
-State 215
+State 214
 
 	Assignment -> var_identifier ArrayIndexesExpression "=" . Expression    (rule 86)
 	Assignment -> var_identifier ArrayIndexesExpression "=" . FunctionCall    (rule 87)
 	Assignment -> var_identifier ArrayIndexesExpression "=" . ObjectMember    (rule 88)
 
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
 	decimal_literalshift, and enter state 85
 	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 131
+	var_identifier shift, and enter state 130
 	string_literal shift, and enter state 89
 
 	LiteralOrVariablegoto state 122
-	Expression     goto state 218
-	FunctionCall   goto state 219
-	ObjectMember   goto state 220
+	Expression     goto state 217
+	FunctionCall   goto state 218
+	ObjectMember   goto state 219
 
-State 216
+State 215
 
 	Function -> var_identifier "=>" TypeFuncReturn "::" TypeFuncParams var_identifier Params . Block    (rule 8)
 
 	"{"            shift, and enter state 49
 
-	Block          goto state 217
+	Block          goto state 216
 
-State 217
+State 216
 
 	Function -> var_identifier "=>" TypeFuncReturn "::" TypeFuncParams var_identifier Params Block .    (rule 8)
 
@@ -3344,64 +3400,65 @@ State 217
 	class_identifierreduce using rule 8
 
 
-State 218
+State 217
 
 	Assignment -> var_identifier ArrayIndexesExpression "=" Expression .    (rule 86)
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
 
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           shift, and enter state 205
-	"||"           shift, and enter state 206
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
 	";"            reduce using rule 86
-	"%"            shift, and enter state 207
+	"%"            shift, and enter state 206
 
 
-State 219
+State 218
 
 	Assignment -> var_identifier ArrayIndexesExpression "=" FunctionCall .    (rule 87)
 
 	";"            reduce using rule 87
 
 
-State 220
+State 219
 
 	Assignment -> var_identifier ArrayIndexesExpression "=" ObjectMember .    (rule 88)
-	FunctionCall -> ObjectMember . "(" CallParams ")"    (rule 124)
-	FunctionCall -> ObjectMember . "(" ")"              (rule 126)
+	FunctionCall -> ObjectMember . "(" Expression CallParams ")"    (rule 129)
+	FunctionCall -> ObjectMember . "(" ")"              (rule 131)
 
 	";"            reduce using rule 88
-	"("            shift, and enter state 140
+	"("            shift, and enter state 139
 
 
-State 221
+State 220
 
 	ArrayIndexesExpression -> "[" Expression "]" .      (rule 27)
 	ArrayIndexesExpression -> "[" Expression "]" . "[" Expression "]"    (rule 28)
 
 	"="            reduce using rule 27
+	","            reduce using rule 27
 	"+"            reduce using rule 27
 	"-"            reduce using rule 27
 	"*"            reduce using rule 27
@@ -3415,704 +3472,770 @@ State 221
 	"!="           reduce using rule 27
 	"&&"           reduce using rule 27
 	"||"           reduce using rule 27
-	"["            shift, and enter state 264
+	"["            shift, and enter state 275
 	"]"            reduce using rule 27
 	";"            reduce using rule 27
 	")"            reduce using rule 27
 	"%"            reduce using rule 27
 
 
+State 221
+
+	FunctionCall -> var_identifier "(" Expression CallParams . ")"    (rule 130)
+
+	")"            shift, and enter state 274
+
+
 State 222
 
-	FunctionCall -> var_identifier "(" CallParams ")" .    (rule 125)
+	CallParams -> "," . Expression CallParams           (rule 134)
 
-	";"            reduce using rule 125
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
+	decimal_literalshift, and enter state 85
+	integer_literalshift, and enter state 86
+	var_identifier shift, and enter state 173
+	string_literal shift, and enter state 89
 
+	LiteralOrVariablegoto state 122
+	Expression     goto state 273
 
 State 223
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-	Expression -> Expression "%" Expression .           (rule 108)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+	Expression -> Expression "%" Expression .           (rule 114)
 
-	"+"            reduce using rule 108
-	"-"            reduce using rule 108
-	"*"            reduce using rule 108
-	"/"            reduce using rule 108
-	"^"            shift, and enter state 198
-	">"            reduce using rule 108
-	"<"            reduce using rule 108
-	">="           reduce using rule 108
-	"<="           reduce using rule 108
-	"=="           reduce using rule 108
-	"!="           reduce using rule 108
-	"&&"           reduce using rule 108
-	"||"           reduce using rule 108
-	"]"            reduce using rule 108
-	";"            reduce using rule 108
-	")"            reduce using rule 108
-	"%"            reduce using rule 108
+	","            reduce using rule 114
+	"+"            reduce using rule 114
+	"-"            reduce using rule 114
+	"*"            reduce using rule 114
+	"/"            reduce using rule 114
+	"^"            shift, and enter state 197
+	">"            reduce using rule 114
+	"<"            reduce using rule 114
+	">="           reduce using rule 114
+	"<="           reduce using rule 114
+	"=="           reduce using rule 114
+	"!="           reduce using rule 114
+	"&&"           reduce using rule 114
+	"||"           reduce using rule 114
+	"]"            reduce using rule 114
+	";"            reduce using rule 114
+	")"            reduce using rule 114
+	"%"            reduce using rule 114
 
 
 State 224
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression "||" Expression .          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression "||" Expression .          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
 
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           shift, and enter state 205
-	"||"           reduce using rule 102
-	"]"            reduce using rule 102
-	";"            reduce using rule 102
-	")"            reduce using rule 102
-	"%"            shift, and enter state 207
+	","            reduce using rule 108
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           reduce using rule 108
+	"]"            reduce using rule 108
+	";"            reduce using rule 108
+	")"            reduce using rule 108
+	"%"            shift, and enter state 206
 
 
 State 225
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression "&&" Expression .          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression "&&" Expression .          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
 
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           reduce using rule 101
-	"||"           reduce using rule 101
-	"]"            reduce using rule 101
-	";"            reduce using rule 101
-	")"            reduce using rule 101
-	"%"            shift, and enter state 207
-
-
-State 226
-
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression "!=" Expression .          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            fail
-	"<"            fail
-	">="           fail
-	"<="           fail
-	"=="           reduce using rule 100
-	"!="           fail
-	"&&"           reduce using rule 100
-	"||"           reduce using rule 100
-	"]"            reduce using rule 100
-	";"            reduce using rule 100
-	")"            reduce using rule 100
-	"%"            shift, and enter state 207
-
-
-State 227
-
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression "==" Expression .          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           reduce using rule 99
-	"!="           shift, and enter state 204
-	"&&"           reduce using rule 99
-	"||"           reduce using rule 99
-	"]"            reduce using rule 99
-	";"            reduce using rule 99
-	")"            reduce using rule 99
-	"%"            shift, and enter state 207
-
-
-State 228
-
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression "<=" Expression .          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            fail
-	"<"            fail
-	">="           fail
-	"<="           fail
-	"=="           reduce using rule 98
-	"!="           fail
-	"&&"           reduce using rule 98
-	"||"           reduce using rule 98
-	"]"            reduce using rule 98
-	";"            reduce using rule 98
-	")"            reduce using rule 98
-	"%"            shift, and enter state 207
-
-
-State 229
-
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression ">=" Expression .          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            fail
-	"<"            fail
-	">="           fail
-	"<="           fail
-	"=="           reduce using rule 97
-	"!="           fail
-	"&&"           reduce using rule 97
-	"||"           reduce using rule 97
-	"]"            reduce using rule 97
-	";"            reduce using rule 97
-	")"            reduce using rule 97
-	"%"            shift, and enter state 207
-
-
-State 230
-
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression "<" Expression .           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            fail
-	"<"            fail
-	">="           fail
-	"<="           fail
-	"=="           reduce using rule 96
-	"!="           fail
-	"&&"           reduce using rule 96
-	"||"           reduce using rule 96
-	"]"            reduce using rule 96
-	";"            reduce using rule 96
-	")"            reduce using rule 96
-	"%"            shift, and enter state 207
-
-
-State 231
-
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression ">" Expression .           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            fail
-	"<"            fail
-	">="           fail
-	"<="           fail
-	"=="           reduce using rule 95
-	"!="           fail
-	"&&"           reduce using rule 95
-	"||"           reduce using rule 95
-	"]"            reduce using rule 95
-	";"            reduce using rule 95
-	")"            reduce using rule 95
-	"%"            shift, and enter state 207
-
-
-State 232
-
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression "^" Expression .           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-
-	"+"            reduce using rule 107
-	"-"            reduce using rule 107
-	"*"            reduce using rule 107
-	"/"            reduce using rule 107
-	"^"            shift, and enter state 198
-	">"            reduce using rule 107
-	"<"            reduce using rule 107
-	">="           reduce using rule 107
-	"<="           reduce using rule 107
-	"=="           reduce using rule 107
-	"!="           reduce using rule 107
+	","            reduce using rule 107
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
 	"&&"           reduce using rule 107
 	"||"           reduce using rule 107
 	"]"            reduce using rule 107
 	";"            reduce using rule 107
 	")"            reduce using rule 107
-	"%"            reduce using rule 107
+	"%"            shift, and enter state 206
 
 
-State 233
+State 226
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression "/" Expression .           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression "!=" Expression .          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
 
-	"+"            reduce using rule 105
-	"-"            reduce using rule 105
-	"*"            reduce using rule 105
-	"/"            reduce using rule 105
-	"^"            shift, and enter state 198
-	">"            reduce using rule 105
-	"<"            reduce using rule 105
-	">="           reduce using rule 105
-	"<="           reduce using rule 105
-	"=="           reduce using rule 105
-	"!="           reduce using rule 105
-	"&&"           reduce using rule 105
-	"||"           reduce using rule 105
-	"]"            reduce using rule 105
-	";"            reduce using rule 105
-	")"            reduce using rule 105
-	"%"            reduce using rule 105
-
-
-State 234
-
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression "*" Expression .           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-
-	"+"            reduce using rule 106
-	"-"            reduce using rule 106
-	"*"            reduce using rule 106
-	"/"            reduce using rule 106
-	"^"            shift, and enter state 198
-	">"            reduce using rule 106
-	"<"            reduce using rule 106
-	">="           reduce using rule 106
-	"<="           reduce using rule 106
+	","            reduce using rule 106
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            fail
+	"<"            fail
+	">="           fail
+	"<="           fail
 	"=="           reduce using rule 106
-	"!="           reduce using rule 106
+	"!="           fail
 	"&&"           reduce using rule 106
 	"||"           reduce using rule 106
 	"]"            reduce using rule 106
 	";"            reduce using rule 106
 	")"            reduce using rule 106
-	"%"            reduce using rule 106
+	"%"            shift, and enter state 206
 
 
-State 235
+State 227
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression "-" Expression .           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression "==" Expression .          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
 
-	"+"            reduce using rule 104
-	"-"            reduce using rule 104
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            reduce using rule 104
-	"<"            reduce using rule 104
-	">="           reduce using rule 104
-	"<="           reduce using rule 104
+	","            reduce using rule 105
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           reduce using rule 105
+	"!="           shift, and enter state 203
+	"&&"           reduce using rule 105
+	"||"           reduce using rule 105
+	"]"            reduce using rule 105
+	";"            reduce using rule 105
+	")"            reduce using rule 105
+	"%"            shift, and enter state 206
+
+
+State 228
+
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression "<=" Expression .          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+
+	","            reduce using rule 104
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            fail
+	"<"            fail
+	">="           fail
+	"<="           fail
 	"=="           reduce using rule 104
-	"!="           reduce using rule 104
+	"!="           fail
 	"&&"           reduce using rule 104
 	"||"           reduce using rule 104
 	"]"            reduce using rule 104
 	";"            reduce using rule 104
 	")"            reduce using rule 104
-	"%"            shift, and enter state 207
+	"%"            shift, and enter state 206
 
 
-State 236
+State 229
 
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression "+" Expression .           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression ">=" Expression .          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
 
-	"+"            reduce using rule 103
-	"-"            reduce using rule 103
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            reduce using rule 103
-	"<"            reduce using rule 103
-	">="           reduce using rule 103
-	"<="           reduce using rule 103
+	","            reduce using rule 103
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            fail
+	"<"            fail
+	">="           fail
+	"<="           fail
 	"=="           reduce using rule 103
-	"!="           reduce using rule 103
+	"!="           fail
 	"&&"           reduce using rule 103
 	"||"           reduce using rule 103
 	"]"            reduce using rule 103
 	";"            reduce using rule 103
 	")"            reduce using rule 103
-	"%"            shift, and enter state 207
+	"%"            shift, and enter state 206
+
+
+State 230
+
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression "<" Expression .           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+
+	","            reduce using rule 102
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            fail
+	"<"            fail
+	">="           fail
+	"<="           fail
+	"=="           reduce using rule 102
+	"!="           fail
+	"&&"           reduce using rule 102
+	"||"           reduce using rule 102
+	"]"            reduce using rule 102
+	";"            reduce using rule 102
+	")"            reduce using rule 102
+	"%"            shift, and enter state 206
+
+
+State 231
+
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression ">" Expression .           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+
+	","            reduce using rule 101
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            fail
+	"<"            fail
+	">="           fail
+	"<="           fail
+	"=="           reduce using rule 101
+	"!="           fail
+	"&&"           reduce using rule 101
+	"||"           reduce using rule 101
+	"]"            reduce using rule 101
+	";"            reduce using rule 101
+	")"            reduce using rule 101
+	"%"            shift, and enter state 206
+
+
+State 232
+
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression "^" Expression .           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+
+	","            reduce using rule 113
+	"+"            reduce using rule 113
+	"-"            reduce using rule 113
+	"*"            reduce using rule 113
+	"/"            reduce using rule 113
+	"^"            shift, and enter state 197
+	">"            reduce using rule 113
+	"<"            reduce using rule 113
+	">="           reduce using rule 113
+	"<="           reduce using rule 113
+	"=="           reduce using rule 113
+	"!="           reduce using rule 113
+	"&&"           reduce using rule 113
+	"||"           reduce using rule 113
+	"]"            reduce using rule 113
+	";"            reduce using rule 113
+	")"            reduce using rule 113
+	"%"            reduce using rule 113
+
+
+State 233
+
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression "/" Expression .           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+
+	","            reduce using rule 111
+	"+"            reduce using rule 111
+	"-"            reduce using rule 111
+	"*"            reduce using rule 111
+	"/"            reduce using rule 111
+	"^"            shift, and enter state 197
+	">"            reduce using rule 111
+	"<"            reduce using rule 111
+	">="           reduce using rule 111
+	"<="           reduce using rule 111
+	"=="           reduce using rule 111
+	"!="           reduce using rule 111
+	"&&"           reduce using rule 111
+	"||"           reduce using rule 111
+	"]"            reduce using rule 111
+	";"            reduce using rule 111
+	")"            reduce using rule 111
+	"%"            reduce using rule 111
+
+
+State 234
+
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression "*" Expression .           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+
+	","            reduce using rule 112
+	"+"            reduce using rule 112
+	"-"            reduce using rule 112
+	"*"            reduce using rule 112
+	"/"            reduce using rule 112
+	"^"            shift, and enter state 197
+	">"            reduce using rule 112
+	"<"            reduce using rule 112
+	">="           reduce using rule 112
+	"<="           reduce using rule 112
+	"=="           reduce using rule 112
+	"!="           reduce using rule 112
+	"&&"           reduce using rule 112
+	"||"           reduce using rule 112
+	"]"            reduce using rule 112
+	";"            reduce using rule 112
+	")"            reduce using rule 112
+	"%"            reduce using rule 112
+
+
+State 235
+
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression "-" Expression .           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+
+	","            reduce using rule 110
+	"+"            reduce using rule 110
+	"-"            reduce using rule 110
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            reduce using rule 110
+	"<"            reduce using rule 110
+	">="           reduce using rule 110
+	"<="           reduce using rule 110
+	"=="           reduce using rule 110
+	"!="           reduce using rule 110
+	"&&"           reduce using rule 110
+	"||"           reduce using rule 110
+	"]"            reduce using rule 110
+	";"            reduce using rule 110
+	")"            reduce using rule 110
+	"%"            shift, and enter state 206
+
+
+State 236
+
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression "+" Expression .           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+
+	","            reduce using rule 109
+	"+"            reduce using rule 109
+	"-"            reduce using rule 109
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            reduce using rule 109
+	"<"            reduce using rule 109
+	">="           reduce using rule 109
+	"<="           reduce using rule 109
+	"=="           reduce using rule 109
+	"!="           reduce using rule 109
+	"&&"           reduce using rule 109
+	"||"           reduce using rule 109
+	"]"            reduce using rule 109
+	";"            reduce using rule 109
+	")"            reduce using rule 109
+	"%"            shift, and enter state 206
 
 
 State 237
 
-	Expression -> "(" Expression ")" .                  (rule 115)
+	Expression -> "(" Expression ")" .                  (rule 120)
 
-	"+"            reduce using rule 115
-	"-"            reduce using rule 115
-	"*"            reduce using rule 115
-	"/"            reduce using rule 115
-	"^"            reduce using rule 115
-	">"            reduce using rule 115
-	"<"            reduce using rule 115
-	">="           reduce using rule 115
-	"<="           reduce using rule 115
-	"=="           reduce using rule 115
-	"!="           reduce using rule 115
-	"&&"           reduce using rule 115
-	"||"           reduce using rule 115
-	"]"            reduce using rule 115
-	";"            reduce using rule 115
-	")"            reduce using rule 115
-	"%"            reduce using rule 115
+	","            reduce using rule 120
+	"+"            reduce using rule 120
+	"-"            reduce using rule 120
+	"*"            reduce using rule 120
+	"/"            reduce using rule 120
+	"^"            reduce using rule 120
+	">"            reduce using rule 120
+	"<"            reduce using rule 120
+	">="           reduce using rule 120
+	"<="           reduce using rule 120
+	"=="           reduce using rule 120
+	"!="           reduce using rule 120
+	"&&"           reduce using rule 120
+	"||"           reduce using rule 120
+	"]"            reduce using rule 120
+	";"            reduce using rule 120
+	")"            reduce using rule 120
+	"%"            reduce using rule 120
 
 
 State 238
+
+	Display -> "display" "(" string_literal ")" .       (rule 95)
+
+	";"            reduce using rule 95
+
+
+State 239
+
+	Display -> "display" "(" var_identifier ArrayIndexesExpression . ")"    (rule 99)
+
+	")"            shift, and enter state 272
+
+
+State 240
+
+	Display -> "display" "(" var_identifier ")" .       (rule 96)
+
+	";"            reduce using rule 96
+
+
+State 241
 
 	Display -> "display" "(" integer_literal ")" .      (rule 93)
 
 	";"            reduce using rule 93
 
 
-State 239
+State 242
 
 	Display -> "display" "(" decimal_literal ")" .      (rule 94)
 
 	";"            reduce using rule 94
 
 
-State 240
+State 243
+
+	Display -> "display" "(" ObjectMember ArrayIndexesExpression . ")"    (rule 100)
+
+	")"            shift, and enter state 271
+
+
+State 244
+
+	Display -> "display" "(" ObjectMember ")" .         (rule 97)
+
+	";"            reduce using rule 97
+
+
+State 245
+
+	Display -> "display" "(" FunctionCall ")" .         (rule 98)
+
+	";"            reduce using rule 98
+
+
+State 246
 
 	Reading -> "read" "(" var_identifier ")" .          (rule 92)
 
 	";"            reduce using rule 92
 
 
-State 241
+State 247
 
-	While -> "while" "(" Expression ")" . Block         (rule 120)
-
-	"{"            shift, and enter state 49
-
-	Block          goto state 263
-
-State 242
-
-	For -> "for" "(" integer_literal ".." . integer_literal ")" Block    (rule 121)
-
-	integer_literalshift, and enter state 262
-
-
-State 243
-
-	If -> "if" "(" Expression ")" . Block "else" Block    (rule 117)
+	While -> "while" "(" Expression ")" . Block         (rule 125)
 
 	"{"            shift, and enter state 49
 
-	Block          goto state 261
+	Block          goto state 270
 
-State 244
+State 248
+
+	For -> "for" "(" integer_literal ".." . integer_literal ")" Block    (rule 126)
+
+	integer_literalshift, and enter state 269
+
+
+State 249
+
+	If -> "if" "(" Expression ")" . Block "else" Block    (rule 122)
+
+	"{"            shift, and enter state 49
+
+	Block          goto state 268
+
+State 250
 
 	Assignment -> ObjectMember ArrayIndexesExpression "=" Expression .    (rule 89)
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
 
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           shift, and enter state 205
-	"||"           shift, and enter state 206
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
 	";"            reduce using rule 89
-	"%"            shift, and enter state 207
+	"%"            shift, and enter state 206
 
 
-State 245
+State 251
 
 	Assignment -> ObjectMember ArrayIndexesExpression "=" FunctionCall .    (rule 90)
 
 	";"            reduce using rule 90
 
 
-State 246
+State 252
 
 	Assignment -> ObjectMember ArrayIndexesExpression "=" ObjectMember .    (rule 91)
-	FunctionCall -> ObjectMember . "(" CallParams ")"    (rule 124)
-	FunctionCall -> ObjectMember . "(" ")"              (rule 126)
+	FunctionCall -> ObjectMember . "(" Expression CallParams ")"    (rule 129)
+	FunctionCall -> ObjectMember . "(" ")"              (rule 131)
 
 	";"            reduce using rule 91
-	"("            shift, and enter state 140
+	"("            shift, and enter state 139
 
 
-State 247
+State 253
 
-	FunctionCall -> ObjectMember "(" CallParams ")" .    (rule 124)
+	FunctionCall -> ObjectMember "(" Expression CallParams . ")"    (rule 129)
 
-	";"            reduce using rule 124
-
-
-State 248
-
-	CallParams -> "," CallParams .                      (rule 129)
-
-	")"            reduce using rule 129
+	")"            shift, and enter state 267
 
 
-State 249
+State 254
 
-	ObjectCreation -> class_identifier "(" CallParams ")" .    (rule 38)
+	ObjectCreation -> class_identifier "(" Expression CallParams . ")"    (rule 38)
 
-	";"            reduce using rule 38
+	")"            shift, and enter state 266
 
 
-State 250
+State 255
 
 	Array2DAssignments -> "," ArrayAssignment1D . Array2DAssignments    (rule 48)
 
-	","            shift, and enter state 172
+	","            shift, and enter state 170
 	"]"            reduce using rule 47
 
-	Array2DAssignmentsgoto state 260
+	Array2DAssignmentsgoto state 265
 
-State 251
+State 256
 
 	ArrayAssignment2D -> "[" ArrayAssignment1D Array2DAssignments "]" .    (rule 46)
 
 	";"            reduce using rule 46
 
 
-State 252
+State 257
 
 	Array1DAssignments -> "," LiteralOrVariable . Array1DAssignments    (rule 45)
 
-	","            shift, and enter state 170
+	","            shift, and enter state 168
 	"]"            reduce using rule 44
 
-	Array1DAssignmentsgoto state 259
+	Array1DAssignmentsgoto state 264
 
-State 253
+State 258
 
 	ArrayAssignment1D -> "[" LiteralOrVariable Array1DAssignments "]" .    (rule 42)
 
@@ -4121,21 +4244,21 @@ State 253
 	";"            reduce using rule 42
 
 
-State 254
+State 259
 
 	ListAssignment -> "[" integer_literal ".." integer_literal . "]"    (rule 50)
 
-	"]"            shift, and enter state 258
+	"]"            shift, and enter state 263
 
 
-State 255
+State 260
 
 	Params -> "->" TypeFuncParams . var_identifier Params    (rule 11)
 
-	var_identifier shift, and enter state 257
+	var_identifier shift, and enter state 262
 
 
-State 256
+State 261
 
 	ClassConstructor -> "::" TypeFuncParams var_identifier Params Block .    (rule 62)
 
@@ -4144,196 +4267,277 @@ State 256
 	"}"            reduce using rule 62
 
 
-State 257
+State 262
 
 	Params -> "->" TypeFuncParams var_identifier . Params    (rule 11)
 
-	"->"           shift, and enter state 167
+	"->"           shift, and enter state 165
 	"{"            reduce using rule 10
 
-	Params         goto state 268
+	Params         goto state 280
 
-State 258
+State 263
 
 	ListAssignment -> "[" integer_literal ".." integer_literal "]" .    (rule 50)
 
 	";"            reduce using rule 50
 
 
-State 259
+State 264
 
 	Array1DAssignments -> "," LiteralOrVariable Array1DAssignments .    (rule 45)
 
 	"]"            reduce using rule 45
 
 
-State 260
+State 265
 
 	Array2DAssignments -> "," ArrayAssignment1D Array2DAssignments .    (rule 48)
 
 	"]"            reduce using rule 48
 
 
-State 261
-
-	If -> "if" "(" Expression ")" Block . "else" Block    (rule 117)
-
-	"else"         shift, and enter state 267
-
-
-State 262
-
-	For -> "for" "(" integer_literal ".." integer_literal . ")" Block    (rule 121)
-
-	")"            shift, and enter state 266
-
-
-State 263
-
-	While -> "while" "(" Expression ")" Block .         (rule 120)
-
-	"if"           reduce using rule 120
-	"for"          reduce using rule 120
-	"while"        reduce using rule 120
-	"read"         reduce using rule 120
-	"display"      reduce using rule 120
-	"List"         reduce using rule 120
-	"}"            reduce using rule 120
-	"Int"          reduce using rule 120
-	"Integer"      reduce using rule 120
-	"Double"       reduce using rule 120
-	"Money"        reduce using rule 120
-	"String"       reduce using rule 120
-	"Bool"         reduce using rule 120
-	"return"       reduce using rule 120
-	var_identifier reduce using rule 120
-	class_identifierreduce using rule 120
-
-
-State 264
-
-	ArrayIndexesExpression -> "[" Expression "]" "[" . Expression "]"    (rule 28)
-
-	"-"            shift, and enter state 126
-	"!"            shift, and enter state 127
-	"True"         shift, and enter state 128
-	"False"        shift, and enter state 129
-	"("            shift, and enter state 130
-	decimal_literalshift, and enter state 85
-	integer_literalshift, and enter state 86
-	var_identifier shift, and enter state 177
-	string_literal shift, and enter state 89
-
-	LiteralOrVariablegoto state 122
-	Expression     goto state 265
-
-State 265
-
-	ArrayIndexesExpression -> "[" Expression "]" "[" Expression . "]"    (rule 28)
-	Expression -> Expression . ">" Expression           (rule 95)
-	Expression -> Expression . "<" Expression           (rule 96)
-	Expression -> Expression . ">=" Expression          (rule 97)
-	Expression -> Expression . "<=" Expression          (rule 98)
-	Expression -> Expression . "==" Expression          (rule 99)
-	Expression -> Expression . "!=" Expression          (rule 100)
-	Expression -> Expression . "&&" Expression          (rule 101)
-	Expression -> Expression . "||" Expression          (rule 102)
-	Expression -> Expression . "+" Expression           (rule 103)
-	Expression -> Expression . "-" Expression           (rule 104)
-	Expression -> Expression . "/" Expression           (rule 105)
-	Expression -> Expression . "*" Expression           (rule 106)
-	Expression -> Expression . "^" Expression           (rule 107)
-	Expression -> Expression . "%" Expression           (rule 108)
-
-	"+"            shift, and enter state 194
-	"-"            shift, and enter state 195
-	"*"            shift, and enter state 196
-	"/"            shift, and enter state 197
-	"^"            shift, and enter state 198
-	">"            shift, and enter state 199
-	"<"            shift, and enter state 200
-	">="           shift, and enter state 201
-	"<="           shift, and enter state 202
-	"=="           shift, and enter state 203
-	"!="           shift, and enter state 204
-	"&&"           shift, and enter state 205
-	"||"           shift, and enter state 206
-	"]"            shift, and enter state 271
-	"%"            shift, and enter state 207
-
-
 State 266
 
-	For -> "for" "(" integer_literal ".." integer_literal ")" . Block    (rule 121)
+	ObjectCreation -> class_identifier "(" Expression CallParams ")" .    (rule 38)
 
-	"{"            shift, and enter state 49
+	";"            reduce using rule 38
 
-	Block          goto state 270
 
 State 267
 
-	If -> "if" "(" Expression ")" Block "else" . Block    (rule 117)
+	FunctionCall -> ObjectMember "(" Expression CallParams ")" .    (rule 129)
+
+	";"            reduce using rule 129
+	")"            reduce using rule 129
+
+
+State 268
+
+	If -> "if" "(" Expression ")" Block . "else" Block    (rule 122)
+
+	"else"         shift, and enter state 279
+
+
+State 269
+
+	For -> "for" "(" integer_literal ".." integer_literal . ")" Block    (rule 126)
+
+	")"            shift, and enter state 278
+
+
+State 270
+
+	While -> "while" "(" Expression ")" Block .         (rule 125)
+
+	"if"           reduce using rule 125
+	"for"          reduce using rule 125
+	"while"        reduce using rule 125
+	"read"         reduce using rule 125
+	"display"      reduce using rule 125
+	"List"         reduce using rule 125
+	"}"            reduce using rule 125
+	"Int"          reduce using rule 125
+	"Integer"      reduce using rule 125
+	"Double"       reduce using rule 125
+	"Money"        reduce using rule 125
+	"String"       reduce using rule 125
+	"Bool"         reduce using rule 125
+	"return"       reduce using rule 125
+	var_identifier reduce using rule 125
+	class_identifierreduce using rule 125
+
+
+State 271
+
+	Display -> "display" "(" ObjectMember ArrayIndexesExpression ")" .    (rule 100)
+
+	";"            reduce using rule 100
+
+
+State 272
+
+	Display -> "display" "(" var_identifier ArrayIndexesExpression ")" .    (rule 99)
+
+	";"            reduce using rule 99
+
+
+State 273
+
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+	CallParams -> "," Expression . CallParams           (rule 134)
+
+	","            shift, and enter state 222
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
+	")"            reduce using rule 133
+	"%"            shift, and enter state 206
+
+	CallParams     goto state 277
+
+State 274
+
+	FunctionCall -> var_identifier "(" Expression CallParams ")" .    (rule 130)
+
+	";"            reduce using rule 130
+	")"            reduce using rule 130
+
+
+State 275
+
+	ArrayIndexesExpression -> "[" Expression "]" "[" . Expression "]"    (rule 28)
+
+	"!"            shift, and enter state 126
+	"True"         shift, and enter state 127
+	"False"        shift, and enter state 128
+	"("            shift, and enter state 129
+	decimal_literalshift, and enter state 85
+	integer_literalshift, and enter state 86
+	var_identifier shift, and enter state 173
+	string_literal shift, and enter state 89
+
+	LiteralOrVariablegoto state 122
+	Expression     goto state 276
+
+State 276
+
+	ArrayIndexesExpression -> "[" Expression "]" "[" Expression . "]"    (rule 28)
+	Expression -> Expression . ">" Expression           (rule 101)
+	Expression -> Expression . "<" Expression           (rule 102)
+	Expression -> Expression . ">=" Expression          (rule 103)
+	Expression -> Expression . "<=" Expression          (rule 104)
+	Expression -> Expression . "==" Expression          (rule 105)
+	Expression -> Expression . "!=" Expression          (rule 106)
+	Expression -> Expression . "&&" Expression          (rule 107)
+	Expression -> Expression . "||" Expression          (rule 108)
+	Expression -> Expression . "+" Expression           (rule 109)
+	Expression -> Expression . "-" Expression           (rule 110)
+	Expression -> Expression . "/" Expression           (rule 111)
+	Expression -> Expression . "*" Expression           (rule 112)
+	Expression -> Expression . "^" Expression           (rule 113)
+	Expression -> Expression . "%" Expression           (rule 114)
+
+	"+"            shift, and enter state 193
+	"-"            shift, and enter state 194
+	"*"            shift, and enter state 195
+	"/"            shift, and enter state 196
+	"^"            shift, and enter state 197
+	">"            shift, and enter state 198
+	"<"            shift, and enter state 199
+	">="           shift, and enter state 200
+	"<="           shift, and enter state 201
+	"=="           shift, and enter state 202
+	"!="           shift, and enter state 203
+	"&&"           shift, and enter state 204
+	"||"           shift, and enter state 205
+	"]"            shift, and enter state 283
+	"%"            shift, and enter state 206
+
+
+State 277
+
+	CallParams -> "," Expression CallParams .           (rule 134)
+
+	")"            reduce using rule 134
+
+
+State 278
+
+	For -> "for" "(" integer_literal ".." integer_literal ")" . Block    (rule 126)
 
 	"{"            shift, and enter state 49
 
-	Block          goto state 269
+	Block          goto state 282
 
-State 268
+State 279
+
+	If -> "if" "(" Expression ")" Block "else" . Block    (rule 122)
+
+	"{"            shift, and enter state 49
+
+	Block          goto state 281
+
+State 280
 
 	Params -> "->" TypeFuncParams var_identifier Params .    (rule 11)
 
 	"{"            reduce using rule 11
 
 
-State 269
+State 281
 
-	If -> "if" "(" Expression ")" Block "else" Block .    (rule 117)
+	If -> "if" "(" Expression ")" Block "else" Block .    (rule 122)
 
-	"if"           reduce using rule 117
-	"for"          reduce using rule 117
-	"while"        reduce using rule 117
-	"read"         reduce using rule 117
-	"display"      reduce using rule 117
-	"List"         reduce using rule 117
-	"}"            reduce using rule 117
-	"Int"          reduce using rule 117
-	"Integer"      reduce using rule 117
-	"Double"       reduce using rule 117
-	"Money"        reduce using rule 117
-	"String"       reduce using rule 117
-	"Bool"         reduce using rule 117
-	"return"       reduce using rule 117
-	var_identifier reduce using rule 117
-	class_identifierreduce using rule 117
-
-
-State 270
-
-	For -> "for" "(" integer_literal ".." integer_literal ")" Block .    (rule 121)
-
-	"if"           reduce using rule 121
-	"for"          reduce using rule 121
-	"while"        reduce using rule 121
-	"read"         reduce using rule 121
-	"display"      reduce using rule 121
-	"List"         reduce using rule 121
-	"}"            reduce using rule 121
-	"Int"          reduce using rule 121
-	"Integer"      reduce using rule 121
-	"Double"       reduce using rule 121
-	"Money"        reduce using rule 121
-	"String"       reduce using rule 121
-	"Bool"         reduce using rule 121
-	"return"       reduce using rule 121
-	var_identifier reduce using rule 121
-	class_identifierreduce using rule 121
+	"if"           reduce using rule 122
+	"for"          reduce using rule 122
+	"while"        reduce using rule 122
+	"read"         reduce using rule 122
+	"display"      reduce using rule 122
+	"List"         reduce using rule 122
+	"}"            reduce using rule 122
+	"Int"          reduce using rule 122
+	"Integer"      reduce using rule 122
+	"Double"       reduce using rule 122
+	"Money"        reduce using rule 122
+	"String"       reduce using rule 122
+	"Bool"         reduce using rule 122
+	"return"       reduce using rule 122
+	var_identifier reduce using rule 122
+	class_identifierreduce using rule 122
 
 
-State 271
+State 282
+
+	For -> "for" "(" integer_literal ".." integer_literal ")" Block .    (rule 126)
+
+	"if"           reduce using rule 126
+	"for"          reduce using rule 126
+	"while"        reduce using rule 126
+	"read"         reduce using rule 126
+	"display"      reduce using rule 126
+	"List"         reduce using rule 126
+	"}"            reduce using rule 126
+	"Int"          reduce using rule 126
+	"Integer"      reduce using rule 126
+	"Double"       reduce using rule 126
+	"Money"        reduce using rule 126
+	"String"       reduce using rule 126
+	"Bool"         reduce using rule 126
+	"return"       reduce using rule 126
+	var_identifier reduce using rule 126
+	class_identifierreduce using rule 126
+
+
+State 283
 
 	ArrayIndexesExpression -> "[" Expression "]" "[" Expression "]" .    (rule 28)
 
 	"="            reduce using rule 28
+	","            reduce using rule 28
 	"+"            reduce using rule 28
 	"-"            reduce using rule 28
 	"*"            reduce using rule 28
@@ -4356,7 +4560,7 @@ State 271
 -----------------------------------------------------------------------------
 Grammar Totals
 -----------------------------------------------------------------------------
-Number of rules: 133
+Number of rules: 138
 Number of terminals: 61
 Number of non-terminals: 46
-Number of states: 272
+Number of states: 284
