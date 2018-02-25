@@ -188,7 +188,12 @@ data Condition
   deriving(Show,Eq)
 
 data If
-    = If Expression Block Block
+    = If Expression Block Else
+  deriving(Show,Eq)
+
+data Else
+    = NoElse
+    | Else Block
   deriving(Show,Eq)
 
 data Cycle
