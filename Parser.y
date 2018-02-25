@@ -10,6 +10,7 @@
 {
 module Main where
 import Scanner
+import DataTypes
 import Data.Decimal
 import Text.Show.Pretty
 }
@@ -152,22 +153,17 @@ ListType :
         | "List" "of" Primitive {ListTypePrimitive $3}
 
 Variable :
-          Type var_identifier VarIdentifiers ";" {VariableNoAssignment $1 $2 $3 }
+          Type var_identifier VarIdentifiers ";" {VariableNoAssignment $1 ($2:$3) }
         | Type var_identifier "=" LiteralOrVariable ";" {VariableAssignmentLiteralOrVariable $1 $2 $4 }
         | Type var_identifier "=" ArrayAssignment1D ";" {VariableAssignment1D $1 $2 $4 }
         | Type var_identifier "=" ArrayAssignment2D ";" {VariableAssignment2D $1 $2 $4 }
         | Type var_identifier "=" ObjectCreation ";" {VariableAssignmentObject $1 $2 $4 }
         | ListType var_identifier "=" ListAssignment ";" {VariableListAssignment $1 $2 $4}
-        | ListType var_identifier VarIdentifiers ";" {VariableListNoAssignment $1 $2 $3}
+        | ListType var_identifier VarIdentifiers ";" {VariableListNoAssignment $1 ($2:$3)}
 
 ObjectCreation : 
           class_identifier "(" Expression CallParams ")" { ObjectCreation $1 ((ParamsExpression $3) : $4) }
         | class_identifier "("  ")" { ObjectCreation $1 [] }
-
--- ObjectCreationParams :
---           {-empty-} {[]}
---         | "," LiteralOrVariable ObjectCreationParams { (ParamsLiteralOrVariable $2) : $3} 
---         -- | Expression "," ObjectCreationParams { (ParamsExpression $1) : $3} 
 
 VarIdentifiers :
         {- empty -} { [] }

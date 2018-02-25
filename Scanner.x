@@ -9,7 +9,7 @@
 -}
 module Scanner where
 import Data.Decimal
-
+import DataTypes
 }
 
 %wrapper "posn"

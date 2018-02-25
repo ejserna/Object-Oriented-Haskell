@@ -3,7 +3,7 @@ default:
 	rm -f Scanner.hs
 	alex Scanner.x
 	happy Parser.y
-	ghc -o ObjectiveOrientedHaskell Scanner.hs Parser.hs
+	ghc -o ObjectiveOrientedHaskell DataTypes.hs Scanner.hs Parser.hs
 
 
 prueba1:
