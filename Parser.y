@@ -293,7 +293,11 @@ Condition :
    {- | Case    {ConditionCase $1} -}
 
 If :
-  "if" "(" Expression ")" Block "else" Block {If $3 $5 $7}
+  "if" "(" Expression ")" Block Else {If $3 $5 $6}
+
+Else :
+     {- empty -}  {NoElse}
+   | "else" Block {Else $2}
 
 {-Case :
     "case" var_identifier "of" "{" CaseBlock "otherwise" "=>" CaseStatement "end" ";" "}"
@@ -539,7 +543,12 @@ data Condition
   deriving(Show,Eq)
 
 data If
-    = If Expression Block Block
+    = If Expression Block Else
+  deriving(Show,Eq)
+
+data Else
+    = NoElse
+    | Else Block
   deriving(Show,Eq)
 
 data Cycle
