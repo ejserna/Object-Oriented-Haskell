@@ -1,0 +1,20 @@
+class Animal{
+    [+] Int orejas;
+    :: Int [20][20] e -> Money dineros{
+
+    }
+}
+
+class Wok : Animal{
+}
+
+class Perro : Animal{
+    
+}
+
+class Alitzel{
+    
+}
+main{
+    
+}

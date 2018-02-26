@@ -65,7 +65,7 @@ data ListAssignment
 
 data Class 
     = ClassInheritance ClassIdentifier ClassIdentifier ClassBlock
-    | ClassNormal String ClassBlock
+    | ClassNormal ClassIdentifier ClassBlock
   deriving (Show, Eq)
 
 data ClassBlock 
@@ -94,7 +94,7 @@ data ClassConstructor
   deriving (Show, Eq)
 
 data LiteralOrVariable 
-    = VarIdentifier String
+    = VarIdentifier Identifier
     | IntegerLiteral Integer
     | DecimalLiteral Decimal
     | StringLiteral String

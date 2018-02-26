@@ -13,6 +13,7 @@ import Scanner
 import DataTypes
 import Data.Decimal
 import Text.Show.Pretty
+import TypeChecker
 }
 %name ooh
 %tokentype { Token }
@@ -350,8 +351,9 @@ parseError tokenList = let pos = tokenPosn(head(tokenList))
 
 main = do 
   inStr <- getContents
-  putStrLn(show(inStr))
   let parseTree = ooh (alexScanTokens2 inStr)
-  putStrLn ("SUCCESS " ++ show(parseTree) )
+  -- putStrLn ("SUCCESS " ++ show(parseTree) )
   putStrLn $ ppShow $ parseTree
+
+  startSemanticAnalysis parseTree
 }

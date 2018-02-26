@@ -1,0 +1,9 @@
+Int i;
+Money k = 2.33333333333333333333333333333;
+Int o = i;
+Money [20][20] m;
+Money [20][20] u = m;
+Double d;
+main{
+    
+}
