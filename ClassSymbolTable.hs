@@ -13,7 +13,7 @@ type ClassSymbolTable = Map.Map ClassIdentifier SymbolTable
 emptyClassSymbolTable :: ClassSymbolTable
 emptyClassSymbolTable = Map.empty
 
-insert :: Identifier -> SymbolTable -> ClassSymbolTable -> ClassSymbolTable
-insert idn symTable classTable = if Map.member idn classTable
-    then classTable 
-    else Map.insert idn symTable classTable
+-- insert :: Identifier -> SymbolTable -> ClassSymbolTable -> ClassSymbolTable
+-- insert idn symTable classTable = if Map.member idn classTable
+--     then classTable 
+--     else Map.insert idn symTable classTable

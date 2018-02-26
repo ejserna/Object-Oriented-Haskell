@@ -286,7 +286,7 @@ Expression :
     | "!" Expression  {ExpressionNot $2}
     | "True"          {ExpressionTrue}
     | "False"         {ExpressionFalse}
-    -- | "-" Expression %prec NEG {ExpressionNeg $2}
+    | "-" Expression %prec NEG {ExpressionNeg $2}
     | "(" Expression ")" {ExpressionPars $2}
 
 Condition :
