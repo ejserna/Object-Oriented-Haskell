@@ -1,9 +1,23 @@
+class Perro{
+    
+}
+
+class Humano{
+    
+}
+
 Int i;
 Money k = 2.33333333333333333333333333333;
 Int o = i;
+
 Money [20][20] m;
 Money [20][20] u = m;
-Double d;
+Double d = 1.222;
+Humano h;
+String s = "12222";
+
+Money [10] mo = [1.2,1.3];
+Humano [10] hoho;
 main{
     
 }

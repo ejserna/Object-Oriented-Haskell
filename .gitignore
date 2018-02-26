@@ -5,3 +5,4 @@ Scanner.hs
 .gitignore
 .DS_Store
 *.o
+*.info

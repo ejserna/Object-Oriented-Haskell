@@ -14,8 +14,16 @@ newtype ClassTypeChecker = State ClassSymbolTable
 
 startSemanticAnalysis :: Program -> IO ()
 startSemanticAnalysis (Program classList functionList varsList block) =  do 
-            putStrLn $ ppShow $ analyzeClasses classList emptyClassSymbolTable
-            putStrLn $ ppShow $ analyzeVariables varsList globalScope Nothing emptySymbolTable
+            let (classSymbolTable, classErrors) = analyzeClasses classList emptyClassSymbolTable
+            if (classErrors) 
+                then putStrLn $ show "[1] ERROR: Semantic Error in Class Checking."
+                else putStrLn $ ppShow $ "[1]: Semantic Class Analysis Passed."
+            putStrLn $ ppShow $ classSymbolTable
+            let (symbolTable,semanticError) = analyzeVariables varsList globalScope Nothing emptySymbolTable classSymbolTable
+            putStrLn $ ppShow $ symbolTable
+            if (semanticError) 
+                then putStrLn $ show "[2] ERROR: Semantic Error in Variable Checking."
+                else putStrLn $ ppShow $ "[2]: Semantic Variable Analysis Passed."
 
 -- Analyze classes regresa una tabla de simbolos de clase y un booleano. Si es true, significa que hubo errores, si es false, no hubo errores
 analyzeClasses :: [Class] -> ClassSymbolTable -> (ClassSymbolTable, Bool)
@@ -45,12 +53,12 @@ analyzeClass (ClassNormal classIdentifier classBlock) classSymTab = if Map.membe
                                                                         in (newClassSymTable, False)
 
 
-analyzeVariables :: [Variable] -> Scope -> Maybe Bool -> SymbolTable -> (SymbolTable, Bool)
-analyzeVariables [] _ _ _ = (emptySymbolTable, False)
-analyzeVariables (var : vars) scp isVarPublic symTab = let (newSymTab1, hasErrors1) = analyzeVariable var scp isVarPublic symTab
-                                               in if hasErrors1 then (symTab, True)
-                                               else let (newSymTab2, hasErrors2) = analyzeVariables vars scp isVarPublic newSymTab1
-                                                    in if hasErrors2 then (symTab, True)
+analyzeVariables :: [Variable] -> Scope -> Maybe Bool -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
+analyzeVariables [] _ _ _ _ = (emptySymbolTable, False)
+analyzeVariables (var : vars) scp isVarPublic symTab classTab = let (newSymTab1, hasErrors1) = analyzeVariable var scp isVarPublic symTab classTab
+                                               in if hasErrors1 then (emptySymbolTable, True)
+                                               else let (newSymTab2, hasErrors2) = analyzeVariables vars scp isVarPublic newSymTab1 classTab
+                                                    in if hasErrors2 then (emptySymbolTable, True)
                                                        else ((Map.union newSymTab1 newSymTab2), False)
 
 {-
@@ -64,38 +72,73 @@ analyzeVariables (var : vars) scp isVarPublic symTab = let (newSymTab1, hasError
     | VariableListNoAssignment ListType [Identifier]
   deriving (Show, Eq)
 -}
-analyzeVariable :: Variable -> Scope -> Maybe Bool -> SymbolTable -> (SymbolTable, Bool)
-analyzeVariable (VariableNoAssignment dataType identifiers) scp isVarPublic symTab = insertIdentifiers identifiers (SymbolVar {dataType = dataType, scope = scp, isPublic = isVarPublic}) symTab
-analyzeVariable (VariableAssignmentLiteralOrVariable dataType identifier literalOrVariable) scp isVarPublic symTab =
-                                        -- En esta parte usamos en ambos not, porque si alguno de los dos métodos que se llaman regresa falso, significa que no se encontro/ no son el mismo tipo de dato
-                                        if not (checkLiteralOrVariableInSymbolTable literalOrVariable symTab) || not (checkDataTypes dataType literalOrVariable symTab) -- es not porque si son iguales, entonces no hay error
-                                            then (symTab, True)
-                                            else insertInSymbolTable identifier (SymbolVar {dataType = dataType, scope = scp, isPublic = isVarPublic}) symTab -- si no entro en el if, significa que no hubo error
+analyzeVariable :: Variable -> Scope -> Maybe Bool -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
+analyzeVariable (VariableNoAssignment dataType identifiers) scp isVarPublic symTab classTab = 
+    -- Checamos si existe ese tipo
+    if (checkTypeExistance dataType classTab) 
+        then insertIdentifiers identifiers (SymbolVar {dataType = dataType, scope = scp, isPublic = isVarPublic}) symTab classTab
+        else (emptySymbolTable, True) -- No existio esa clase, error
+analyzeVariable (VariableAssignmentLiteralOrVariable dataType identifier literalOrVariable) scp isVarPublic symTab classTab =
+                                        -- En esta parte nos aseguramos que el tipo este declarado, el literal or variable exista y que la asignacion de tipos de datos sea correcta
+                                        if (checkTypeExistance dataType classTab) &&  (checkLiteralOrVariableInSymbolTable literalOrVariable symTab) && (checkDataTypes dataType literalOrVariable symTab)
+                                            then insertInSymbolTable identifier (SymbolVar {dataType = dataType, scope = scp, isPublic = isVarPublic}) symTab
+                                            else (emptySymbolTable, True)  -- hubo error, entonces regresamos la tabla vacia
+analyzeVariable (VariableAssignment1D dataType identifier literalOrVariables) scp isVarPublic symTab classTab = 
+                                        -- En esta parte nos aseguramos que la lista de asignaciones concuerde con el tipo de dato declarado
+                                        if (checkTypeExistance dataType classTab) && (checkLiteralOrVariablesAndDataTypes dataType literalOrVariables symTab) 
+                                            then insertInSymbolTable identifier (SymbolVar {dataType = dataType, scope = scp, isPublic = isVarPublic}) symTab
+                                            else (emptySymbolTable, True)  -- hubo error, entonces regresamos la tabla vacia
+
 
                      
-insertIdentifiers :: [Identifier] -> Symbol -> SymbolTable -> (SymbolTable,Bool)
-insertIdentifiers [] _ _ = (emptySymbolTable, False)
-insertIdentifiers (identifier : ids) symbol symTab = let (newSymTab1, hasErrors1) = insertInSymbolTable identifier symbol symTab
+insertIdentifiers :: [Identifier] -> Symbol -> SymbolTable -> ClassSymbolTable -> (SymbolTable,Bool)
+insertIdentifiers [] _ _ _ = (emptySymbolTable, False)
+insertIdentifiers (identifier : ids) symbol symTab classTab = let (newSymTab1, hasErrors1) = insertInSymbolTable identifier symbol symTab 
                                             in if hasErrors1 then (symTab, True)
-                                               else let (newSymTab2, hasErrors2) = insertIdentifiers ids symbol newSymTab1
+                                               else let (newSymTab2, hasErrors2) = insertIdentifiers ids symbol newSymTab1 classTab
                                                     in if hasErrors2 then (symTab, True)
                                                        else ((Map.union newSymTab1 newSymTab2), False)
 
 insertInSymbolTable :: Identifier -> Symbol -> SymbolTable -> (SymbolTable,Bool)
-insertInSymbolTable identifier symbol symTab = 
+insertInSymbolTable identifier symbol symTab  = 
                                 -- Si esta ese identificador en la tabla de simbolos, entonces regreso error
                                 if Map.member identifier symTab
                                   then (symTab, True)
                                   else ((Map.insert identifier symbol symTab),False)
 
-checkLiteralOrVariableInSymbolTable :: LiteralOrVariable -> SymbolTable -> Bool
-checkLiteralOrVariableInSymbolTable (VarIdentifier identifier) symTab =  Map.member identifier symTab
-checkLiteralOrVariableInSymbolTable ()
-checkLiteralOrVariableInSymbolTable _ _ = True -- Si es otra cosa que var identifier, entonces regresamos true
+checkLiteralOrVariablesAndDataTypes :: Type -> [LiteralOrVariable] -> SymbolTable -> Bool
+checkLiteralOrVariablesAndDataTypes _ [] _ = True
+checkLiteralOrVariablesAndDataTypes dataType (litVar : litVars) symTab =  
+                            if (checkLiteralOrVariableInSymbolTable litVar symTab) &&  (checkDataTypes dataType litVar symTab)
+                                then checkLiteralOrVariablesAndDataTypes dataType litVars symTab
+                                else False -- Alguna literal o variable asignada no existe, o bien, el tipo de dato que se esta asignando no concuerda con la declaracion
 
+checkLiteralOrVariableInSymbolTable :: LiteralOrVariable -> SymbolTable  -> Bool
+checkLiteralOrVariableInSymbolTable (VarIdentifier identifier) symTab =  Map.member identifier symTab
+checkLiteralOrVariableInSymbolTable _ _= True -- Si es otra cosa que var identifier, entonces regresamos true
+
+checkTypeExistance :: Type -> ClassSymbolTable -> Bool
+checkTypeExistance (TypeClassId classIdentifier _) classTab = 
+                                                  case (Map.lookup classIdentifier classTab) of
+                                                  Just _ -> True -- Si existe esa clase
+                                                  _ -> False -- El identificador que se esta asignando no esta en ningun lado
+checkTypeExistance _ _ = True -- Todos lo demas regresa true
+
+
+
+-- Aqui checamos si el literal or variable que se esta dando esta de acuerdo al que se esta asignando! O sea,
+-- no es valido decir Double d = 1.22; Money m = d;
 checkDataTypes :: Type -> LiteralOrVariable -> SymbolTable -> Bool 
 checkDataTypes dType (VarIdentifier identifier) symTab = 
                                 case (Map.lookup identifier symTab) of
                                     Just symbol -> (dataType symbol) == dType -- Si son iguales, regresamos true
                                     _ -> False -- El identificador que se esta asignando no esta en ningun lado
-checkDataTypes dType _ symTab = True
+checkDataTypes (TypePrimitive (PrimitiveInt) _) (IntegerLiteral _) _  = True
+checkDataTypes (TypePrimitive (PrimitiveDouble) _) (DecimalLiteral _) _ = True
+checkDataTypes (TypePrimitive (PrimitiveMoney) _) (DecimalLiteral _) _ = True
+checkDataTypes (TypePrimitive (PrimitiveString) _) (StringLiteral _) _ = True
+checkDataTypes (TypePrimitive (PrimitiveInteger) _) (IntegerLiteral _) _ = True
+checkDataTypes _ _ _ = False -- Todo lo demas, falso
+
+
+
