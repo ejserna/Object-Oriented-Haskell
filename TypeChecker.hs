@@ -6,7 +6,8 @@ import Text.Show.Pretty
 import SymbolTable
 import ClassSymbolTable
 import qualified Data.Map.Strict as Map
-import Data.List (intercalate)
+import Data.List (intercalate, maximumBy)
+import Data.Ord (comparing)
 
 newtype ClassTypeChecker = State ClassSymbolTable
 
@@ -85,12 +86,72 @@ analyzeVariable (VariableAssignmentLiteralOrVariable dataType identifier literal
                                             else (emptySymbolTable, True)  -- hubo error, entonces regresamos la tabla vacia
 analyzeVariable (VariableAssignment1D dataType identifier literalOrVariables) scp isVarPublic symTab classTab = 
                                         -- En esta parte nos aseguramos que la lista de asignaciones concuerde con el tipo de dato declarado
-                                        if (checkTypeExistance dataType classTab) && (checkLiteralOrVariablesAndDataTypes dataType literalOrVariables symTab) 
-                                            then insertInSymbolTable identifier (SymbolVar {dataType = dataType, scope = scp, isPublic = isVarPublic}) symTab
-                                            else (emptySymbolTable, True)  -- hubo error, entonces regresamos la tabla vacia
+                                        case dataType of
+                                            TypePrimitive _ (("[",size,"]") : []) ->  
+                                                makeCheckFor1DAssignment size
+                                            TypeClassId _ (("[",size,"]") : []) ->  
+                                                makeCheckFor1DAssignment size
+                                            _ -> (emptySymbolTable, True)
+                                        where
+                                            makeCheckFor1DAssignment size = if (checkTypeExistance dataType classTab) 
+                                                                                && (checkLiteralOrVariablesAndDataTypes dataType literalOrVariables symTab) 
+                                                                                && ((length literalOrVariables) <= fromIntegral size)
+                                                    then insertInSymbolTable identifier (SymbolVar {dataType = dataType, scope = scp, isPublic = isVarPublic}) symTab
+                                                    else (emptySymbolTable, True)  -- hubo error, entonces regresamos la tabla vacia
+                                        
+analyzeVariable (VariableAssignment2D dataType identifier listOfLiteralOrVariables) scp isVarPublic symTab classTab = 
+                                        case dataType of
+                                            TypePrimitive _ (("[",sizeRows,"]") : ("[",sizeCols,"]") : []) ->  
+                                                makeCheckFor2DAssignment sizeRows sizeCols
+                                            TypeClassId _ (("[",sizeRows,"]") : ("[",sizeCols,"]") : []) ->  
+                                                makeCheckFor2DAssignment sizeRows sizeCols
+                                            _ -> (emptySymbolTable, True)
+                                        where
+                                            makeCheckFor2DAssignment sizeRows sizeCols = if (checkTypeExistance dataType classTab) && 
+                                                                               (checkLiteralOrVariablesAndDataTypes2D dataType listOfLiteralOrVariables symTab)
+                                                                               && ((length listOfLiteralOrVariables) <= fromIntegral sizeRows) -- checamos que sea el numero correcto de renglones
+                                                                               && ((getLongestList listOfLiteralOrVariables) <= fromIntegral sizeCols)
+                                                    then insertInSymbolTable identifier (SymbolVar {dataType = dataType, scope = scp, isPublic = isVarPublic}) symTab
+                                                    else (emptySymbolTable, True)  -- hubo error, entonces regresamos la tabla vacia
+                                            getLongestList :: [[LiteralOrVariable]] -> Int
+                                            getLongestList [] = 0
+                                            getLongestList (x : xs) = max (length x) (getLongestList xs) 
+analyzeVariable (VariableAssignmentObject dataType identifier (ObjectCreation classIdentifier params)) scp isVarPublic symTab classTab = 
+                                        case dataType of
+                                            TypePrimitive _ _ -> (emptySymbolTable, True)
+                                            -- Checamos si el constructor es del mismo tipo que la clase
+                                            TypeClassId classIdentifierDecl _ -> if (classIdentifierDecl == classIdentifier)
+                                                                                 -- Checamos los parametros que se mandan con los del constructor
+                                                                                 && (checkIfParamsAreCorrect params classIdentifier symTab classTab) 
+                                                                                 then insertInSymbolTable identifier (SymbolVar {dataType = dataType, scope = scp, isPublic = isVarPublic}) symTab
+                                                                                 else (emptySymbolTable, True)
 
 
-                     
+checkIfParamsAreCorrect :: [Params] -> ClassIdentifier -> SymbolTable -> ClassSymbolTable -> Bool
+checkIfParamsAreCorrect sendingParams classIdentifier symTab classTab = 
+                                    case (Map.lookup classIdentifier classTab) of
+                                        Just symbolTableOfClass -> 
+                                                case (Map.lookup "constructor" symbolTableOfClass) of
+                                                    Just (symbolFunc) -> (compareBoth (params symbolFunc) sendingParams)
+                                                    Nothing -> False
+                                                where 
+                                                    -- sp = sending param
+                                                    -- rp = receiving param
+                                                    compareBoth :: [(Type,Identifier)] -> [Params] -> Bool
+                                                    compareBoth [] [] = True
+                                                    compareBoth [] (sp : sps) = False -- Hay mas parametros que se mandan de los que se reciben
+                                                    compareBoth (rp : rps) [] = False -- Hay mas en el constructor que de los que se mandan
+                                                    compareBoth (rp : rps) (sp : sps) = 
+                                                                    case sp of
+                                                                        (ParamsExpression (ExpressionLitVar literalOrVariable)) -> 
+                                                                               let (dataTypeConstructor,_) = rp
+                                                                               in checkDataTypes dataTypeConstructor literalOrVariable symTab
+                                                                        (ParamsExpression expression) -> 
+                                                                               True -- MARK TODO: Checar que la expresion sea del tipo
+                                                                               -- checkDataTypes(dataTypeConstructor,checkExpression(expression))
+                                        Nothing -> False 
+
+                 
 insertIdentifiers :: [Identifier] -> Symbol -> SymbolTable -> ClassSymbolTable -> (SymbolTable,Bool)
 insertIdentifiers [] _ _ _ = (emptySymbolTable, False)
 insertIdentifiers (identifier : ids) symbol symTab classTab = let (newSymTab1, hasErrors1) = insertInSymbolTable identifier symbol symTab 
@@ -109,7 +170,7 @@ insertInSymbolTable identifier symbol symTab  =
 checkLiteralOrVariablesAndDataTypes :: Type -> [LiteralOrVariable] -> SymbolTable -> Bool
 checkLiteralOrVariablesAndDataTypes _ [] _ = True
 checkLiteralOrVariablesAndDataTypes dataType (litVar : litVars) symTab =  
-                            if (checkLiteralOrVariableInSymbolTable litVar symTab) &&  (checkDataTypes dataType litVar symTab)
+                            if (checkLiteralOrVariableInSymbolTable litVar symTab) &&  (checkArrayAssignment dataType litVar symTab)
                                 then checkLiteralOrVariablesAndDataTypes dataType litVars symTab
                                 else False -- Alguna literal o variable asignada no existe, o bien, el tipo de dato que se esta asignando no concuerda con la declaracion
 
@@ -123,6 +184,33 @@ checkTypeExistance (TypeClassId classIdentifier _) classTab =
                                                   Just _ -> True -- Si existe esa clase
                                                   _ -> False -- El identificador que se esta asignando no esta en ningun lado
 checkTypeExistance _ _ = True -- Todos lo demas regresa true
+
+
+checkLiteralOrVariablesAndDataTypes2D :: Type -> [[LiteralOrVariable]] -> SymbolTable -> Bool
+checkLiteralOrVariablesAndDataTypes2D _ [] _ = True
+checkLiteralOrVariablesAndDataTypes2D dataType (listOfLitVars : rest) symTab =  
+                            if (checkLiteralOrVariablesAndDataTypes dataType listOfLitVars symTab)  
+                                then checkLiteralOrVariablesAndDataTypes2D dataType rest symTab
+                                else False -- Alguna literal o variable asignada no existe, o bien, el tipo de dato que se esta asignando no concuerda con la declaracion
+
+-- Aqui checamos si el literal or variable que se esta asignando al arreglo sea del tipo indicado
+-- es decir, en Humano [10] humanos = [h1,h2,h3,h4] checa que h1,h2,h3 y h4 sean del tipo humano
+checkArrayAssignment :: Type -> LiteralOrVariable -> SymbolTable -> Bool 
+checkArrayAssignment (TypePrimitive prim arrayDeclaration) (VarIdentifier identifier) symTab = 
+                                case (Map.lookup identifier symTab) of
+                                    Just symbol -> 
+                                            case (dataType symbol) of
+                                                TypePrimitive primId _ -> prim == primId
+                                                _ -> False 
+                                    _ -> False -- El identificador que se esta asignando no esta en ningun lado
+checkArrayAssignment (TypeClassId classIdentifier arrayDeclaration) (VarIdentifier identifier) symTab = 
+                                case (Map.lookup identifier symTab) of
+                                    Just symbol -> 
+                                            case (dataType symbol) of
+                                                TypeClassId classId _ -> classId == classIdentifier
+                                                _ -> False 
+                                    _ -> False -- El identificador que se esta asignando no esta en ningun lado
+checkArrayAssignment dataType litOrVar symTab  = checkDataTypes dataType litOrVar symTab
 
 
 

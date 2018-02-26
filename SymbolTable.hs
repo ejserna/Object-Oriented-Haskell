@@ -23,7 +23,7 @@ data Symbol = SymbolVar
                 , isPublic :: Maybe Bool
                 }
             | SymbolFunction
-                { params :: [(TypeFuncParams,Identifier)]
+                { params :: [(Type,Identifier)]
                 , returnType :: Maybe Type
                 , body       :: Block
                 , scope      :: Scope

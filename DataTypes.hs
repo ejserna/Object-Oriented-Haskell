@@ -9,7 +9,7 @@ data Program
   deriving (Show, Eq)
 
 data Function 
-    = Function Identifier TypeFuncReturn [(TypeFuncParams,Identifier)] Block
+    = Function Identifier TypeFuncReturn [(Type,Identifier)] Block
     | FunctionEmptyParams Identifier TypeFuncReturn Block
   deriving (Show, Eq)
 
@@ -17,12 +17,6 @@ data TypeFuncReturn
     = TypeFuncReturnPrimitive Primitive 
     | TypeFuncReturnClassId ClassIdentifier
     | TypeFuncReturnNothing
-  deriving (Show, Eq)
-
-data TypeFuncParams 
-    = TypeFuncParamsPrimitive Primitive [(String,Integer,String)]
-    | TypeFuncParamsClassId ClassIdentifier [(String,Integer,String)]
-    | TypeFuncParamsList ListType
   deriving (Show, Eq)
 
 data Primitive 
@@ -90,7 +84,7 @@ data ClassFunction
 
 data ClassConstructor 
     = ClassConstructorEmpty
-    | ClassConstructor [(TypeFuncParams,Identifier)] Block
+    | ClassConstructor [(Type,Identifier)] Block
   deriving (Show, Eq)
 
 data LiteralOrVariable 
@@ -111,9 +105,7 @@ data ArrayAccess
   deriving (Show,Eq)
 
 data Params
-    = ParamsLiteralOrVariable LiteralOrVariable
-    | ParamsExpression Expression
-    | ParamsStringLiteral String
+    = ParamsExpression Expression
   deriving (Show,Eq)
 
 data Statement

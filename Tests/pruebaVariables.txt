@@ -13,11 +13,21 @@ Int o = i;
 Money [20][20] m;
 Money [20][20] u = m;
 Double d = 1.222;
-Humano h;
+Humano h, hu;
 String s = "12222";
 
 Money [10] mo = [1.2,1.3];
-Humano [10] hoho;
+Humano [10] hoho = [h,hu,h,h,h,h,h,h,h,h];
+Humano [10][10] hohos = [[h,hu],
+                         [h,hu],
+                         [h,hu],
+                         [h,hu],
+                         [h,hu],
+                         [h,hu],
+                         [h,hu],
+                         [h,hu],
+                         [h,hu],
+                         [h,hu,h,h,h,h,h,h,h,h]];
 main{
     
 }

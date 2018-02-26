@@ -126,8 +126,8 @@ TypeFuncReturn :
         | "Nothing" {TypeFuncReturnNothing}
 
 TypeFuncParams :
-          Primitive ArrayIndexesDeclaration { TypeFuncParamsPrimitive $1 $2}
-        | class_identifier ArrayIndexesDeclaration { TypeFuncParamsClassId $1 $2}
+          Primitive ArrayIndexesDeclaration { TypePrimitive $1 $2 }
+        | class_identifier ArrayIndexesDeclaration { TypeClassId $1 $2 }
 
 Primitive :
           "Int" {PrimitiveInt}
@@ -213,7 +213,7 @@ ClassFunction :
 
 ClassConstructor :
         "::" TypeFuncParams var_identifier Params Block {ClassConstructor (($2,$3) : $4) $5}
-      | "::" Block { ClassConstructorEmpty }
+      | "::" Block { ClassConstructor [] $2 }
 
 LiteralOrVariable :
         var_identifier {VarIdentifier $1}
