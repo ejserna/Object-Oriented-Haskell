@@ -95,8 +95,6 @@ import TypeChecker
   %left NEG
 %%
 
-
-
 Program : 
           Classes Functions Variables "main" Block {Program $1 $2 $3 $5}
 
@@ -150,8 +148,8 @@ ArrayIndexesExpression :
         | "[" Expression "]" "[" Expression "]" { (ArrayAccessExpression $2) : (ArrayAccessExpression $5) : [] }
 
 ListType :
-          "List" "of" class_identifier {ListTypeClassId $3}
-        | "List" "of" Primitive {ListTypePrimitive $3}
+          "List" "of" class_identifier {TypeListClassId $3}
+        | "List" "of" Primitive {TypeListPrimitive $3}
 
 Variable :
           Type var_identifier VarIdentifiers ";" {VariableNoAssignment $1 ($2:$3) }
@@ -160,7 +158,7 @@ Variable :
         | Type var_identifier "=" ArrayAssignment2D ";" {VariableAssignment2D $1 $2 $4 }
         | Type var_identifier "=" ObjectCreation ";" {VariableAssignmentObject $1 $2 $4 }
         | ListType var_identifier "=" ListAssignment ";" {VariableListAssignment $1 $2 $4}
-        | ListType var_identifier VarIdentifiers ";" {VariableListNoAssignment $1 ($2:$3)}
+        | ListType var_identifier VarIdentifiers ";" {VariableNoAssignment $1 ($2:$3)}
 
 ObjectCreation : 
           class_identifier "(" Expression CallParams ")" { ObjectCreation $1 ((ParamsExpression $3) : $4) }

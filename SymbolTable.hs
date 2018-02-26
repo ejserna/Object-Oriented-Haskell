@@ -29,12 +29,13 @@ data Symbol = SymbolVar
                 , scope      :: Scope
                 , shouldReturn :: Bool -- Si la funcion regresa Nothing, no tiene por que tener un return regresar
                 , isPublic :: Maybe Bool
+                , symbolTable :: SymbolTable
                 }
 
 instance Show Symbol where
     show sym = case sym of
         SymbolVar dt scope isPublic  -> intercalate ", " [ppShow dt, show scope, show isPublic]
-        SymbolFunction params ret body scope shouldRet isPublic -> intercalate ", " [ppShow params, show ret, ppShow body, show scope, show shouldRet, show isPublic]
+        SymbolFunction params ret body scope shouldRet isPublic symbolTable -> intercalate ", " [ppShow params, show ret, ppShow body, show scope, show shouldRet, show isPublic, ppShow symbolTable]
 
 emptySymbolTable :: SymbolTable
 emptySymbolTable = Map.empty

@@ -28,6 +28,10 @@ Humano [10][10] hohos = [[h,hu],
                          [h,hu],
                          [h,hu],
                          [h,hu,h,h,h,h,h,h,h,h]];
+List of Int lista = [1..2];
+List of Humano lista2 = [h,hu];
+Humano huhuhuhuhu = Humano();
+
 main{
     
 }

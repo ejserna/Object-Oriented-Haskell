@@ -30,13 +30,15 @@ data Primitive
 
 data Type 
     = TypePrimitive Primitive [(String,Integer,String)]
-    | TypeClassId ClassIdentifier [(String,Integer,String)] 
+    | TypeClassId ClassIdentifier [(String,Integer,String)]
+    | TypeListClassId ClassIdentifier
+    | TypeListPrimitive Primitive
   deriving (Show, Eq)
 
-data ListType 
-    = ListTypeClassId ClassIdentifier
-    | ListTypePrimitive Primitive
-  deriving (Show, Eq)
+-- data ListType 
+--     = 
+--     | 
+--   deriving (Show, Eq)
 
 data Variable 
     = VariableNoAssignment Type [Identifier]
@@ -44,8 +46,7 @@ data Variable
     | VariableAssignment1D Type Identifier [LiteralOrVariable]
     | VariableAssignment2D Type Identifier [[LiteralOrVariable]]
     | VariableAssignmentObject Type Identifier ObjectCreation
-    | VariableListAssignment ListType Identifier ListAssignment
-    | VariableListNoAssignment ListType [Identifier]
+    | VariableListAssignment Type Identifier ListAssignment
   deriving (Show, Eq)
 
 data ObjectCreation 

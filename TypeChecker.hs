@@ -62,17 +62,7 @@ analyzeVariables (var : vars) scp isVarPublic symTab classTab = let (newSymTab1,
                                                     in if hasErrors2 then (emptySymbolTable, True)
                                                        else ((Map.union newSymTab1 newSymTab2), False)
 
-{-
-    data Variable 
-    = VariableNoAssignment Type [Identifier]
-    | VariableAssignmentLiteralOrVariable Type Identifier LiteralOrVariable
-    | VariableAssignment1D Type Identifier [LiteralOrVariable]
-    | VariableAssignment2D Type Identifier [[LiteralOrVariable]]
-    | VariableAssignmentObject Type Identifier ObjectCreation
-    | VariableListAssignment ListType Identifier ListAssignment
-    | VariableListNoAssignment ListType [Identifier]
-  deriving (Show, Eq)
--}
+
 analyzeVariable :: Variable -> Scope -> Maybe Bool -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
 analyzeVariable (VariableNoAssignment dataType identifiers) scp isVarPublic symTab classTab = 
     -- Checamos si existe ese tipo
@@ -125,7 +115,22 @@ analyzeVariable (VariableAssignmentObject dataType identifier (ObjectCreation cl
                                                                                  && (checkIfParamsAreCorrect params classIdentifier symTab classTab) 
                                                                                  then insertInSymbolTable identifier (SymbolVar {dataType = dataType, scope = scp, isPublic = isVarPublic}) symTab
                                                                                  else (emptySymbolTable, True)
-
+analyzeVariable (VariableListAssignment (TypeListClassId classIdentifier) identifier (ListAssignmentArray literalOrVariables)) scp isVarPublic symTab classTab = 
+                                        -- Checamos si la clase esta declarada
+                                         if (checkTypeExistance (TypeClassId classIdentifier []) classTab)
+                                         -- Checamos que las asignaciones sean del mismo tipo que la clase
+                                         && (checkLiteralOrVariablesAndDataTypes (TypeClassId classIdentifier []) literalOrVariables symTab)
+                                            then insertInSymbolTable identifier (SymbolVar {dataType = (TypeListClassId classIdentifier), scope = scp, isPublic = isVarPublic}) symTab
+                                            else (emptySymbolTable, True)
+analyzeVariable (VariableListAssignment (TypeListPrimitive (PrimitiveInt)) identifier (ListAssignmentRange initial limit)) scp isVarPublic symTab classTab = 
+                                         -- Se inserta si y solo si el typelist recibe es un primitive int, o sea, solo si 
+                                         -- List of Int 1..2
+                                         insertInSymbolTable identifier (SymbolVar {dataType = (TypeListPrimitive (PrimitiveInt)), scope = scp, isPublic = isVarPublic}) symTab
+analyzeVariable (VariableListAssignment (TypeListPrimitive (PrimitiveInteger)) identifier (ListAssignmentRange initial limit)) scp isVarPublic symTab classTab = 
+                                         -- Se inserta si y solo si el typelist recibe es un primitive int, o sea, solo si 
+                                         -- List of Integer 1..2
+                                         insertInSymbolTable identifier (SymbolVar {dataType = (TypeListPrimitive (PrimitiveInteger)), scope = scp, isPublic = isVarPublic}) symTab
+analyzeVariable _ _ _ _ _  = (emptySymbolTable, True)
 
 checkIfParamsAreCorrect :: [Params] -> ClassIdentifier -> SymbolTable -> ClassSymbolTable -> Bool
 checkIfParamsAreCorrect sendingParams classIdentifier symTab classTab = 
@@ -133,7 +138,7 @@ checkIfParamsAreCorrect sendingParams classIdentifier symTab classTab =
                                         Just symbolTableOfClass -> 
                                                 case (Map.lookup "constructor" symbolTableOfClass) of
                                                     Just (symbolFunc) -> (compareBoth (params symbolFunc) sendingParams)
-                                                    Nothing -> False
+                                                    Nothing -> True -- MARK TODO : Change to False
                                                 where 
                                                     -- sp = sending param
                                                     -- rp = receiving param
@@ -167,6 +172,7 @@ insertInSymbolTable identifier symbol symTab  =
                                   then (symTab, True)
                                   else ((Map.insert identifier symbol symTab),False)
 
+-- Aqui checamos que la asignacion de un una lista de literales o variables sea del tipo receptor
 checkLiteralOrVariablesAndDataTypes :: Type -> [LiteralOrVariable] -> SymbolTable -> Bool
 checkLiteralOrVariablesAndDataTypes _ [] _ = True
 checkLiteralOrVariablesAndDataTypes dataType (litVar : litVars) symTab =  
