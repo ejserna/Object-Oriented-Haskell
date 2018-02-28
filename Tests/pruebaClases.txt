@@ -1,8 +1,6 @@
 class Animal{
     [+] Int orejas;
-    :: Int [20][20] e -> Money dineros{
-
-    }
+    [-] Int orejass;
 }
 
 class Wok : Animal{

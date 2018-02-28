@@ -112,7 +112,7 @@ Variables :
 
 Function : 
           var_identifier "=>" TypeFuncReturn "::" TypeFuncParams var_identifier Params Block  {Function $1 $3 (($5,$6) : $7) $8}
-        | var_identifier "=>" TypeFuncReturn Block  {FunctionEmptyParams $1 $3 $4}
+        | var_identifier "=>" TypeFuncReturn Block  {Function $1 $3 [] $4}
 
 Params : 
         {- empty -} { [] }
@@ -193,7 +193,7 @@ Class :
 
 
 ClassBlock : 
-        "{" ClassMembers ClassConstructor ClassMembers "}" {ClassBlock $2 $3 $4}
+        "{" ClassMembers ClassConstructor ClassMembers "}" {ClassBlock ($2 ++ $4) $3}
       | "{" ClassMembers "}" {ClassBlockNoConstructor $2}
 
 ClassMembers : 
@@ -234,7 +234,7 @@ Statement :
       | FunctionCall ";"     {FunctionCallStatement $1}
       | Return ";"     {ReturnStatement $1}
       | Variable   {VariableStatement $1}
-      | Condition  {ConditionStatement $1}
+      | If  {ConditionStatement $1}
       | Cycle      {CycleStatement $1}
 
 Assignment :
@@ -287,16 +287,17 @@ Expression :
     | "-" Expression %prec NEG {ExpressionNeg $2}
     | "(" Expression ")" {ExpressionPars $2}
 
-Condition :
-      If      {ConditionIf $1}
+-- Condition :
+--       If      {ConditionIf $1}
    {- | Case    {ConditionCase $1} -}
 
 If :
-  "if" "(" Expression ")" Block Else {If $3 $5 $6}
+    "if" "(" Expression ")" Block {If $3 $5}
+  | "if" "(" Expression ")" Block "else" Block {IfElse $3 $5 $7}
 
-Else :
-     {- empty -}  {NoElse}
-   | "else" Block {Else $2}
+-- Else :
+--      {- empty -}  {NoElse}
+--    | "else" Block {Else $2}
 
 {-Case :
     "case" var_identifier "of" "{" CaseBlock "otherwise" "=>" CaseStatement "end" ";" "}"
@@ -318,7 +319,7 @@ While :
     "while" "(" Expression ")" Block {While $3 $5}
 
 For :
-    "for" "(" integer_literal ".." integer_literal ")" Block {For $3 $5}
+    "for" "(" integer_literal ".." integer_literal ")" Block {For $3 $5 $7}
 
 DoublePlusMinus :
         var_identifier "++" {DoublePP $1}
