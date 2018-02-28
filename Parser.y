@@ -71,7 +71,7 @@ import TypeChecker
   "Money"             { TMoney _ }
   "String"            { TString _ }
   "Bool"              { TBool _ }
-  "Nothing"           { TString _ }
+  "Nothing"           { TNothing _ }
   "return"            { TReturn _ }
   "."                 { TPoint _ }
   "%"                 { TMod _ }

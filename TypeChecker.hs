@@ -30,7 +30,8 @@ analyzeClasses [] _ = (emptyClassSymbolTable, False)
 analyzeClasses (cl : classes) classSymTab =
                                             -- se obtiene la symbol table de esa clase, donde tiene funciones y atributos
                                             let (varsSymTabForClass,hasErrors) = analyzeClassBlock cl emptySymbolTable classSymTab
-                                            in if (hasErrors) then (emptyClassSymbolTable, True) 
+                                            in if (hasErrors) then (emptyClassSymbolTable, True)
+                                                -- Metemos las variables y funciones de la clase 
                                                 else let (newClassSymTab1, hasErrors1) = analyzeClass cl varsSymTabForClass classSymTab
                                                  in if hasErrors1 then (emptyClassSymbolTable, True)
                                                    else let (newClassSymTab2, hasErrors2) = analyzeClasses classes newClassSymTab1
@@ -177,7 +178,7 @@ analyzeFunction (Function identifier (TypeFuncReturnPrimitive primitive) params 
                                     -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros, error
                                    in if (hasErrors) || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)
                                         else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypePrimitive primitive [])), scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab
-                                            in let areRetTypesOk = areReturnTypesOk (TypePrimitive primitive []) statements newSymTabFunc classSymTab
+                                            in let areRetTypesOk = areReturnTypesOk (TypePrimitive primitive []) statements newSymTabFunc newFuncSymTab classSymTab
                                              in if areRetTypesOk == True then (newSymTabFunc,False)
                                                 else (emptySymbolTable, True) 
                                 -- in  -- if (checkCorrectReturnType (TypeClassId classIdentifier) block newSymTabFunc ) 
@@ -189,23 +190,31 @@ analyzeFunction (Function identifier (TypeFuncReturnClassId classIdentifier) par
                                     -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros, error
                                    in if (hasErrors) || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)
                                         else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypeClassId classIdentifier [])), scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab
-                                          in let areRetTypesOk = areReturnTypesOk (TypeClassId classIdentifier []) statements newSymTabFunc classSymTab
+                                          in let areRetTypesOk = areReturnTypesOk (TypeClassId classIdentifier []) statements newSymTabFunc newFuncSymTab classSymTab
                                              in if areRetTypesOk == True then (newSymTabFunc,False)
                                                 else (emptySymbolTable, True)-- && analyzeFuncBlock statements newSymTab2 classSymTab
                         else (emptySymbolTable, True)
                     else (emptySymbolTable, True)
     -- Como no regresa nada, no hay que buscar que regrese algo el bloque
--- analyzeFunction (Function identifier (TypeFuncReturnNothing) params _) scp isPrivate symTab classSymTab =  
-
+analyzeFunction (Function identifier (TypeFuncReturnNothing) params (Block statements)) scp isPublic symTab classSymTab =  
+                  if  (Map.notMember identifier symTab)
+                        then let (newFuncSymTab, hasErrors) = (analyzeFuncParams params emptySymbolTable classSymTab)
+                                    -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros o bien, que el usuario quiere regresar en una funcion nothing
+                                   in if (hasErrors) || (length (getReturnStatements statements)) > 0 || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)
+                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = Nothing, scope = scp, body = (Block statements), shouldReturn = False ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab
+                                              in (newSymTabFunc,False)
+                                -- in  -- if (checkCorrectReturnType (TypeClassId classIdentifier) block newSymTabFunc ) 
+                        else (emptySymbolTable, True)
 
 -- analyzeFuncBlock :: [Statement] -> SymbolTable -> ClassSymbolTable -> (SymbolTable,Bool)
 -- analyzeFuncBlock [] _ _ = (emptySymbolTable, False)
 -- analyzeFuncBlock ((VariableStatement variable) : sts) = 
 
-areReturnTypesOk :: Type -> [Statement] -> SymbolTable -> ClassSymbolTable -> Bool
-areReturnTypesOk funcRetType statements symTab classTab = 
+areReturnTypesOk :: Type -> [Statement] -> SymbolTable -> SymbolTable -> ClassSymbolTable -> Bool
+areReturnTypesOk funcRetType statements symTab ownFuncSymTab classTab = 
     let returnList = getReturnStatements statements 
-    in (checkCorrectReturnTypes funcRetType returnList symTab classTab)
+    in if (length returnList) == 0 then False -- Se esperaba que regresara un tipo
+        else (checkCorrectReturnTypes funcRetType returnList symTab ownFuncSymTab classTab)
 
 -- Aqui sacamos todos los returns que pueda haber, inclusive si estan en statements anidados
 getReturnStatements :: [Statement]  -> [Return]
@@ -228,20 +237,20 @@ analyzeFuncParams ((dataType,identifier) : rest) symTab classSymTab =
 
 
 
-checkCorrectReturnTypes :: Type -> [Return] -> SymbolTable -> ClassSymbolTable -> Bool
-checkCorrectReturnTypes _ [] _ _ = True
-checkCorrectReturnTypes  dataType ((ReturnFunctionCall (FunctionCallVar identifier callParams)) : rets) symTab classTab =  
-                    case (Map.lookup identifier symTab) of
+checkCorrectReturnTypes :: Type -> [Return] -> SymbolTable -> SymbolTable -> ClassSymbolTable -> Bool
+checkCorrectReturnTypes _ [] _ _ _ = True
+checkCorrectReturnTypes  dataType ((ReturnFunctionCall (FunctionCallVar identifier callParams)) : rets) symTab ownFuncSymTab classTab =  
+                    case (Map.lookup identifier (Map.union symTab ownFuncSymTab)) of
                         Just (SymbolFunction params returnTypeFunc _ _ _ _ _) -> 
                                         let funcParamTypes = map (\p -> fst p) params
                                         in  case returnTypeFunc of
                                                 Just retType -> dataType == retType
-                                                                && (compareListOfTypesWithFuncCall funcParamTypes callParams symTab)
-                                                                && checkCorrectReturnTypes dataType rets symTab classTab
+                                                                && (compareListOfTypesWithFuncCall funcParamTypes callParams (Map.union symTab ownFuncSymTab))
+                                                                && checkCorrectReturnTypes dataType rets symTab ownFuncSymTab classTab
                                                 _ -> False           
                         _ -> False
-checkCorrectReturnTypes  dataType ((ReturnFunctionCall (FunctionCallObjMem (ObjectMember identifier functionIdentifier) callParams)) : rets) symTab classTab =  
-                    case (Map.lookup identifier symTab) of
+checkCorrectReturnTypes  dataType ((ReturnFunctionCall (FunctionCallObjMem (ObjectMember identifier functionIdentifier) callParams)) : rets) symTab ownFuncSymTab classTab =  
+                    case (Map.lookup identifier (Map.union symTab ownFuncSymTab)) of
                         Just (SymbolVar symDataType _ _)  -> 
                                       case symDataType of
                                         TypeClassId classIdentifier _ -> 
@@ -251,18 +260,18 @@ checkCorrectReturnTypes  dataType ((ReturnFunctionCall (FunctionCallObjMem (Obje
                                                                     Just (SymbolFunction params returnTypeFunc _ _ _ (Just True) _) ->
                                                                         case returnTypeFunc of
                                                                             Just retType -> retType == dataType
-                                                                                && (compareListOfTypesWithFuncCall (map (\p -> fst p) (params)) callParams symTab)
-                                                                                && checkCorrectReturnTypes dataType rets symTab classTab
+                                                                                && (compareListOfTypesWithFuncCall (map (\p -> fst p) (params)) callParams (Map.union symTab ownFuncSymTab))
+                                                                                && checkCorrectReturnTypes dataType rets symTab ownFuncSymTab classTab
                                                                             _ -> False   
                                                                     _ -> False   
                                                         _ -> False
                                         _ -> False
                         _ -> False
-checkCorrectReturnTypes  dataType ((ReturnExp (ExpressionLitVar literalOrVariable)) : rets) symTab classTab=  
-                                            (checkDataTypes dataType literalOrVariable symTab)
-                                            && checkCorrectReturnTypes dataType rets symTab classTab
-checkCorrectReturnTypes  dataType ((ReturnExp expression) : rets) symTab classTab =  
-                                            True && checkCorrectReturnTypes dataType rets symTab classTab-- MARK TODO Expressions
+checkCorrectReturnTypes  dataType ((ReturnExp (ExpressionLitVar literalOrVariable)) : rets) symTab ownFuncSymTab classTab=  
+                                            (checkDataTypes dataType literalOrVariable (Map.union symTab ownFuncSymTab))
+                                            && checkCorrectReturnTypes dataType rets symTab ownFuncSymTab classTab
+checkCorrectReturnTypes  dataType ((ReturnExp expression) : rets) symTab ownFuncSymTab classTab =  
+                                            True && checkCorrectReturnTypes dataType rets symTab ownFuncSymTab classTab-- MARK TODO Expressions
 
 -- checkCorrectReturnType 
 
