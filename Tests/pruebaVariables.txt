@@ -1,9 +1,20 @@
 class Perro{
-    
+    [+] Integer i = 1;
+    [-] Integer k = 2;
+    :: Int ko -> Int koo{
+
+    }
+
+    [+] func => Int :: Int kooa -> Int ko{
+
+    }
 }
 
 class Humano{
-    
+    [-] Perro p;
+    [+] func => Perro :: Int [20] kooa -> Int ko{
+
+    }
 }
 
 Int i;
