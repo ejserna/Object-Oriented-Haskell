@@ -1,3 +1,5 @@
+ARCH?=1.txt
+
 default:
 	rm -f Parser.hs
 	rm -f Scanner.hs
@@ -6,8 +8,14 @@ default:
 	ghc -o ObjectiveOrientedHaskell DataTypes.hs SymbolTable.hs ClassSymbolTable.hs TypeChecker.hs Scanner.hs Parser.hs
 
 
-prueba1:
-	cat Tests/1.txt | ./ObjectiveOrientedHaskell
+pruebaClases:
+	cat Tests/pruebaClases.txt | ./ObjectiveOrientedHaskell
+
+pruebaVariables:
+	cat Tests/pruebaVariables.txt | ./ObjectiveOrientedHaskell
+
+prueba: 
+	cat Tests/$(ARCH) | ./ObjectiveOrientedHaskell
 
 install_dependencies:
 	cabal install alex

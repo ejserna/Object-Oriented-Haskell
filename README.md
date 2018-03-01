@@ -7,6 +7,6 @@
 ### 1. Install dependencies
 
 ```
-    make install_dependencies
+make install_dependencies
 ```
 

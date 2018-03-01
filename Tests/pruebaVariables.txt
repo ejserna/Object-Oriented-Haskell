@@ -1,9 +1,21 @@
 class Perro{
-    
+    [+] Integer i = 1;
+    [-] Int k = 2;
+    :: Int ko -> Int koo{
+        i = ko;
+        k = koo;
+    }
+
+    [+] func => Nothing :: Int kooa -> Money ko{
+        
+    }
 }
 
 class Humano{
-    
+    [-] Perro p;
+    [+] func => Perro :: Int [20] kooa -> Int ko{
+        return p;
+    }
 }
 
 Int i;
@@ -28,6 +40,10 @@ Humano [10][10] hohos = [[h,hu],
                          [h,hu],
                          [h,hu],
                          [h,hu,h,h,h,h,h,h,h,h]];
+List of Int lista = [1..2];
+List of Humano lista2 = [h,hu];
+Humano huhuhuhuhu = Humano();
+
 main{
     
 }

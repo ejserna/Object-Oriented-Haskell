@@ -10,7 +10,6 @@ data Program
 
 data Function 
     = Function Identifier TypeFuncReturn [(Type,Identifier)] Block
-    | FunctionEmptyParams Identifier TypeFuncReturn Block
   deriving (Show, Eq)
 
 data TypeFuncReturn 
@@ -30,13 +29,15 @@ data Primitive
 
 data Type 
     = TypePrimitive Primitive [(String,Integer,String)]
-    | TypeClassId ClassIdentifier [(String,Integer,String)] 
+    | TypeClassId ClassIdentifier [(String,Integer,String)]
+    | TypeListClassId ClassIdentifier
+    | TypeListPrimitive Primitive
   deriving (Show, Eq)
 
-data ListType 
-    = ListTypeClassId ClassIdentifier
-    | ListTypePrimitive Primitive
-  deriving (Show, Eq)
+-- data ListType 
+--     = 
+--     | 
+--   deriving (Show, Eq)
 
 data Variable 
     = VariableNoAssignment Type [Identifier]
@@ -44,8 +45,7 @@ data Variable
     | VariableAssignment1D Type Identifier [LiteralOrVariable]
     | VariableAssignment2D Type Identifier [[LiteralOrVariable]]
     | VariableAssignmentObject Type Identifier ObjectCreation
-    | VariableListAssignment ListType Identifier ListAssignment
-    | VariableListNoAssignment ListType [Identifier]
+    | VariableListAssignment Type Identifier ListAssignment
   deriving (Show, Eq)
 
 data ObjectCreation 
@@ -63,7 +63,7 @@ data Class
   deriving (Show, Eq)
 
 data ClassBlock 
-    = ClassBlock [ClassMember] ClassConstructor [ClassMember]
+    = ClassBlock [ClassMember] ClassConstructor
     | ClassBlockNoConstructor [ClassMember]
   deriving (Show, Eq)
 
@@ -116,7 +116,7 @@ data Statement
     | FunctionCallStatement FunctionCall
     | ReturnStatement Return
     | VariableStatement Variable
-    | ConditionStatement Condition
+    | ConditionStatement If
     | CycleStatement Cycle
   deriving (Show,Eq)
 
@@ -175,18 +175,19 @@ data Expression
     | ExpressionPars Expression 
   deriving(Show, Eq)
 
-data Condition
-    = ConditionIf If
-  deriving(Show,Eq)
+-- data Condition
+--     = ConditionIf If
+--   deriving(Show,Eq)
 
 data If
-    = If Expression Block Else
+    = If Expression Block
+    | IfElse Expression Block Block
   deriving(Show,Eq)
 
-data Else
-    = NoElse
-    | Else Block
-  deriving(Show,Eq)
+-- data Else
+--     = NoElse
+--     | Else Block
+--   deriving(Show,Eq)
 
 data Cycle
     = CycleWhile While
@@ -198,7 +199,7 @@ data While
   deriving(Show,Eq)
 
 data For
-    = For Integer Integer
+    = For Integer Integer Block
   deriving(Show,Eq)
 
 data DoublePlusMinus
@@ -211,19 +212,18 @@ data FunctionCall
     | FunctionCallVar String [Params]
   deriving(Show,Eq)
 
-data FunctionCallParam
-    = FunctionCallLitOrVarParam LiteralOrVariable
-    | FunctionCallExpParam Expression 
-    | FunctionCallLitOrVarMult LiteralOrVariable
-    | FunctionCallExpMult Expression
-  deriving(Show,Eq)
+-- data FunctionCallParam
+--     = FunctionCallLitOrVarParam LiteralOrVariable
+--     | FunctionCallExpParam Expression 
+--     | FunctionCallLitOrVarMult LiteralOrVariable
+--     | FunctionCallExpMult Expression
+--   deriving(Show,Eq)
 
 data ObjectMember
     = ObjectMember String String
   deriving(Show,Eq)
 
 data Return
-    = ReturnLitOrVar LiteralOrVariable
-    | ReturnFunctionCall FunctionCall
+    = ReturnFunctionCall FunctionCall
     | ReturnExp Expression 
   deriving(Show,Eq)
