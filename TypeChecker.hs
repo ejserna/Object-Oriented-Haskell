@@ -217,7 +217,7 @@ checkArrayAssignment dataType litOrVar symTab  = checkDataTypes dataType litOrVa
 -- Aqui checamos si el literal or variable que se esta dando esta de acuerdo al que se esta asignando! O sea,
 -- no es valido decir Double d = 1.22; Money m = d;
 checkDataTypes :: Type -> LiteralOrVariable -> SymbolTable -> Bool 
-checkDataTypes dType (VarIdentifier identifier) symTab = 
+checkDataTypes dType (VarIdentifier identifier) symTab =  
                                 case (Map.lookup identifier symTab) of
                                     Just symbol -> (dataType symbol) == dType -- Si son iguales, regresamos true
                                     _ -> False -- El identificador que se esta asignando no esta en ningun lado
@@ -228,5 +228,45 @@ checkDataTypes (TypePrimitive (PrimitiveString) _) (StringLiteral _) _ = True
 checkDataTypes (TypePrimitive (PrimitiveInteger) _) (IntegerLiteral _) _ = True
 checkDataTypes _ _ _ = False -- Todo lo demas, falso
 
+checkDataTypesMult :: Type -> LiteralOrVariable -> SymbolTable -> Maybe Primitive 
+checkDataTypesMult dType (VarIdentifier identifier) symTab =  
+                                case (Map.lookup identifier symTab) of
+                                    Just symbol -> if (dataType symbol) == dType
+                                                        then symbol -- Si son iguales, regresamos true
+checkDataTypesMult (TypePrimitive (PrimitiveInt) _) (IntegerLiteral _) _  = PrimitiveInt
+checkDataTypesMult (TypePrimitive (PrimitiveDouble) _) (DecimalLiteral _) _ = PrimitiveDouble
+checkDataTypesMult (TypePrimitive (PrimitiveMoney) _) (DecimalLiteral _) _ = PrimitiveMoney
+checkDataTypesMult (TypePrimitive (PrimitiveInteger) _) (IntegerLiteral _) _ = PrimitiveInteger
+checkDataTypesMult (TypePrimitive (PrimitiveInteger) _) (DecimalLiteral _) _ = PrimitiveDouble
+checkDataTypesMult (TypePrimitive (PrimitiveInt) _) (DecimalLiteral _) _ = PrimitiveDouble
+checkDataTypesMult (TypePrimitive (PrimitiveMoney) _) (IntegerLiteral _) _ = PrimitiveMoney
+checkDataTypesMult (TypePrimitive (PrimitiveDouble) _) (IntegerLiteral _) _ = PrimitiveDouble
+checkDataTypesMult _ _ _ = False -- Todo lo demas, falso
 
+checkDataTypesRel :: Type -> LiteralOrVariable -> SymbolTable -> Maybe Primitive 
+checkDataTypesRel dType (VarIdentifier identifier) symTab =  
+                                case (Map.lookup identifier symTab) of
+                                    Just symbol -> if (dataType symbol) == dType
+                                                        then PrimitiveBool -- Si son iguales, regresamos true
+checkDataTypesRel (TypePrimitive (PrimitiveBool) _) False  = PrimitiveBool
+checkDataTypesRel (TypePrimitive (PrimitiveInt) _) True  = PrimitiveBool
+checkDataTypesRel (TypePrimitive (PrimitiveInt) _) (IntegerLiteral _) _  = PrimitiveBool
+checkDataTypesRel (TypePrimitive (PrimitiveDouble) _) (DecimalLiteral _) _ = PrimitiveBool
+checkDataTypesRel (TypePrimitive (PrimitiveMoney) _) (DecimalLiteral _) _ = PrimitiveBool
+checkDataTypesRel (TypePrimitive (PrimitiveInteger) _) (IntegerLiteral _) _ = PrimitiveBool
+checkDataTypesRel (TypePrimitive (PrimitiveInteger) _) (DecimalLiteral _) _ = PrimitiveBool
+checkDataTypesRel (TypePrimitive (PrimitiveInt) _) (DecimalLiteral _) _ = PrimitiveBool
+checkDataTypesRel (TypePrimitive (PrimitiveMoney) _) (IntegerLiteral _) _ = PrimitiveBool
+checkDataTypesRel (TypePrimitive (PrimitiveDouble) _) (IntegerLiteral _) _ = PrimitiveBool
+checkDataTypesRel _ _ _ = False -- Todo lo demas, falso
+
+checkDataTypesMOD :: Type -> LiteralOrVariable -> SymbolTable -> Maybe Primitive 
+checkDataTypesMOD dType (VarIdentifier identifier) symTab =  
+                                case (Map.lookup identifier symTab) of
+                                    Just symbol -> if (dataType symbol) == dType && symbol == PrimitiveInt
+                                                        then PrimitiveInt -- Si son iguales, regresamos true
+
+checkDataTypesMOD (TypePrimitive (PrimitiveInt) _) (IntegerLiteral _) _  = PrimitiveInt
+checkDataTypesMOD (TypePrimitive (PrimitiveInteger) _) (IntegerLiteral _) _ = PrimitiveInteger
+checkDataTypesMOD _ _ _ = False -- Todo lo demas, falso
 
