@@ -38,7 +38,7 @@ instance Show Symbol where
         SymbolFunction params ret body scope shouldRet isPublic symbolTable -> intercalate ", " [ppShow params, show ret, ppShow body, show scope, show shouldRet, show isPublic, ppShow symbolTable]
 
 emptySymbolTable :: SymbolTable
-emptySymbolTable = Map.empty
+emptySymbolTable = Map.empty 
 
 -- insert :: Identifier -> Symbol -> SymbolTable -> SymbolTable
 -- insert idn sym table = if Map.member idn table

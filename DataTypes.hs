@@ -34,11 +34,6 @@ data Type
     | TypeListPrimitive Primitive
   deriving (Show, Eq)
 
--- data ListType 
---     = 
---     | 
---   deriving (Show, Eq)
-
 data Variable 
     = VariableNoAssignment Type [Identifier]
     | VariableAssignmentLiteralOrVariable Type Identifier LiteralOrVariable
@@ -99,10 +94,10 @@ data Block
   deriving (Show, Eq)  
 
 data ArrayAccess
-    = ArrayAccessLiteral Integer
-    | ArrayAccessVar Identifier
-    | ArrayAccessExpression Expression
+    = ArrayAccessExpression Expression
   deriving (Show,Eq)
+
+
 
 data Params
     = ParamsExpression Expression
@@ -112,7 +107,7 @@ data Statement
     = AssignStatement Assignment
     | DisplayStatement Display
     | ReadStatement Reading
-    | DPMStatement DoublePlusMinus
+    | DPMStatement Assignment
     | FunctionCallStatement FunctionCall
     | ReturnStatement Return
     | VariableStatement Variable
@@ -121,18 +116,18 @@ data Statement
   deriving (Show,Eq)
 
 data Assignment
-    = VarAssignExpression Identifier Expression
-    | VarAssignFunctionCall Identifier FunctionCall
-    | VarAssignObjMem Identifier ObjectMember
-    | ObjMemAssignExpression ObjectMember Expression
-    | ObjMemAssignFunctionCall ObjectMember FunctionCall
-    | ObjMemAssignObjMem ObjectMember ObjectMember
-    | VarArrayAssignExpression Identifier [ArrayAccess] Expression
-    | VarArrayAssignFunctionCall Identifier [ArrayAccess] FunctionCall
-    | VarArrayAssignObjMem Identifier [ArrayAccess] ObjectMember
-    | ObjMemArrayAssignExpression ObjectMember [ArrayAccess] Expression
-    | ObjMemArrayAssignFunctionCall ObjectMember [ArrayAccess] FunctionCall
-    | ObjMemArrayAssignObjMem ObjectMember [ArrayAccess] ObjectMember
+    = AssignmentExpression Identifier Expression
+    | AssignmentFunctionCall Identifier FunctionCall
+    | AssignmentObjectMember Identifier ObjectMember
+    | AssignmentObjectMemberExpression ObjectMember Expression
+    -- | AssignmentObjectFuncCall ObjectMember FunctionCall
+    -- | ObjMemAssignObjMem ObjectMember ObjectMember
+    | AssignmentArrayExpression Identifier [ArrayAccess] Expression
+    -- | VarArrayAssignFunctionCall Identifier [ArrayAccess] FunctionCall
+    -- | VarArrayAssignObjMem Identifier [ArrayAccess] ObjectMember
+    -- | ObjMemArrayAssignExpression ObjectMember [ArrayAccess] Expression
+    -- | ObjMemArrayAssignFunctionCall ObjectMember [ArrayAccess] FunctionCall
+    -- | ObjMemArrayAssignObjMem ObjectMember [ArrayAccess] ObjectMember
   deriving(Show,Eq)
 
 data Reading
@@ -175,19 +170,12 @@ data Expression
     | ExpressionPars Expression 
   deriving(Show, Eq)
 
--- data Condition
---     = ConditionIf If
---   deriving(Show,Eq)
 
 data If
     = If Expression Block
     | IfElse Expression Block Block
   deriving(Show,Eq)
 
--- data Else
---     = NoElse
---     | Else Block
---   deriving(Show,Eq)
 
 data Cycle
     = CycleWhile While
@@ -202,25 +190,14 @@ data For
     = For Integer Integer Block
   deriving(Show,Eq)
 
-data DoublePlusMinus
-    = DoublePP Identifier
-    | DoubleMM Identifier
-  deriving(Show,Eq)
 
 data FunctionCall
     = FunctionCallObjMem ObjectMember [Params]
-    | FunctionCallVar String [Params]
+    | FunctionCallVar Identifier [Params]
   deriving(Show,Eq)
 
--- data FunctionCallParam
---     = FunctionCallLitOrVarParam LiteralOrVariable
---     | FunctionCallExpParam Expression 
---     | FunctionCallLitOrVarMult LiteralOrVariable
---     | FunctionCallExpMult Expression
---   deriving(Show,Eq)
-
 data ObjectMember
-    = ObjectMember String String
+    = ObjectMember Identifier Identifier
   deriving(Show,Eq)
 
 data Return

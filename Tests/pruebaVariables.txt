@@ -7,15 +7,31 @@ class Perro{
     }
 
     [+] func => Nothing :: Int kooa -> Money ko{
-        
+          Int kokoa = 1;
+          kokoa++;
+          i++;
+          if (True){
+            kokoa++;
+            Int kaka;
+            i++;
+          }
+
     }
 }
 
 class Humano{
     [-] Perro p;
-    [+] func => Perro :: Int [20] kooa -> Int ko{
-        return p;
-    }
+
+}
+
+func => Nothing :: Int kooa -> Money ko{
+  Int kokoa = 1;
+  kokoa++;
+  if (True){
+    kokoa++;
+    Int kaka;
+    kooa++;
+  }
 }
 
 Int i;
@@ -45,5 +61,20 @@ List of Humano lista2 = [h,hu];
 Humano huhuhuhuhu = Humano();
 
 main{
-    
+   Int iJuan = 1;
+   Int iKoko = 2;
+   
+   if (1 < 2 && True){
+        Int iPerro = 2;
+        iPerro++;
+        iKoko++;
+        if (False){
+            Money momo = 2.2;
+            s = "12";
+            for (1..3){
+                String momoPapa = "papa";
+            }
+        }
+        s = "perro";
+   }
 }
