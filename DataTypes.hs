@@ -105,7 +105,7 @@ data Params
 
 data Statement
     = AssignStatement Assignment
-    | DisplayStatement Display
+    | DisplayStatement [Display]
     | ReadStatement Reading
     | DPMStatement Assignment
     | FunctionCallStatement FunctionCall
@@ -135,15 +135,11 @@ data Reading
   deriving(Show,Eq)
 
 data Display
-    = DisplayInt Integer
-    | DisplayDec Decimal
-    | DisplayString String
-    | DisplayVar Identifier
-    | DisplayObjMem ObjectMember
-    | DisplayFunctionCall FunctionCall
-    | DisplayVarArray Identifier [ArrayAccess]
-    | DisplayObjMemArray ObjectMember [ArrayAccess]
-  deriving(Show,Eq) 
+    = DisplayLiteralOrVariable LiteralOrVariable 
+    | DisplayObjMem ObjectMember 
+    | DisplayFunctionCall FunctionCall 
+    | DisplayVarArrayAccess Identifier [ArrayAccess] 
+   deriving(Show,Eq) 
 
 data Expression
     = ExpressionGreater Expression Expression
