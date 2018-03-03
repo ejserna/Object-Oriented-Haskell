@@ -5,7 +5,9 @@ import Text.Show.Pretty
 
 import SymbolTable
 import ClassSymbolTable
-import qualified Data.Map.Strict as Map
+-- import qualified Data.Map.Strict as Map
+import qualified Data.HashMap.Strict as Map
+
 import Data.List (intercalate, maximumBy, union)
 import Data.Ord (comparing)
 
@@ -184,7 +186,7 @@ analyzeVariable _ _ _ _ _  = (emptySymbolTable, True)
 
 analyzeFunction :: Function -> Scope -> Maybe Bool -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
 analyzeFunction (Function identifier (TypeFuncReturnPrimitive primitive) params (Block statements)) scp isPublic symTab classSymTab = 
-                    if  (Map.notMember identifier symTab)
+                    if  not (Map.member identifier symTab)
                         then let (newFuncSymTab, hasErrors) = (analyzeFuncParams params emptySymbolTable classSymTab)
                                     -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros, error
                                    in if (hasErrors) || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)
@@ -201,7 +203,7 @@ analyzeFunction (Function identifier (TypeFuncReturnPrimitive primitive) params 
                         else (emptySymbolTable, True)
 analyzeFunction (Function identifier (TypeFuncReturnClassId classIdentifier) params (Block statements)) scp isPublic symTab classSymTab = 
                 if (checkTypeExistance (TypeClassId classIdentifier []) classSymTab)
-                    then if (Map.notMember identifier symTab)
+                    then if not (Map.member identifier symTab)
                         then let (newFuncSymTab, hasErrors) = (analyzeFuncParams params emptySymbolTable classSymTab)
                                     -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros, error
                                    in if (hasErrors) || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)
@@ -216,7 +218,7 @@ analyzeFunction (Function identifier (TypeFuncReturnClassId classIdentifier) par
                     else (emptySymbolTable, True)
     -- Como no regresa nada, no hay que buscar que regrese algo el bloque
 analyzeFunction (Function identifier (TypeFuncReturnNothing) params (Block statements)) scp isPublic symTab classSymTab =  
-                  if  (Map.notMember identifier symTab)
+                  if  not (Map.member identifier symTab)
                         then let (newFuncSymTab, hasErrors) = (analyzeFuncParams params emptySymbolTable classSymTab)
                                     -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros o bien, que el usuario quiere regresar algo adentro de una funcion cuyo valor de retorno es nothing
                                    in if (hasErrors) || (length (getReturnStatements statements)) > 0 || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)

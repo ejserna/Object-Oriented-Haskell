@@ -3,7 +3,9 @@ import Data.Decimal
 import DataTypes
 import Text.Show.Pretty
 
-import qualified Data.Map.Strict as Map
+-- import qualified Data.Map.Strict as Map
+import qualified Data.HashMap.Strict as Map
+
 import Data.List (intercalate)
 
 type Scope = Int
@@ -15,7 +17,7 @@ defScope :: Scope
 defScope = -1
 
 -- La symbol table es un map que dado un identificador, te da el scope de éste junto con su información de símbolos
-type SymbolTable = Map.Map Identifier Symbol
+type SymbolTable = Map.HashMap Identifier Symbol
 
 data Symbol = SymbolVar
                 { dataType   :: Type
