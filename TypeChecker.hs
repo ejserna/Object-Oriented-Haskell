@@ -45,7 +45,11 @@ analyzeClasses (cl : classes) classSymTab =
                                                            else ((Map.union newClassSymTab1 newClassSymTab2), False)
 
 analyzeClassBlock :: Class -> SymbolTable -> ClassSymbolTable ->  (SymbolTable, Bool)
-analyzeClassBlock (ClassInheritance classIdentifier _ classBlock) symTab classSymTab = analyzeMembersOfClassBlock classBlock classIdentifier defScope symTab classSymTab
+-- Debido a que se está heredando, hay que meter la symbol table de la clase padre en la hijo
+analyzeClassBlock (ClassInheritance classIdentifier parentClass classBlock) symTab classSymTab = 
+                case (Map.lookup parentClass classSymTab) of
+                    Just symTabOfClass -> analyzeMembersOfClassBlock classBlock classIdentifier defScope (Map.union symTab symTabOfClass) classSymTab
+                    Nothing -> (emptySymbolTable, True)
 analyzeClassBlock (ClassNormal classIdentifier classBlock) symTab classSymTab = analyzeMembersOfClassBlock classBlock classIdentifier defScope symTab classSymTab
 
 analyzeMembersOfClassBlock :: ClassBlock -> ClassIdentifier -> Scope -> SymbolTable -> ClassSymbolTable  -> (SymbolTable,Bool)
@@ -67,7 +71,7 @@ analyzeMembersOfClassBlock (ClassBlock classMembers (ClassConstructor params blo
 --                                                 else let (newSymTab3,hasErrors2) = analyzeMembersOfClassBlock 
 --                                                     (Map.union newSymTab2
 analyzeClassMembers :: [ClassMember] -> ClassIdentifier -> Scope -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
-analyzeClassMembers [] _ _ _ _ = (emptySymbolTable,False)
+analyzeClassMembers [] _ _ symTab _ = (symTab,False)
 analyzeClassMembers (cm : cms) classIdentifier scp symTab classSymbolTable = 
                                                         let (newSymTab, hasErrors) = analyzeClassMember cm classIdentifier scp symTab classSymbolTable
                                                         in if (hasErrors) then (emptySymbolTable,True)
@@ -232,6 +236,7 @@ analyzeFunction (Function identifier (TypeFuncReturnNothing) params (Block state
 
 
 areReturnTypesOk :: Type -> [Statement] -> SymbolTable -> SymbolTable -> ClassSymbolTable -> Bool
+areReturnTypesOk funcRetType [] symTab ownFuncSymTab classTab = False
 areReturnTypesOk funcRetType statements symTab ownFuncSymTab classTab =
     -- Nos aseguramos que al final haya un return statement
     case (last statements) of 
@@ -294,8 +299,8 @@ checkCorrectReturnTypes  dataType ((ReturnFunctionCall (FunctionCallObjMem (Obje
 checkCorrectReturnTypes  dataType ((ReturnExp (ExpressionLitVar literalOrVariable)) : rets) symTab ownFuncSymTab classTab=  
                                             (checkDataTypes dataType literalOrVariable (Map.union symTab ownFuncSymTab))
                                             && checkCorrectReturnTypes dataType rets symTab ownFuncSymTab classTab
-checkCorrectReturnTypes  dataType ((ReturnExp expression) : rets) symTab ownFuncSymTab classTab =  
-                                            True && checkCorrectReturnTypes dataType rets symTab ownFuncSymTab classTab-- MARK TODO Expressions
+checkCorrectReturnTypes  dataType ((ReturnExp (ExpressionVarArray identifier _)) : rets) symTab ownFuncSymTab classTab =  
+                                            (checkArrayAssignment dataType (VarIdentifier identifier) (Map.union symTab ownFuncSymTab)) && checkCorrectReturnTypes dataType rets symTab ownFuncSymTab classTab-- MARK TODO Expressions
 
 -- checkCorrectReturnType 
 
