@@ -29,29 +29,30 @@ expressionProcess (ExpressionLitVar litVar) symTab = checkDataTypeOfLitVar litVa
 
 expressionProcess (ExpressionVarArray identifier ((ArrayAccessExpression expression) : [])) symTab = case (expressionProcess expression symTab) of 
                                                                                                         Just PrimitiveInt -> checkArrayID identifier symTab 1
-																										Just PrimitiveInteger -> checkArrayID identifier symTab 1
-																										_ -> Nothing
+                                                                                                        Just PrimitiveInteger -> checkArrayID identifier symTab 1
+                                                                                                        _ -> Nothing
 expressionProcess (ExpressionVarArray identifier ((ArrayAccessExpression expression1) : (ArrayAccessExpression expression2) :[])) symTab = 
-																									 case (expressionProcess expression1 symTab) of 
-																										Just PrimitiveInt -> 
-																														case (expressionProcess expression2 symTab) of
-																															Just PrimitiveInt -> checkArrayID identifier symTab 2
-																															_ -> Nothing  
-																										Just PrimitiveInteger -> case (expressionProcess expression2 symTab) of
-																														 Just PrimitiveInteger -> checkArrayID identifier symTab 2
-																														 _ -> Nothing
-																								_ -> Nothing
+                                                  case (expressionProcess expression1 symTab) of 
+                                                     Just PrimitiveInt -> 
+                                                            case (expressionProcess expression2 symTab) of
+                                                              Just PrimitiveInt -> checkArrayID identifier symTab 2
+                                                              _ -> Nothing  
+                                                     Just PrimitiveInteger -> 
+                                                            case (expressionProcess expression2 symTab) of
+                                                              Just PrimitiveInteger -> checkArrayID identifier symTab 2
+                                                              _ -> Nothing
+                                                     _ -> Nothing
 expressionProcess (ExpressionNeg exp) symTab = expressionCheckNEG exp symTab
 
 
 checkArrayID :: Identifier -> SymbolTable -> Int -> Maybe Primitive
 checkArrayID identifier symTab dimension= case (Map.lookup identifier symTab) of
-														 Just (SymbolVar dataType _ _) -> 
-														   case dataType of 
-														   	TypePrimitive prim arrayDeclaration | (length arrayDeclaration) == dimension -> Just prim
-														   										| otherwise -> Nothing
-														   	_ -> Nothing
-														 _ -> Nothing
+                             Just (SymbolVar dataType _ _) -> 
+                               case dataType of 
+                                 TypePrimitive prim arrayDeclaration | (length arrayDeclaration) == dimension -> Just prim
+                                                   | otherwise -> Nothing
+                                 _ -> Nothing
+                             _ -> Nothing
 
 
 
@@ -127,7 +128,7 @@ checkDataTypesMult _ (Just PrimitiveMoney) _ = (Just PrimitiveMoney)
 checkDataTypesMult (Just PrimitiveDouble) _ _ = (Just PrimitiveDouble)
 checkDataTypesMult _ (Just PrimitiveDouble) _ = (Just PrimitiveDouble)
 checkDataTypesMult _ _ _ = Nothing -- Todo lo demas, falso  
-															 
+                               
 
 checkDataTypesRel1 :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive 
 checkDataTypesRel1 (Just PrimitiveBool) (Just PrimitiveBool) _ = (Just PrimitiveBool)
@@ -154,4 +155,3 @@ checkDataTypesMOD (Just PrimitiveInteger) (Just PrimitiveInteger) _ = (Just Prim
 checkDataTypesMOD (Just PrimitiveInteger) (Just PrimitiveInt) _ = (Just PrimitiveInteger)
 checkDataTypesMOD (Just PrimitiveInt) (Just PrimitiveInteger) _ = (Just PrimitiveInteger)
 checkDataTypesMOD _ _ _ = Nothing -- Todo lo demas, falso
-
