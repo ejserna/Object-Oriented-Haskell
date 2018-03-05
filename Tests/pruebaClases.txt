@@ -28,6 +28,10 @@ func => Int{
     return ko[1];
 }
 
+func2 => Nothing{
+    display("Hola");
+}
+
 Animal a;
 Wok w;
 Perro p;
@@ -36,6 +40,7 @@ main{
     
     w.orejas = 1;
     al.perro = p;
+    func2();
 
     
 }

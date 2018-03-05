@@ -25,7 +25,20 @@ data Primitive
     | PrimitiveString
     | PrimitiveBool
     | PrimitiveInteger
-  deriving (Show, Eq)
+  deriving (Show)
+
+instance Eq Primitive where 
+   PrimitiveInt == PrimitiveInteger  =  True
+   PrimitiveInteger == PrimitiveInt  =  True
+   PrimitiveDouble == PrimitiveMoney  =  True
+   PrimitiveMoney == PrimitiveDouble  =  True
+   PrimitiveInt == PrimitiveInt  =  True
+   PrimitiveInteger == PrimitiveInteger  =  True
+   PrimitiveBool == PrimitiveBool  =  True
+   PrimitiveString == PrimitiveString  =  True
+   PrimitiveMoney == PrimitiveMoney  =  True
+   PrimitiveDouble == PrimitiveDouble  =  True
+   _ == _ = False
 
 data Type 
     = TypePrimitive Primitive [(String,Integer,String)]

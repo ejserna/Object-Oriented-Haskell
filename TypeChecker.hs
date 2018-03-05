@@ -654,10 +654,8 @@ checkArrayAssignment (TypeClassId classIdentifier arrayDeclaration) (VarIdentifi
                                     _ -> False -- El identificador que se esta asignando no esta en ningun lado
 checkArrayAssignment dataType litOrVar symTab  = checkDataTypes dataType litOrVar symTab
 
-
-
 -- Aqui checamos si el literal or variable que se esta dando esta de acuerdo al que se esta asignando! O sea,
--- no es valido decir Double d = 1.22; Money m = d;
+-- no es valido decir Int i = 1; Money m = i; 
 checkDataTypes :: Type -> LiteralOrVariable -> SymbolTable -> Bool 
 checkDataTypes dType (VarIdentifier identifier) symTab = 
                                 case (Map.lookup identifier symTab) of
