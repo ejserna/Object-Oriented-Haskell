@@ -657,7 +657,7 @@ checkArrayAssignment dataType litOrVar symTab  = checkDataTypes dataType litOrVa
 -- Aqui checamos si el literal or variable que se esta dando esta de acuerdo al que se esta asignando! O sea,
 -- no es valido decir Int i = 1; Money m = i; 
 checkDataTypes :: Type -> LiteralOrVariable -> SymbolTable -> Bool 
-checkDataTypes dType (VarIdentifier identifier) symTab = 
+checkDataTypes dType (VarIdentifier identifier) symTab =  
                                 case (Map.lookup identifier symTab) of
                                     Just symbol -> (dataType symbol) == dType -- Si son iguales, regresamos true
                                     _ -> False -- El identificador que se esta asignando no esta en ningun lado
@@ -668,6 +668,4 @@ checkDataTypes (TypePrimitive (PrimitiveString) _) (StringLiteral _) _ = True
 checkDataTypes (TypePrimitive (PrimitiveInteger) _) (IntegerLiteral _) _ = True
 -- TODO MARK: Meter validacion type bool con bool literal
 checkDataTypes _ _ _ = False -- Todo lo demas, falso
-
-
 

@@ -14,6 +14,7 @@ import DataTypes
 import Data.Decimal
 import Text.Show.Pretty
 import TypeChecker
+
 }
 %name ooh
 %tokentype { Token }
@@ -218,6 +219,8 @@ LiteralOrVariable :
       | integer_literal {IntegerLiteral $1}
       | decimal_literal {DecimalLiteral $1}
       | string_literal {StringLiteral $1}
+      | "False" {BoolLiteral False}
+      | "True" {BoolLiteral True}
 
 Block:
     "{" BlockStatement "}" {Block $2}
@@ -285,8 +288,6 @@ Expression :
     | LiteralOrVariable {ExpressionLitVar $1}
     | var_identifier ArrayIndexesExpression {ExpressionVarArray $1 $2}
     | "!" Expression  {ExpressionNot $2}
-    | "True"          {ExpressionTrue}
-    | "False"         {ExpressionFalse}
     | "-" Expression %prec NEG {ExpressionNeg $2}
     | "(" Expression ")" {ExpressionPars $2}
 
