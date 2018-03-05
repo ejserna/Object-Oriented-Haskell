@@ -40,7 +40,7 @@ import TypeChecker
   "^"                 { TPower _ }
   "!"                 { TNot _ }
   "True"              { TTrue _ }
-  "False"             { TTrue _ }
+  "False"             { TFalse _ }
   ">"                 { TGreaterThan _ }
   "<"                 { TLessThan _ }
   ">="                { TGreaterEqualThan _ }
@@ -234,38 +234,41 @@ Statement :
       | Display ";"    {DisplayStatement $1}
       | Reading ";"       {ReadStatement $1}
       | DoublePlusMinus ";" {DPMStatement $1}
-      | FunctionCall ";"     {FunctionCallStatement $1}
+      | FunctionCall ";"     {FunctionCallStatement $1}     
       | Return ";"     {ReturnStatement $1}
       | Variable   {VariableStatement $1}
       | If  {ConditionStatement $1}
       | Cycle      {CycleStatement $1}
 
 Assignment :
-        var_identifier "=" Expression        {VarAssignExpression $1 $3}
-      | var_identifier "=" FunctionCall      {VarAssignFunctionCall $1 $3}
-      | var_identifier "=" ObjectMember      {VarAssignObjMem $1 $3}
-      | ObjectMember "=" Expression   {ObjMemAssignExpression $1 $3}
-      | ObjectMember "=" FunctionCall        {ObjMemAssignFunctionCall $1 $3}
-      | ObjectMember "=" ObjectMember        {ObjMemAssignObjMem $1 $3}
-      | var_identifier ArrayIndexesExpression "=" Expression     {VarArrayAssignExpression $1 $2 $4}
-      | var_identifier ArrayIndexesExpression "=" FunctionCall       {VarArrayAssignFunctionCall $1 $2 $4}
-      | var_identifier ArrayIndexesExpression "=" ObjectMember     {VarArrayAssignObjMem $1 $2 $4}
-      | ObjectMember ArrayIndexesExpression "=" Expression     {ObjMemArrayAssignExpression $1 $2 $4}
-      | ObjectMember ArrayIndexesExpression "=" FunctionCall     {ObjMemArrayAssignFunctionCall $1 $2 $4}
-      | ObjectMember ArrayIndexesExpression "=" ObjectMember     {ObjMemArrayAssignObjMem $1 $2 $4}
+        var_identifier "=" Expression        {AssignmentExpression $1 $3}
+      | var_identifier "=" FunctionCall      {AssignmentFunctionCall $1 $3}
+      | var_identifier "=" ObjectMember      {AssignmentObjectMember $1 $3}
+      | ObjectMember "=" Expression   {AssignmentObjectMemberExpression $1 $3}
+      -- | ObjectMember "=" FunctionCall        {AssignmentObjectFuncCall $1 $3}
+      -- | ObjectMember "=" ObjectMember        {ObjMemAssignObjMem $1 $3}
+      | var_identifier ArrayIndexesExpression "=" Expression     {AssignmentArrayExpression $1 $2 $4}
+      -- | var_identifier ArrayIndexesExpression "=" FunctionCall       {VarArrayAssignFunctionCall $1 $2 $4}
+      -- | var_identifier ArrayIndexesExpression "=" ObjectMember     {VarArrayAssignObjMem $1 $2 $4}
+      -- | ObjectMember ArrayIndexesExpression "=" Expression     {ObjMemArrayAssignExpression $1 $2 $4}
+      -- | ObjectMember ArrayIndexesExpression "=" FunctionCall     {ObjMemArrayAssignFunctionCall $1 $2 $4}
+      -- | ObjectMember ArrayIndexesExpression "=" ObjectMember     {ObjMemArrayAssignObjMem $1 $2 $4}
 
 Reading :
-  "read" "(" var_identifier ")" {Reading $3}
+      "read" "(" var_identifier ")" {Reading $3}
 
 Display :
-        "display" "(" integer_literal ")" {DisplayInt $3}
-      | "display" "(" decimal_literal ")" {DisplayDec $3}
-      | "display" "(" string_literal ")"  {DisplayString $3}
-      | "display" "(" var_identifier ")"  {DisplayVar $3}
-      | "display" "(" ObjectMember ")"    {DisplayObjMem $3}
-      | "display" "(" FunctionCall ")"    {DisplayFunctionCall $3}
-      | "display" "(" var_identifier ArrayIndexesExpression ")" {DisplayVarArray $3 $4}
-      | "display" "(" ObjectMember ArrayIndexesExpression ")" {DisplayObjMemArray $3 $4}
+        "display" "(" LiteralOrVariable DisplayArguments ")" {  ((DisplayLiteralOrVariable $3) : $4) }
+      | "display" "(" ObjectMember DisplayArguments")"    {  ((DisplayObjMem $3) : $4) }
+      | "display" "(" FunctionCall DisplayArguments ")"    {  ((DisplayFunctionCall $3) : $4) }
+      | "display" "(" var_identifier ArrayIndexesExpression DisplayArguments ")" {  ((DisplayVarArrayAccess $3 $4) : $5) }
+
+DisplayArguments :
+      {- empty -} { [] }
+      | "," LiteralOrVariable DisplayArguments { ((DisplayLiteralOrVariable $2) : $3) }
+      | "," ObjectMember DisplayArguments { ((DisplayObjMem $2) : $3) }
+      | "," FunctionCall DisplayArguments { ((DisplayFunctionCall $2) : $3) }
+      | "," var_identifier ArrayIndexesExpression DisplayArguments { ((DisplayVarArrayAccess $2 $3) : $4) }
 
 Expression :
       Expression ">" Expression { ExpressionGreater $1 $3 }
@@ -323,8 +326,8 @@ For :
     "for" "(" integer_literal ".." integer_literal ")" Block {For $3 $5 $7}
 
 DoublePlusMinus :
-        var_identifier "++" {DoublePP $1}
-      | var_identifier "--" {DoubleMM $1}
+        var_identifier "++" {AssignmentExpression $1 (ExpressionPlus (ExpressionLitVar (VarIdentifier $1)) (ExpressionLitVar (IntegerLiteral 1))) }
+      | var_identifier "--" {AssignmentExpression $1 (ExpressionMinus (ExpressionLitVar (VarIdentifier $1)) (ExpressionLitVar (IntegerLiteral 1)))}
 
 FunctionCall :
         ObjectMember "(" Expression CallParams")" {FunctionCallObjMem $1 ((ParamsExpression $3) : $4)  }--FunctionCallObjMem $1 $3}

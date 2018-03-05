@@ -1,0 +1,8 @@
+ObjectiveOrientedHaskell
+Parser.hs
+Scanner.hs
+*.hi
+.gitignore
+.DS_Store
+*.o
+*.info

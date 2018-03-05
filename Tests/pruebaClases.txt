@@ -10,9 +10,32 @@ class Perro : Animal{
     
 }
 
-class Alitzel{
+class Humano{
+    [-] Integer edad;
+    [+] Perro perro;
+}
+
+class Alitzel : Humano{
     
 }
+
+func => Int{
+    Int [10] ko;
+    Int [1] k;
+    if (1 == 1){
+        return k[0];
+    }
+    return ko[1];
+}
+
+Animal a;
+Wok w;
+Perro p;
+Alitzel al;
 main{
+    
+    w.orejas = 1;
+    al.perro = p;
+
     
 }

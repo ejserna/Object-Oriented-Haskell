@@ -5,24 +5,30 @@ import Text.Show.Pretty
 
 import SymbolTable
 import ClassSymbolTable
-import qualified Data.Map.Strict as Map
-import Data.List (intercalate, maximumBy)
+-- import qualified Data.Map.Strict as Map
+import qualified Data.HashMap.Strict as Map
+
+import Data.List (intercalate, maximumBy, union)
 import Data.Ord (comparing)
 
 newtype ClassTypeChecker = State ClassSymbolTable
 
 startSemanticAnalysis :: Program -> IO ()
-startSemanticAnalysis (Program classList functionList varsList block) =  do 
+startSemanticAnalysis (Program classList functionList varsList (Block statements)) =  do 
             let (classSymbolTable, classErrors) = analyzeClasses classList emptyClassSymbolTable
             if (classErrors) 
                 then putStrLn $ show "[1] ERROR: Semantic Error in Class Checking."
-                else putStrLn $ ppShow $ "[1]: Semantic Class Analysis Passed."
-            putStrLn $ ppShow $ classSymbolTable
-            let (symbolTable,semanticError) = analyzeVariables varsList globalScope Nothing emptySymbolTable classSymbolTable
-            if (semanticError) 
+                else do putStrLn $ ppShow $ "[1]: Semantic Class Analysis Passed."
+                        putStrLn $ ppShow $ classSymbolTable
+            let (symbolTableWithFuncs,semanticErrorFuncs) = analyzeFunctions functionList globalScope Nothing emptySymbolTable classSymbolTable
+            let (symbolTableWithFuncsVars,semanticErrorVars) = analyzeVariables varsList globalScope Nothing symbolTableWithFuncs classSymbolTable
+            let returnListInMain = getReturnStatements statements
+            let (symbolTableStatements,semanticErrorBlock) = analyzeStatements statements defScope symbolTableWithFuncsVars  classSymbolTable
+            if (semanticErrorFuncs || semanticErrorVars || semanticErrorBlock || (length returnListInMain) > 0) 
                 then putStrLn $ show "[2] ERROR: Semantic Error in Variable Checking."
-                else putStrLn $ ppShow $ "[2]: Semantic Variable Analysis Passed."
-            putStrLn $ ppShow $ symbolTable
+                else do putStrLn $ ppShow $ "[2]: Semantic Variable Analysis Passed."
+                        putStrLn $ ppShow $ symbolTableStatements
+            
 
 -- Analyze classes regresa una tabla de simbolos de clase y un booleano. Si es true, significa que hubo errores, si es false, no hubo errores
 analyzeClasses :: [Class] -> ClassSymbolTable -> (ClassSymbolTable, Bool)
@@ -39,7 +45,11 @@ analyzeClasses (cl : classes) classSymTab =
                                                            else ((Map.union newClassSymTab1 newClassSymTab2), False)
 
 analyzeClassBlock :: Class -> SymbolTable -> ClassSymbolTable ->  (SymbolTable, Bool)
-analyzeClassBlock (ClassInheritance classIdentifier _ classBlock) symTab classSymTab = analyzeMembersOfClassBlock classBlock classIdentifier defScope symTab classSymTab
+-- Debido a que se está heredando, hay que meter la symbol table de la clase padre en la hijo
+analyzeClassBlock (ClassInheritance classIdentifier parentClass classBlock) symTab classSymTab = 
+                case (Map.lookup parentClass classSymTab) of
+                    Just symTabOfClass -> analyzeMembersOfClassBlock classBlock classIdentifier defScope (Map.union symTab symTabOfClass) classSymTab
+                    Nothing -> (emptySymbolTable, True)
 analyzeClassBlock (ClassNormal classIdentifier classBlock) symTab classSymTab = analyzeMembersOfClassBlock classBlock classIdentifier defScope symTab classSymTab
 
 analyzeMembersOfClassBlock :: ClassBlock -> ClassIdentifier -> Scope -> SymbolTable -> ClassSymbolTable  -> (SymbolTable,Bool)
@@ -61,7 +71,7 @@ analyzeMembersOfClassBlock (ClassBlock classMembers (ClassConstructor params blo
 --                                                 else let (newSymTab3,hasErrors2) = analyzeMembersOfClassBlock 
 --                                                     (Map.union newSymTab2
 analyzeClassMembers :: [ClassMember] -> ClassIdentifier -> Scope -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
-analyzeClassMembers [] _ _ _ _ = (emptySymbolTable,False)
+analyzeClassMembers [] _ _ symTab _ = (symTab,False)
 analyzeClassMembers (cm : cms) classIdentifier scp symTab classSymbolTable = 
                                                         let (newSymTab, hasErrors) = analyzeClassMember cm classIdentifier scp symTab classSymbolTable
                                                         in if (hasErrors) then (emptySymbolTable,True)
@@ -91,6 +101,13 @@ analyzeClass (ClassNormal classIdentifier classBlock) varSymTab classSymTab = if
                                                                         let newClassSymTable = Map.insert classIdentifier varSymTab classSymTab
                                                                         in (newClassSymTable, False)
 
+analyzeFunctions :: [Function] -> Scope -> Maybe Bool -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
+analyzeFunctions [] _ _ _ _ = (emptySymbolTable, False)
+analyzeFunctions (func : funcs) scp isFuncPublic symTab classTab = let (newSymTab1, hasErrors1) = analyzeFunction func scp isFuncPublic symTab classTab
+                                               in if hasErrors1 then (emptySymbolTable, True)
+                                               else let (newSymTab2, hasErrors2) = analyzeFunctions funcs scp isFuncPublic newSymTab1 classTab
+                                                    in if hasErrors2 then (emptySymbolTable, True)
+                                                       else ((Map.union newSymTab1 newSymTab2), False)
 
 analyzeVariables :: [Variable] -> Scope -> Maybe Bool -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
 analyzeVariables [] _ _ _ _ = (emptySymbolTable, False)
@@ -98,7 +115,7 @@ analyzeVariables (var : vars) scp isVarPublic symTab classTab = let (newSymTab1,
                                                in if hasErrors1 then (emptySymbolTable, True)
                                                else let (newSymTab2, hasErrors2) = analyzeVariables vars scp isVarPublic newSymTab1 classTab
                                                     in if hasErrors2 then (emptySymbolTable, True)
-                                                       else ((Map.union newSymTab1 newSymTab2), False)
+                                                       else ((Map.union newSymTab1 newSymTab2), False)                              
 
 
 analyzeVariable :: Variable -> Scope -> Maybe Bool -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
@@ -173,48 +190,60 @@ analyzeVariable _ _ _ _ _  = (emptySymbolTable, True)
 
 analyzeFunction :: Function -> Scope -> Maybe Bool -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
 analyzeFunction (Function identifier (TypeFuncReturnPrimitive primitive) params (Block statements)) scp isPublic symTab classSymTab = 
-                    if  (Map.notMember identifier symTab)
+                    if  not (Map.member identifier symTab)
                         then let (newFuncSymTab, hasErrors) = (analyzeFuncParams params emptySymbolTable classSymTab)
                                     -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros, error
                                    in if (hasErrors) || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)
-                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypePrimitive primitive [])), scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab
-                                            in let areRetTypesOk = areReturnTypesOk (TypePrimitive primitive []) statements newSymTabFunc newFuncSymTab classSymTab
-                                             in if areRetTypesOk == True then (newSymTabFunc,False)
-                                                else (emptySymbolTable, True) 
+                                        -- Metemos ahora a la symbol table de la funcion la symbol table que exista en los statements
+                                        -- Hacemos union para que adentro de los statements se puedan reconocer miembros internos!
+                                        else let (newFuncSymTabWithStatements,hasErrors) = analyzeStatements statements scp (Map.union newFuncSymTab symTab) classSymTab
+                                                    in if (hasErrors) then (emptySymbolTable,True)
+                                                        -- Hacemos el difference porque newFuncSymTabWithStatements tiene como miembros los simbolos de la clase actual
+                                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypePrimitive primitive [])), scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = (Map.difference newFuncSymTabWithStatements symTab), params = params}) symTab
+                                                                in let areRetTypesOk = areReturnTypesOk (TypePrimitive primitive []) statements newSymTabFunc newFuncSymTabWithStatements classSymTab
+                                                                in if areRetTypesOk == True then (newSymTabFunc, False)
+                                                                   else (emptySymbolTable, True) 
                                 -- in  -- if (checkCorrectReturnType (TypeClassId classIdentifier) block newSymTabFunc ) 
                         else (emptySymbolTable, True)
 analyzeFunction (Function identifier (TypeFuncReturnClassId classIdentifier) params (Block statements)) scp isPublic symTab classSymTab = 
                 if (checkTypeExistance (TypeClassId classIdentifier []) classSymTab)
-                    then if (Map.notMember identifier symTab)
+                    then if not (Map.member identifier symTab)
                         then let (newFuncSymTab, hasErrors) = (analyzeFuncParams params emptySymbolTable classSymTab)
                                     -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros, error
                                    in if (hasErrors) || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)
-                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypeClassId classIdentifier [])), scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab
-                                          in let areRetTypesOk = areReturnTypesOk (TypeClassId classIdentifier []) statements newSymTabFunc newFuncSymTab classSymTab
-                                             in if areRetTypesOk == True then (newSymTabFunc,False)
-                                                else (emptySymbolTable, True)-- && analyzeFuncBlock statements newSymTab2 classSymTab
+                                     -- Metemos ahora a la symbol table de la funcion la symbol table que exista en los statements
+                                        else let (newFuncSymTabWithStatements,hasErrors) = analyzeStatements statements scp (Map.union newFuncSymTab symTab) classSymTab
+                                                    in if (hasErrors) then (emptySymbolTable,True)
+                                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypeClassId classIdentifier [])), scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = (Map.difference newFuncSymTabWithStatements symTab), params = params}) symTab
+                                                          in let areRetTypesOk = areReturnTypesOk (TypeClassId classIdentifier []) statements newSymTabFunc newFuncSymTabWithStatements classSymTab
+                                                             in if areRetTypesOk == True then (newSymTabFunc, False)
+                                                                else (emptySymbolTable, True)
                         else (emptySymbolTable, True)
                     else (emptySymbolTable, True)
     -- Como no regresa nada, no hay que buscar que regrese algo el bloque
 analyzeFunction (Function identifier (TypeFuncReturnNothing) params (Block statements)) scp isPublic symTab classSymTab =  
-                  if  (Map.notMember identifier symTab)
+                  if  not (Map.member identifier symTab)
                         then let (newFuncSymTab, hasErrors) = (analyzeFuncParams params emptySymbolTable classSymTab)
-                                    -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros o bien, que el usuario quiere regresar en una funcion nothing
+                                    -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros o bien, que el usuario quiere regresar algo adentro de una funcion cuyo valor de retorno es nothing
                                    in if (hasErrors) || (length (getReturnStatements statements)) > 0 || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)
-                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = Nothing, scope = scp, body = (Block statements), shouldReturn = False ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab
-                                              in (newSymTabFunc,False)
-                                -- in  -- if (checkCorrectReturnType (TypeClassId classIdentifier) block newSymTabFunc ) 
+                                        -- Metemos ahora a la symbol table de la funcion la symbol table que exista en los statements
+                                        else let (newFuncSymTabWithStatements,hasErrors) = analyzeStatements statements scp (Map.union newFuncSymTab symTab) classSymTab
+                                                    in if (hasErrors) then (emptySymbolTable,True)
+                                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = Nothing, scope = scp, body = (Block statements), shouldReturn = False ,isPublic = isPublic, symbolTable = (Map.difference newFuncSymTabWithStatements symTab), params = params}) symTab
+                                                            in if (hasErrors) then (emptySymbolTable,True)
+                                                                else (newSymTabFunc,False)
                         else (emptySymbolTable, True)
 
--- analyzeFuncBlock :: [Statement] -> SymbolTable -> ClassSymbolTable -> (SymbolTable,Bool)
--- analyzeFuncBlock [] _ _ = (emptySymbolTable, False)
--- analyzeFuncBlock ((VariableStatement variable) : sts) = 
 
 areReturnTypesOk :: Type -> [Statement] -> SymbolTable -> SymbolTable -> ClassSymbolTable -> Bool
-areReturnTypesOk funcRetType statements symTab ownFuncSymTab classTab = 
-    let returnList = getReturnStatements statements 
-    in if (length returnList) == 0 then False -- Se esperaba que regresara un tipo
-        else (checkCorrectReturnTypes funcRetType returnList symTab ownFuncSymTab classTab)
+areReturnTypesOk funcRetType [] symTab ownFuncSymTab classTab = False
+areReturnTypesOk funcRetType statements symTab ownFuncSymTab classTab =
+    -- Nos aseguramos que al final haya un return statement
+    case (last statements) of 
+        (ReturnStatement _) -> let returnList = getReturnStatements statements 
+                                in if (length returnList) == 0 then False -- Se esperaba que regresara un tipo
+                                else (checkCorrectReturnTypes funcRetType returnList symTab ownFuncSymTab classTab)
+        _ -> False
 
 -- Aqui sacamos todos los returns que pueda haber, inclusive si estan en statements anidados
 getReturnStatements :: [Statement]  -> [Return]
@@ -270,8 +299,8 @@ checkCorrectReturnTypes  dataType ((ReturnFunctionCall (FunctionCallObjMem (Obje
 checkCorrectReturnTypes  dataType ((ReturnExp (ExpressionLitVar literalOrVariable)) : rets) symTab ownFuncSymTab classTab=  
                                             (checkDataTypes dataType literalOrVariable (Map.union symTab ownFuncSymTab))
                                             && checkCorrectReturnTypes dataType rets symTab ownFuncSymTab classTab
-checkCorrectReturnTypes  dataType ((ReturnExp expression) : rets) symTab ownFuncSymTab classTab =  
-                                            True && checkCorrectReturnTypes dataType rets symTab ownFuncSymTab classTab-- MARK TODO Expressions
+checkCorrectReturnTypes  dataType ((ReturnExp (ExpressionVarArray identifier _)) : rets) symTab ownFuncSymTab classTab =  
+                                            (checkArrayAssignment dataType (VarIdentifier identifier) (Map.union symTab ownFuncSymTab)) && checkCorrectReturnTypes dataType rets symTab ownFuncSymTab classTab-- MARK TODO Expressions
 
 -- checkCorrectReturnType 
 
@@ -284,9 +313,31 @@ compareListOfTypesWithFuncCall (rpType : rps) (sp : sps) symTab =
                         (ParamsExpression (ExpressionLitVar literalOrVariable)) -> 
                                (checkDataTypes rpType literalOrVariable symTab)
                                && (compareListOfTypesWithFuncCall rps sps symTab)
+                        (ParamsExpression (ExpressionVarArray identifier ((ArrayAccessExpression innerExp) : []))) ->
+                                -- Checamos que sea un arreglo
+                                case (Map.lookup identifier symTab) of
+                                    Just (SymbolVar (TypePrimitive _ (("[",size,"]") : []) ) _ _) ->
+                                        checkArrayAssignment rpType (VarIdentifier identifier) symTab -- TODO MARK: Check expression
+                                        && compareListOfTypesWithFuncCall rps sps symTab
+                                    Just (SymbolVar (TypeClassId _ (("[",size,"]") : []) ) _ _) ->
+                                        checkArrayAssignment rpType (VarIdentifier identifier) symTab -- TODO MARK: Check expression
+                                        && compareListOfTypesWithFuncCall rps sps symTab
+                                    _ -> False
+                        (ParamsExpression (ExpressionVarArray identifier ((ArrayAccessExpression rowExp) : (ArrayAccessExpression colExp)  : []))) ->
+                                -- Checamos que sea una matriz ese identificador
+                                case (Map.lookup identifier symTab) of
+                                    Just (SymbolVar (TypePrimitive _ (("[",rows,"]") : ("[",cols,"]") : [])) _ _) ->
+                                        checkArrayAssignment rpType (VarIdentifier identifier) symTab -- TODO MARK: Check expression
+                                        && compareListOfTypesWithFuncCall rps sps symTab
+                                    Just (SymbolVar (TypeClassId _ (("[",rows,"]") : ("[",cols,"]") : [])) _ _) ->
+                                        checkArrayAssignment rpType (VarIdentifier identifier) symTab -- TODO MARK: Check expression
+                                        && compareListOfTypesWithFuncCall rps sps symTab
+                                    _ -> False
                         (ParamsExpression expression) -> 
+                               (compareListOfTypesWithFuncCall rps sps symTab) && 
                                True -- MARK TODO: Checar que la expresion sea del tipo
                                -- checkDataTypes(dataTypeConstructor,checkExpression(expression))
+
 -- Checamos aqui que la llamada al constructor sea correcta
 checkIfParamsAreCorrect :: [Params] -> ClassIdentifier -> SymbolTable -> ClassSymbolTable -> Bool
 checkIfParamsAreCorrect sendingParams classIdentifier symTab classTab = 
@@ -313,7 +364,235 @@ checkIfParamsAreCorrect sendingParams classIdentifier symTab classTab =
                                                                                -- checkDataTypes(dataTypeConstructor,checkExpression(expression))
                                         Nothing -> False 
 
-                 
+analyzeStatements :: [Statement] -> Scope -> SymbolTable -> ClassSymbolTable -> (SymbolTable,Bool)
+analyzeStatements [] _ _ _ = (emptySymbolTable,False)
+analyzeStatements (st : sts) scp symTab classTab = 
+                                let (newSymTab, hasErrors) = analyzeStatement st scp symTab classTab
+                                in if (hasErrors) then (emptySymbolTable, True)
+                                    else let (newSymTab2,hasErrors2) = analyzeStatements sts scp newSymTab classTab
+                                         in if (hasErrors2) then (emptySymbolTable,True)
+                                            else ((Map.union newSymTab newSymTab2), False)
+
+analyzeStatement :: Statement -> Scope -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
+analyzeStatement (AssignStatement assignment) scp symTab classTab = if (isAssignmentOk assignment scp symTab classTab)
+                                                                        then (symTab, False)
+                                                                        else (emptySymbolTable, True)
+analyzeStatement (DisplayStatement displays) scp symTab classTab = if analyzeDisplays displays 
+                                                                    then (symTab, False)
+                                                                    else (emptySymbolTable, True)
+                                                                where 
+                                                                    analyzeDisplays :: [Display] -> Bool
+                                                                    analyzeDisplays [] = True
+                                                                    analyzeDisplays (disp : disps) = 
+                                                                            analyzeDisplay disp scp symTab classTab
+                                                                            && analyzeDisplays disps
+
+analyzeStatement (ReadStatement (Reading identifier)) scp symTab classTab = 
+                                    case (Map.lookup identifier symTab) of
+                                        Just (SymbolVar (TypePrimitive _ []) varScp _) ->
+                                            if varScp >= scp then
+                                                (symTab,False)
+                                            else (emptySymbolTable, True)
+                                        _ -> (emptySymbolTable, True)
+analyzeStatement (DPMStatement assignment) scp symTab classTab = analyzeStatement (AssignStatement assignment) scp symTab classTab
+analyzeStatement (FunctionCallStatement functionCall) scp symTab classTab = if (analyzeFunctionCall functionCall scp symTab classTab) 
+                                                                                then (symTab, False)
+                                                                                else (emptySymbolTable, True) 
+analyzeStatement (VariableStatement var) scp symTab classTab = analyzeVariable var scp Nothing symTab classTab
+analyzeStatement (ConditionStatement (If expression (Block statements))) scp symTab classTab = analyzeStatements statements (scp - 1) symTab classTab -- TODO MARK: Check expression
+analyzeStatement (CycleStatement (CycleWhile (While expression (Block statements)))) scp symTab classTab = analyzeStatements statements (scp - 1) symTab classTab -- TODO MARK: Check expression
+analyzeStatement (CycleStatement (CycleFor (For lowerRange greaterRange (Block statements)))) scp symTab classTab = 
+                                                                            if (greaterRange > lowerRange) 
+                                                                                then analyzeStatements statements (scp - 1) symTab classTab
+                                                                                else (emptySymbolTable,True)
+analyzeStatement (ReturnStatement _) scp symTab classTab = (symTab,False)
+
+analyzeDisplay :: Display -> Scope -> SymbolTable -> ClassSymbolTable -> Bool
+analyzeDisplay (DisplayLiteralOrVariable (VarIdentifier identifier)) scp symTab classTab = 
+                            case (Map.lookup identifier symTab) of 
+                                Just (SymbolVar (TypePrimitive prim _) varScp _) ->
+                                    varScp >= scp
+                                Just (SymbolVar (TypeClassId classIdentifier _) varScp _) ->
+                                    varScp >= scp
+                                _ -> False
+-- Podemos desplegar primitivos sin problemas
+analyzeDisplay (DisplayLiteralOrVariable _) scp symTab classTab = True
+analyzeDisplay (DisplayObjMem (ObjectMember objectIdentifier attrIdentifier)) scp symTab classTab =
+                            case (Map.lookup objectIdentifier symTab) of
+                                    Just (SymbolVar (TypeClassId classIdentifier _) objScp _) -> 
+                                        if (objScp >= scp) 
+                                            then
+                                            case (Map.lookup classIdentifier classTab) of
+                                                Just symbolTableOfClass ->
+                                                        case (Map.lookup attrIdentifier symbolTableOfClass) of
+                                                            -- Si y solo si es publico el atributo, la accedemos
+                                                            Just (SymbolVar attrDataType attrScp (Just True)) ->
+                                                                True 
+                                                            _ -> False   
+                                                _ -> False
+                                        else False
+                                    _ -> False
+analyzeDisplay (DisplayFunctionCall functionCall) scp symTab classTab =
+                            analyzeFunctionCall functionCall scp symTab classTab
+analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression expressionIndex) : []) ) scp symTab classTab =
+                            case (Map.lookup identifier symTab) of
+                                    Just (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) varScp _ ) -> 
+                                        varScp >= scp
+                                    Just (SymbolVar (TypeClassId classIdentifier (("[",size,"]") : [])) varScp _ ) -> 
+                                        varScp >= scp  
+                                    _ -> False                            
+analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression rowExp) : (ArrayAccessExpression colExp)  : []) ) scp symTab classTab =
+                            case (Map.lookup identifier symTab) of
+                                    Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",columns,"]") : [])) varScp _ ) -> 
+                                        varScp >= scp
+                                    Just (SymbolVar (TypeClassId classIdentifier (("[",size,"]") : [])) varScp _ ) -> 
+                                        varScp >= scp 
+                                    _ -> False 
+analyzeFunctionCall :: FunctionCall -> Scope -> SymbolTable -> ClassSymbolTable -> Bool
+analyzeFunctionCall (FunctionCallVar funcIdentifier callParams) _ symTab classTab = 
+                            case (Map.lookup funcIdentifier symTab) of
+                                    Just (SymbolFunction params returnTypeFunc _ _ _ _ _) -> 
+                                                    let funcParamTypes = map (\p -> fst p) params
+                                                    in (compareListOfTypesWithFuncCall funcParamTypes callParams symTab)         
+                                    _ -> False
+analyzeFunctionCall (FunctionCallObjMem (ObjectMember objectIdentifier functionIdentifier) callParams) scp symTab classTab = 
+                           case (Map.lookup objectIdentifier symTab) of
+                                    Just (SymbolVar (TypeClassId classIdentifier _) objScp _ ) -> 
+                                        if objScp >= scp 
+                                            then case (Map.lookup classIdentifier classTab) of
+                                                Just symbolTableOfClass ->
+                                                        case (Map.lookup functionIdentifier symbolTableOfClass) of
+                                                            -- Si y solo si es publica la funcion, la accedemos
+                                                            Just (SymbolFunction params returnTypeFunc _ _ _ (Just True) _) ->
+                                                                let funcParamTypes = map (\p -> fst p) params
+                                                                in (compareListOfTypesWithFuncCall funcParamTypes callParams symTab)  
+                                                            _ -> False   
+                                                _ -> False
+                                        else False
+                                    _ -> False
+
+isAssignmentOk :: Assignment -> Scope -> SymbolTable -> ClassSymbolTable -> Bool
+isAssignmentOk (AssignmentExpression identifier expression) scp symTab classSymTab = case (Map.lookup identifier symTab) of
+                                                                                        Just (SymbolVar (TypePrimitive prim []) varScp _) -> 
+                                                                                                    -- TODO: Checar que el tipo del identifier sea el mismo que la expression
+                                                                                                    -- Si el scope de esta variable es mayor al scope de este assignment, si puedo accederlo
+                                                                                                    if (varScp >= scp) 
+                                                                                                        then True
+                                                                                                        else False
+                                                                                        Just (SymbolVar (TypeClassId classIdentifier []) varScp _) -> 
+                                                                                                    -- TODO: Checar que el tipo del identifier sea el mismo que la expression
+                                                                                                    -- Si el scope de esta variable es mayor al scope de este assignment, si puedo accederlo
+                                                                                                    if (varScp >= scp) 
+                                                                                                        then True
+                                                                                                        else False
+                                                                                        _ -> False
+isAssignmentOk (AssignmentFunctionCall identifier (FunctionCallObjMem (ObjectMember objectIdentifier functionIdentifier) callParams)) scp symTab classSymTab = 
+                                                                                    case (Map.lookup identifier symTab) of
+                                                                                        Just (SymbolVar dataType varScp _) ->
+                                                                                            if varScp >= scp
+                                                                                                then case (Map.lookup objectIdentifier symTab) of
+                                                                                                    Just (SymbolVar (TypeClassId classIdentifier _) objScp _ ) -> 
+                                                                                                        if objScp >= scp 
+                                                                                                            then case (Map.lookup classIdentifier classSymTab) of
+                                                                                                                Just symbolTableOfClass ->
+                                                                                                                        case (Map.lookup functionIdentifier symbolTableOfClass) of
+                                                                                                                            -- Si y solo si es publica la funcion, la accedemos
+                                                                                                                            Just (SymbolFunction params returnTypeFunc _ _ _ (Just True) _) ->
+                                                                                                                                let funcParamTypes = map (\p -> fst p) params
+                                                                                                                                in case returnTypeFunc of
+                                                                                                                                        Just retType -> dataType == retType
+                                                                                                                                                        && (compareListOfTypesWithFuncCall funcParamTypes callParams symTab)
+                                                                                                                                        _ -> False   
+                                                                                                                            _ -> False   
+                                                                                                                _ -> False
+                                                                                                        else False
+                                                                                                    _ -> False
+                                                                                            else False
+                                                                                        _ -> False
+isAssignmentOk  (AssignmentFunctionCall identifier (FunctionCallVar funcIdentifier callParams)) scp symTab classSymTab =  
+                      case (Map.lookup identifier symTab) of
+                        Just (SymbolVar dataType varScp _) ->
+                            if (varScp >= scp)
+                                then case (Map.lookup funcIdentifier symTab) of
+                                    Just (SymbolFunction params returnTypeFunc _ _ _ _ _) -> 
+                                                    let funcParamTypes = map (\p -> fst p) params
+                                                    in case returnTypeFunc of
+                                                            Just retType -> dataType == retType
+                                                                            && (compareListOfTypesWithFuncCall funcParamTypes callParams symTab)
+                                                            _ -> False           
+                                    _ -> False
+                            else False
+isAssignmentOk  (AssignmentObjectMember identifier (ObjectMember objectIdentifier attrIdentifier)) scp symTab classSymTab =  
+                      case (Map.lookup identifier symTab) of
+                        Just (SymbolVar dataType varScp _) ->
+                                    if (varScp >= scp)
+                                        then 
+                                        case (Map.lookup objectIdentifier symTab) of
+                                            Just (SymbolVar (TypeClassId classIdentifier _) objScp _) -> 
+                                                if (objScp >= scp) 
+                                                    then
+                                                    case (Map.lookup classIdentifier classSymTab) of
+                                                        Just symbolTableOfClass ->
+                                                                case (Map.lookup attrIdentifier symbolTableOfClass) of
+                                                                    -- Si y solo si es publico el atributo, la accedemos
+                                                                    Just (SymbolVar attrDataType attrScp (Just True)) ->
+                                                                        dataType == attrDataType  
+                                                                    _ -> False   
+                                                        _ -> False
+                                                else False
+                                            _ -> False
+                                    else False
+                        _ -> False
+isAssignmentOk  (AssignmentObjectMemberExpression (ObjectMember objectIdentifier attrIdentifier) expression) scp symTab classSymTab =  
+                      case (Map.lookup objectIdentifier symTab) of
+                        Just (SymbolVar (TypeClassId classIdentifier _) objScp _) -> 
+                            if (objScp >= scp) 
+                                then
+                                case (Map.lookup classIdentifier classSymTab) of
+                                    Just symbolTableOfClass ->
+                                            case (Map.lookup attrIdentifier symbolTableOfClass) of
+                                                -- Si y solo si es publico el atributo, la accedemos
+                                                Just (SymbolVar attrDataType attrScp (Just True)) ->
+                                                    -- TODO: Checar que el tipo de dato de la expresion sea el mismo que data type del atributo
+                                                    --attrDataType  
+                                                    True
+                                                _ -> False   
+                                    _ -> False
+                            else False
+                        _ -> False
+isAssignmentOk  (AssignmentArrayExpression identifier ((ArrayAccessExpression innerExp) : []) expression) scp symTab classSymTab =  
+                     case (Map.lookup identifier symTab) of
+                        Just (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) varScp _) -> 
+                            if (varScp >= scp) 
+                                then
+                                    True
+                                -- TODO: Checar que expresion sea del mismo data type que array assignment
+                            else False
+                        Just (SymbolVar (TypeClassId classIdentifier (("[",size,"]") : [])) varScp _) -> 
+                            if (varScp >= scp) 
+                                then
+                                    True
+                                -- TODO: Checar que expresion sea del mismo data type que array assignment
+                            else False
+                        _ -> False
+isAssignmentOk  (AssignmentArrayExpression identifier ((ArrayAccessExpression innerExpRow) : (ArrayAccessExpression innerExpCol)  : []) expression) scp symTab classSymTab = 
+                     case (Map.lookup identifier symTab) of
+                        Just (SymbolVar (TypePrimitive prim (("[",sizeRows,"]") : ("[",sizeCols,"]") : [])) varScp _) -> 
+                            if (varScp >= scp) 
+                                then
+                                    True
+                                -- TODO: Checar que expresion sea del mismo data type que array assignment
+                            else False
+                        Just (SymbolVar (TypeClassId classIdentifier (("[",sizeRows,"]") : ("[",sizeCols,"]") : [])) varScp _) -> 
+                            if (varScp >= scp) 
+                                then
+                                    True
+                                -- TODO: Checar que expresion sea del mismo data type que array assignment
+                            else False
+                        _ -> False 
+
+isAssignmentOk _ _ _ _ = False
+
 insertIdentifiers :: [Identifier] -> Symbol -> SymbolTable -> ClassSymbolTable -> (SymbolTable,Bool)
 insertIdentifiers [] _ _ _ = (emptySymbolTable, False)
 insertIdentifiers (identifier : ids) symbol symTab classTab = let (newSymTab1, hasErrors1) = insertInSymbolTable identifier symbol symTab 
@@ -389,5 +668,6 @@ checkDataTypes (TypePrimitive (PrimitiveDouble) _) (DecimalLiteral _) _ = True
 checkDataTypes (TypePrimitive (PrimitiveMoney) _) (DecimalLiteral _) _ = True
 checkDataTypes (TypePrimitive (PrimitiveString) _) (StringLiteral _) _ = True
 checkDataTypes (TypePrimitive (PrimitiveInteger) _) (IntegerLiteral _) _ = True
+-- TODO MARK: Meter validacion type bool con bool literal
 checkDataTypes _ _ _ = False -- Todo lo demas, falso
 
