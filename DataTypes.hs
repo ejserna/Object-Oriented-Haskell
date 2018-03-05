@@ -92,6 +92,7 @@ data LiteralOrVariable
     | IntegerLiteral Integer
     | DecimalLiteral Decimal
     | StringLiteral String
+    | BoolLiteral Bool
   deriving (Show, Eq)
 
 data Block 
@@ -169,8 +170,6 @@ data Expression
     | ExpressionVarArray Identifier [ArrayAccess]
     | ExpressionNot Expression 
     | ExpressionLitVar LiteralOrVariable
-    | ExpressionTrue
-    | ExpressionFalse 
     | ExpressionNeg Expression 
     | ExpressionPars Expression 
   deriving(Show, Eq)
