@@ -1,0 +1,19 @@
+fibo => Int :: Int n{
+    Int i,k, result;
+    if (n == 0){
+        return 0;
+    }
+
+    if (n == 1){
+        return 1;
+    }
+    i = fibo(n - 1);
+    k = fibo(n - 2);
+    result = i + k;
+    return result;
+}
+Int i,j,k,l;
+
+main{
+    i = fibo(5);
+}

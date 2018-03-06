@@ -14,6 +14,9 @@ pruebaClases:
 pruebaVariables:
 	cat Tests/pruebaVariables.txt | ./ObjectiveOrientedHaskell
 
+pruebaFibo:
+	cat Tests/fibonacciRecursivo.txt | ./ObjectiveOrientedHaskell
+
 prueba: 
 	cat Tests/$(ARCH) | ./ObjectiveOrientedHaskell
 

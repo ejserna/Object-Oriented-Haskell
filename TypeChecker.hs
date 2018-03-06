@@ -28,7 +28,7 @@ startSemanticAnalysis (Program classList functionList varsList (Block statements
             if (semanticErrorFuncs || semanticErrorVars || semanticErrorBlock || (length returnListInMain) > 0) 
                 then putStrLn $ show "[2] ERROR: Semantic Error in Variable Checking."
                 else do putStrLn $ ppShow $ "[2]: Semantic Variable Analysis Passed."
-                        putStrLn $ ppShow $ symbolTableStatements
+                        putStrLn $ ppShow $  symbolTableStatements
             
 
 -- Analyze classes regresa una tabla de simbolos de clase y un booleano. Si es true, significa que hubo errores, si es false, no hubo errores
@@ -103,7 +103,7 @@ analyzeClass (ClassNormal classIdentifier classBlock) varSymTab classSymTab = if
                                                                         in (newClassSymTable, False)
 
 analyzeFunctions :: [Function] -> Scope -> Maybe Bool -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
-analyzeFunctions [] _ _ _ _ = (emptySymbolTable, False)
+analyzeFunctions [] _ _ symTab _ = (symTab, False)
 analyzeFunctions (func : funcs) scp isFuncPublic symTab classTab = let (newSymTab1, hasErrors1) = analyzeFunction func scp isFuncPublic symTab classTab
                                                in if hasErrors1 then (emptySymbolTable, True)
                                                else let (newSymTab2, hasErrors2) = analyzeFunctions funcs scp isFuncPublic newSymTab1 classTab
@@ -111,7 +111,7 @@ analyzeFunctions (func : funcs) scp isFuncPublic symTab classTab = let (newSymTa
                                                        else ((Map.union newSymTab1 newSymTab2), False)
 
 analyzeVariables :: [Variable] -> Scope -> Maybe Bool -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
-analyzeVariables [] _ _ _ _ = (emptySymbolTable, False)
+analyzeVariables [] _ _ symTab _ = (symTab, False)
 analyzeVariables (var : vars) scp isVarPublic symTab classTab = let (newSymTab1, hasErrors1) = analyzeVariable var scp isVarPublic symTab classTab
                                                in if hasErrors1 then (emptySymbolTable, True)
                                                else let (newSymTab2, hasErrors2) = analyzeVariables vars scp isVarPublic newSymTab1 classTab
@@ -603,7 +603,7 @@ isAssignmentOk  (AssignmentArrayExpression identifier ((ArrayAccessExpression in
 isAssignmentOk _ _ _ _ = False
 
 insertIdentifiers :: [Identifier] -> Symbol -> SymbolTable -> ClassSymbolTable -> (SymbolTable,Bool)
-insertIdentifiers [] _ _ _ = (emptySymbolTable, False)
+insertIdentifiers [] _ symTab _ = (symTab, False)
 insertIdentifiers (identifier : ids) symbol symTab classTab = let (newSymTab1, hasErrors1) = insertInSymbolTable identifier symbol symTab 
                                             in if hasErrors1 then (symTab, True)
                                                else let (newSymTab2, hasErrors2) = insertIdentifiers ids symbol newSymTab1 classTab
