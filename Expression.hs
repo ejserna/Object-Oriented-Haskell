@@ -122,7 +122,9 @@ checkDataTypesNEG (Just PrimitiveBool) symTab = Nothing
 checkDataTypesNEG (Just PrimitiveString) symTab = Nothing
 checkDataTypesNEG (Just prim) symTab = (Just prim)
 
-checkDataTypesMult :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive 
+checkDataTypesMult :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive
+checkDataTypesMult (Just PrimitiveBool) _ _ = Nothing
+checkDataTypesMult _ (Just PrimitiveBool) _ = Nothing 
 checkDataTypesMult (Just PrimitiveInt) (Just PrimitiveInt) _  = (Just PrimitiveInt)
 checkDataTypesMult (Just PrimitiveInteger) (Just PrimitiveInteger) _ = (Just PrimitiveInteger)
 checkDataTypesMult (Just PrimitiveInt) (Just PrimitiveInteger) _ = (Just PrimitiveInteger)
