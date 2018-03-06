@@ -16,6 +16,7 @@ class Perro{
             chofo = kokoa + 1 + 2^(1 * 5);
             i++;
             display(i,chofo);
+            return i;
           }
           return k;
     }
@@ -38,23 +39,24 @@ func1 => Int :: Int kooa -> Money ko{
   }
   return func1(kokoa,1.2);
 }
-
 func => Humano :: Int kooa -> Money ko -> Humano j{
   Int kokoa = 1;
-  Humano ho;
   kokoa++;
+
   if (True){
+    Humano ho;
     kokoa++;
     Int chef;
     kooa++;
+    chef++;
+    if (True){
+      Humano jujuju;
+      return jujuju;
+    }
     return ho;
   }
   return j;
 }
-
-Int i;
-Money k = 2.33333333333333333333333333333;
-Int o = i;
 
 Money [20][20] m;
 Money [20][20] u = m;
@@ -77,7 +79,7 @@ Humano [10][10] hohos = [[h,hu],
                          [h,hu,h,h,h,h,h,h,h,h]];
 List of Int lista = [1..2];
 List of Humano lista2 = [h,hu];
-Humano huhuhuhuhu = Humano();
+Humano huhuhuhuhu;
 
 main{
    Integer iJuan = 1;
@@ -90,8 +92,8 @@ main{
    opppppp = puppy.i;
    arreglo[1] = 1;
    arreglo[2 + 10 + i + iJuan] = arreglo[2 + 10 + arreglo[1]];
-   h = func (1,m[11][11],hoho[10]);
-   if (1 < 2 && True){
+   h = func (1 + 1,m[11][11] + 1.1,hoho[10]);
+   if (1 < 2 && (True) == (( (1 + 2 * 5) != 1 ) == (1 == 1) ) ){
         Int iPerro = 2;
         iPerro++;
         iKoko++;
@@ -102,8 +104,7 @@ main{
                 String momoPapa = "papa";
                 Int iJk;
                 iJk = puppy.k;
-                display(arreglo[1],1,2,3,momo,iJk,puppy.k, u[10][10], func (1,m[11][11],hoho[10]), puppy.func(1,1.1));
-                
+                display(arreglo[1],1,2,3,momo,iJk,puppy.k, u[10][10], puppy.func(1,1.1));
             }
         }
         s = "perro";

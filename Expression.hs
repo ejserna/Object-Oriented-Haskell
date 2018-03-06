@@ -1,4 +1,4 @@
-module ExpressionAnalysis where 
+module Expression where 
 import Data.Decimal
 import DataTypes
 import Text.Show.Pretty
@@ -8,104 +8,110 @@ import qualified Data.HashMap.Strict as Map
 import Data.List (intercalate, maximumBy)
 import Data.Ord (comparing)
 
-expressionProcess :: Expression -> SymbolTable -> Maybe Primitive  
-expressionProcess (ExpressionMult exp1 exp2) symTab = expressionCheckOp exp1 exp2 symTab
-expressionProcess (ExpressionDiv exp1 exp2) symTab = expressionCheckOp exp1 exp2 symTab
-expressionProcess (ExpressionPow exp1 exp2) symTab = expressionCheckOp exp1 exp2 symTab
-expressionProcess (ExpressionPars exp) symTab = expressionProcess exp symTab
-expressionProcess (ExpressionGreater exp1 exp2) symTab = expressionCheckRel2 exp1 exp2 symTab
-expressionProcess (ExpressionLower exp1 exp2) symTab = expressionCheckRel2 exp1 exp2 symTab
-expressionProcess (ExpressionGreaterEq exp1 exp2) symTab = expressionCheckRel2 exp1 exp2 symTab
-expressionProcess (ExpressionLowerEq exp1 exp2) symTab = expressionCheckRel2 exp1 exp2 symTab
-expressionProcess (ExpressionEqEq exp1 exp2) symTab = expressionCheckRel1 exp1 exp2 symTab
-expressionProcess (ExpressionNotEq exp1 exp2) symTab = expressionCheckRel1 exp1 exp2 symTab
-expressionProcess (ExpressionAnd exp1 exp2) symTab = expressionCheckRel3 exp1 exp2 symTab
-expressionProcess (ExpressionOr exp1 exp2) symTab = expressionCheckRel3 exp1 exp2 symTab
-expressionProcess (ExpressionPlus exp1 exp2) symTab = expressionCheckOp exp1 exp2 symTab
-expressionProcess (ExpressionMinus exp1 exp2) symTab = expressionCheckOp exp1 exp2 symTab
-expressionProcess (ExpressionMod exp1 exp2) symTab = expressionCheckMOD exp1 exp2 symTab
-expressionProcess (ExpressionNot exp) symTab = expressionCheckNOT exp symTab
-expressionProcess (ExpressionLitVar litVar) symTab = checkDataTypeOfLitVar litVar symTab
+expressionProcess :: Scope -> Expression -> SymbolTable -> Maybe Primitive  
+expressionProcess scp (ExpressionMult exp1 exp2) symTab = expressionCheckOp scp exp1 exp2 symTab
+expressionProcess scp (ExpressionDiv exp1 exp2) symTab = expressionCheckOp scp exp1 exp2 symTab
+expressionProcess scp (ExpressionPow exp1 exp2) symTab = expressionCheckOp scp exp1 exp2 symTab
+expressionProcess scp (ExpressionPars exp) symTab = expressionProcess scp exp symTab
+expressionProcess scp (ExpressionGreater exp1 exp2) symTab = expressionCheckRel2 scp exp1 exp2 symTab
+expressionProcess scp (ExpressionLower exp1 exp2) symTab = expressionCheckRel2 scp exp1 exp2 symTab
+expressionProcess scp (ExpressionGreaterEq exp1 exp2) symTab = expressionCheckRel2 scp exp1 exp2 symTab
+expressionProcess scp (ExpressionLowerEq exp1 exp2) symTab = expressionCheckRel2 scp exp1 exp2 symTab
+expressionProcess scp (ExpressionEqEq exp1 exp2) symTab = expressionCheckRel1 scp exp1 exp2 symTab
+expressionProcess scp (ExpressionNotEq exp1 exp2) symTab = expressionCheckRel1 scp exp1 exp2 symTab
+expressionProcess scp (ExpressionAnd exp1 exp2) symTab = expressionCheckRel3 scp exp1 exp2 symTab
+expressionProcess scp (ExpressionOr exp1 exp2) symTab = expressionCheckRel3 scp exp1 exp2 symTab
+expressionProcess scp (ExpressionPlus exp1 exp2) symTab = expressionCheckOp scp exp1 exp2 symTab
+expressionProcess scp (ExpressionMinus exp1 exp2) symTab = expressionCheckOp scp exp1 exp2 symTab
+expressionProcess scp (ExpressionMod exp1 exp2) symTab = expressionCheckMOD scp exp1 exp2 symTab
+expressionProcess scp (ExpressionNot exp) symTab = expressionCheckNOT scp exp symTab
+expressionProcess scp (ExpressionLitVar litVar) symTab = checkDataTypeOfLitVar scp litVar symTab
 
-expressionProcess (ExpressionVarArray identifier ((ArrayAccessExpression expression) : [])) symTab = case (expressionProcess expression symTab) of 
-                                                                                                        Just PrimitiveInt -> checkArrayID identifier symTab 1
-                                                                                                        Just PrimitiveInteger -> checkArrayID identifier symTab 1
+expressionProcess scp (ExpressionVarArray identifier ((ArrayAccessExpression expression) : [])) symTab = case (expressionProcess scp expression symTab) of 
+                                                                                                        Just PrimitiveInt -> checkArrayID scp identifier symTab 1
+                                                                                                        Just PrimitiveInteger -> checkArrayID scp identifier symTab 1
                                                                                                         _ -> Nothing
-expressionProcess (ExpressionVarArray identifier ((ArrayAccessExpression expression1) : (ArrayAccessExpression expression2) :[])) symTab = 
-                                                  case (expressionProcess expression1 symTab) of 
+expressionProcess scp (ExpressionVarArray identifier ((ArrayAccessExpression expression1) : (ArrayAccessExpression expression2) :[])) symTab = 
+                                                  case (expressionProcess scp expression1 symTab) of 
                                                      Just PrimitiveInt -> 
-                                                            case (expressionProcess expression2 symTab) of
-                                                              Just PrimitiveInt -> checkArrayID identifier symTab 2
+                                                            case (expressionProcess scp expression2 symTab) of
+                                                              Just PrimitiveInt -> checkArrayID scp identifier symTab 2
                                                               _ -> Nothing  
                                                      Just PrimitiveInteger -> 
-                                                            case (expressionProcess expression2 symTab) of
-                                                              Just PrimitiveInteger -> checkArrayID identifier symTab 2
+                                                            case (expressionProcess scp expression2 symTab) of
+                                                              Just PrimitiveInteger -> checkArrayID scp identifier symTab 2
                                                               _ -> Nothing
                                                      _ -> Nothing
-expressionProcess (ExpressionNeg exp) symTab = expressionCheckNEG exp symTab
+expressionProcess scp (ExpressionNeg exp) symTab = expressionCheckNEG scp exp symTab
 
 
-checkArrayID :: Identifier -> SymbolTable -> Int -> Maybe Primitive
-checkArrayID identifier symTab dimension= case (Map.lookup identifier symTab) of
-                             Just (SymbolVar dataType _ _) -> 
-                               case dataType of 
-                                 TypePrimitive prim arrayDeclaration | (length arrayDeclaration) == dimension -> Just prim
-                                                   | otherwise -> Nothing
-                                 _ -> Nothing
+checkArrayID :: Scope -> Identifier -> SymbolTable -> Int -> Maybe Primitive
+checkArrayID scp identifier symTab dimension= case (Map.lookup identifier symTab) of
+                             Just (SymbolVar dataType varScp _) 
+                               | varScp >= scp -> 
+                                   case dataType of 
+                                     TypePrimitive prim arrayDeclaration | (length arrayDeclaration) == dimension -> Just prim
+                                                       | otherwise -> Nothing
+                                     _ -> Nothing
+                               | otherwise -> Nothing
                              _ -> Nothing
 
 
 
-checkDataTypeOfLitVar :: LiteralOrVariable -> SymbolTable -> Maybe Primitive
-checkDataTypeOfLitVar (VarIdentifier identifier) symTab = case (Map.lookup identifier symTab) of
-                                    Just (SymbolVar (TypePrimitive prim _) _ _) -> (Just prim)
-checkDataTypeOfLitVar (IntegerLiteral int) symTab = (Just PrimitiveInt)
-checkDataTypeOfLitVar (DecimalLiteral dec) symTab = (Just PrimitiveDouble)
-checkDataTypeOfLitVar (StringLiteral int) symTab = (Just PrimitiveString)
-checkDataTypeOfLitVar (BoolLiteral _) symTab = (Just PrimitiveBool)
+checkDataTypeOfLitVar :: Scope -> LiteralOrVariable -> SymbolTable -> Maybe Primitive
+checkDataTypeOfLitVar scp (VarIdentifier identifier) symTab = 
+                                  case (Map.lookup identifier symTab) of
+                                    Just (SymbolVar (TypePrimitive prim []) varScp _)
+                                      | varScp >= scp -> (Just prim)
+                                      | otherwise -> Nothing
+                                    _ -> Nothing
+checkDataTypeOfLitVar scp (IntegerLiteral int) symTab = (Just PrimitiveInt)
+checkDataTypeOfLitVar scp (DecimalLiteral dec) symTab = (Just PrimitiveDouble)
+checkDataTypeOfLitVar scp (StringLiteral int) symTab = (Just PrimitiveString)
+checkDataTypeOfLitVar scp (BoolLiteral _) symTab = (Just PrimitiveBool)
 
 
 
 
 
 
-expressionCheckOp :: Expression -> Expression -> SymbolTable -> Maybe Primitive
-expressionCheckOp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesMult (checkDataTypeOfLitVar litVar1 symTab) (checkDataTypeOfLitVar litVar2 symTab) symTab
-expressionCheckOp (ExpressionLitVar litVar1) exp symTab = checkDataTypesMult (checkDataTypeOfLitVar litVar1 symTab) (expressionProcess exp symTab) symTab
-expressionCheckOp exp (ExpressionLitVar litVar1) symTab = expressionCheckOp (ExpressionLitVar litVar1) exp symTab
-expressionCheckOp exp1 exp2 symTab = checkDataTypesMult (expressionProcess exp1 symTab) (expressionProcess exp2 symTab) symTab
+expressionCheckOp :: Scope -> Expression -> Expression -> SymbolTable -> Maybe Primitive
+expressionCheckOp scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesMult (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
+expressionCheckOp scp (ExpressionLitVar litVar1) exp symTab = checkDataTypesMult (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab) symTab
+expressionCheckOp scp exp (ExpressionLitVar litVar1) symTab = expressionCheckOp scp (ExpressionLitVar litVar1) exp symTab
+expressionCheckOp scp exp1 exp2 symTab = checkDataTypesMult (expressionProcess scp exp1 symTab) (expressionProcess scp exp2 symTab) symTab
 
-expressionCheckMOD :: Expression -> Expression -> SymbolTable -> Maybe Primitive
-expressionCheckMOD (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesMOD (checkDataTypeOfLitVar litVar1 symTab) (checkDataTypeOfLitVar litVar2 symTab) symTab
-expressionCheckMOD (ExpressionLitVar litVar1) exp symTab = checkDataTypesMOD (checkDataTypeOfLitVar litVar1 symTab) (expressionProcess exp symTab) symTab
-expressionCheckMOD exp (ExpressionLitVar litVar1) symTab = expressionCheckMOD (ExpressionLitVar litVar1) exp symTab
-expressionCheckMOD exp1 exp2 symTab = checkDataTypesMOD (expressionProcess exp1 symTab) (expressionProcess exp2 symTab) symTab
+expressionCheckMOD :: Scope -> Expression -> Expression -> SymbolTable -> Maybe Primitive
+expressionCheckMOD scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesMOD  (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
+expressionCheckMOD scp (ExpressionLitVar litVar1) exp symTab = checkDataTypesMOD (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab) symTab
+expressionCheckMOD scp exp (ExpressionLitVar litVar1) symTab = expressionCheckMOD scp (ExpressionLitVar litVar1) exp symTab
+expressionCheckMOD scp exp1 exp2 symTab = checkDataTypesMOD (expressionProcess scp exp1 symTab) (expressionProcess scp exp2 symTab) symTab
 
-expressionCheckNOT :: Expression -> SymbolTable -> Maybe Primitive
-expressionCheckNOT (ExpressionLitVar litVar1) symTab = checkDataTypesNOT (checkDataTypeOfLitVar litVar1 symTab) symTab
-expressionCheckNOT exp symTab = checkDataTypesNOT (expressionProcess exp symTab) symTab
+expressionCheckNOT :: Scope -> Expression -> SymbolTable -> Maybe Primitive
+expressionCheckNOT scp (ExpressionLitVar litVar1) symTab = checkDataTypesNOT (checkDataTypeOfLitVar scp litVar1 symTab) symTab
+expressionCheckNOT scp exp symTab = checkDataTypesNOT  (expressionProcess scp exp symTab) symTab
 
-expressionCheckNEG :: Expression -> SymbolTable -> Maybe Primitive
-expressionCheckNEG (ExpressionLitVar litVar1) symTab = checkDataTypesNEG (checkDataTypeOfLitVar litVar1 symTab) symTab
-expressionCheckNEG exp symTab = checkDataTypesNEG (expressionProcess exp symTab) symTab
+expressionCheckNEG :: Scope -> Expression -> SymbolTable -> Maybe Primitive
+expressionCheckNEG scp (ExpressionLitVar litVar1) symTab = checkDataTypesNEG (checkDataTypeOfLitVar scp litVar1 symTab) symTab
+expressionCheckNEG scp exp symTab = checkDataTypesNEG (expressionProcess scp exp symTab) symTab
 
-expressionCheckRel1 :: Expression -> Expression -> SymbolTable -> Maybe Primitive
-expressionCheckRel1 (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesRel1 (checkDataTypeOfLitVar litVar1 symTab) (checkDataTypeOfLitVar litVar2 symTab) symTab
-expressionCheckRel1 (ExpressionLitVar litVar1) exp symTab = checkDataTypesRel1 (checkDataTypeOfLitVar litVar1 symTab) (expressionProcess exp symTab) symTab
-expressionCheckRel1 exp (ExpressionLitVar litVar1) symTab = expressionCheckRel1 (ExpressionLitVar litVar1) exp symTab
-expressionCheckRel1 exp1 exp2 symTab = checkDataTypesRel1 (expressionProcess exp1 symTab) (expressionProcess exp2 symTab) symTab
+expressionCheckRel1 :: Scope -> Expression -> Expression -> SymbolTable -> Maybe Primitive
+expressionCheckRel1 scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesRel1 (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
+expressionCheckRel1 scp (ExpressionLitVar litVar1) exp symTab = checkDataTypesRel1 (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab) symTab
+expressionCheckRel1 scp exp (ExpressionLitVar litVar1) symTab = expressionCheckRel1 scp (ExpressionLitVar litVar1) exp symTab
+expressionCheckRel1 scp exp1 exp2 symTab = checkDataTypesRel1 (expressionProcess scp exp1 symTab) (expressionProcess scp exp2 symTab) symTab
 
-expressionCheckRel2 :: Expression -> Expression -> SymbolTable -> Maybe Primitive
-expressionCheckRel2 (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesRel2 (checkDataTypeOfLitVar litVar1 symTab) (checkDataTypeOfLitVar litVar2 symTab) symTab
-expressionCheckRel2 (ExpressionLitVar litVar1) exp symTab = checkDataTypesRel2 (checkDataTypeOfLitVar litVar1 symTab) (expressionProcess exp symTab) symTab
-expressionCheckRel2 exp (ExpressionLitVar litVar1) symTab = expressionCheckRel2 (ExpressionLitVar litVar1) exp symTab
-expressionCheckRel2 exp1 exp2 symTab = checkDataTypesRel2 (expressionProcess exp1 symTab) (expressionProcess exp2 symTab) symTab
+expressionCheckRel2 :: Scope -> Expression -> Expression -> SymbolTable -> Maybe Primitive
+expressionCheckRel2 scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesRel2 (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
+expressionCheckRel2 scp (ExpressionLitVar litVar1) exp symTab = checkDataTypesRel2 (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab) symTab
+expressionCheckRel2 scp exp (ExpressionLitVar litVar1) symTab = expressionCheckRel2 scp (ExpressionLitVar litVar1) exp symTab
+expressionCheckRel2 scp exp1 exp2 symTab = checkDataTypesRel2 (expressionProcess scp exp1 symTab) (expressionProcess scp exp2 symTab) symTab
 
-expressionCheckRel3 :: Expression -> Expression -> SymbolTable -> Maybe Primitive
-expressionCheckRel3 (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesRel3 (checkDataTypeOfLitVar litVar1 symTab) (checkDataTypeOfLitVar litVar2 symTab) symTab
-expressionCheckRel3 (ExpressionLitVar litVar1) exp symTab = checkDataTypesRel3 (checkDataTypeOfLitVar litVar1 symTab) (expressionProcess exp symTab) symTab
-expressionCheckRel3 exp (ExpressionLitVar litVar1) symTab = expressionCheckRel3 (ExpressionLitVar litVar1) exp symTab
-expressionCheckRel3 exp1 exp2 symTab = checkDataTypesRel3 (expressionProcess exp1 symTab) (expressionProcess exp2 symTab) symTab
+expressionCheckRel3 :: Scope -> Expression -> Expression -> SymbolTable -> Maybe Primitive
+expressionCheckRel3 scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesRel3 (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
+expressionCheckRel3 scp (ExpressionLitVar litVar1) exp symTab = checkDataTypesRel3 (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab) symTab
+expressionCheckRel3 scp exp (ExpressionLitVar litVar1) symTab = expressionCheckRel3 scp (ExpressionLitVar litVar1) exp symTab
+expressionCheckRel3 scp exp1 exp2 symTab = checkDataTypesRel3 (expressionProcess scp exp1 symTab) (expressionProcess scp exp2 symTab) symTab
 
 checkDataTypesNOT :: Maybe Primitive -> SymbolTable -> Maybe Primitive
 checkDataTypesNOT (Just PrimitiveBool) symTab = (Just PrimitiveBool)
@@ -136,6 +142,10 @@ checkDataTypesRel1 (Just PrimitiveBool) _ _  = Nothing
 checkDataTypesRel1 _ (Just PrimitiveBool) _ = Nothing
 checkDataTypesRel1 (Just PrimitiveString) _ _ = Nothing
 checkDataTypesRel1 _ (Just PrimitiveString) _ = Nothing
+checkDataTypesRel1 (Just PrimitiveInt) (Just PrimitiveDouble) _ = Nothing
+checkDataTypesRel1 (Just PrimitiveDouble) (Just PrimitiveInt) _ = Nothing
+checkDataTypesRel1 (Just PrimitiveInteger) (Just PrimitiveDouble) _ = Nothing
+checkDataTypesRel1 (Just PrimitiveDouble) (Just PrimitiveInteger) _ = Nothing
 checkDataTypesRel1 _ _ _ = (Just PrimitiveBool)
 
 checkDataTypesRel2 :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive 
