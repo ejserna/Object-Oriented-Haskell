@@ -188,6 +188,7 @@ data If
 data Cycle
     = CycleWhile While
     | CycleFor For
+    | CycleForVar [Statement]
   deriving(Show,Eq)
 
 data While

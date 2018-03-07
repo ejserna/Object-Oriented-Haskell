@@ -82,7 +82,7 @@ List of Humano lista2 = [h,hu];
 Humano huhuhuhuhu;
 
 main{
-   Integer iJuan = 1;
+   Int iJuan = 1;
    Int iKoko = 2;
    Int [10] arreglo = [1,2,3,4,5,6,7,8,9,10];
    Perro puppy = Perro(1,1);
@@ -91,8 +91,11 @@ main{
    Integer opppppp = 1;
    opppppp = puppy.i;
    arreglo[1] = 1;
-   arreglo[2 + 10 + i + iJuan] = arreglo[2 + 10 + arreglo[1]];
+   m[2][arreglo[2] * 1] = 1.5;
+   hohos[1][3] = hohos[1][2];
+   arreglo[2 + 10 + iJuan] = arreglo[2 + 10 + arreglo[1]];
    h = func (1 + 1,m[11][11] + 1.1,hoho[10]);
+
    if (1 < 2 && (True) == (( (1 + 2 * 5) != 1 ) == (1 == 1) ) ){
         Int iPerro = 2;
         iPerro++;
@@ -104,9 +107,22 @@ main{
                 String momoPapa = "papa";
                 Int iJk;
                 iJk = puppy.k;
-                display(arreglo[1],1,2,3,momo,iJk,puppy.k, u[10][10], puppy.func(1,1.1));
+                display(arreglo[arreglo[arreglo[arreglo[1]]]],1,2,3,momo,iJk,puppy.k, u[10][10], puppy.func(1,1.1));
             }
         }
         s = "perro";
+   }
+
+   while((1 * 5) == arreglo[1]){
+
+   }
+   Int z = 0;
+   for (0..9){
+       z++;
+       
+   }
+
+   for i in (4..10){
+      display("sup");
    }
 }

@@ -71,10 +71,6 @@ checkDataTypeOfLitVar scp (StringLiteral int) symTab = (Just PrimitiveString)
 checkDataTypeOfLitVar scp (BoolLiteral _) symTab = (Just PrimitiveBool)
 
 
-
-
-
-
 expressionCheckOp :: Scope -> Expression -> Expression -> SymbolTable -> Maybe Primitive
 expressionCheckOp scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesMult (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
 expressionCheckOp scp (ExpressionLitVar litVar1) exp symTab = checkDataTypesMult (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab) symTab

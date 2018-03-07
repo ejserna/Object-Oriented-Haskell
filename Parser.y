@@ -66,6 +66,7 @@ import TypeChecker
   "}"                 { TRightBrace _ }
   "("                 { TLeftParen _ }
   ")"                 { TRightParen _ }
+  "in"                { TIn _ }
   "Int"               { TInt _ }
   "Integer"           { TInteger _ }
   "Double"            { TDouble _ }
@@ -318,12 +319,24 @@ CaseStatement :
 Cycle :
     While {CycleWhile $1}
   | For   {CycleFor $1}
+  | ForVar {CycleForVar $1}
 
 While :
     "while" "(" Expression ")" Block {While $3 $5}
 
 For :
     "for" "(" integer_literal ".." integer_literal ")" Block {For $3 $5 $7}
+
+ForVar : 
+    "for" var_identifier "in" "(" integer_literal ".." integer_literal ")" Block { 
+    let (Block statements) = $9 in
+    (VariableStatement (VariableAssignmentLiteralOrVariable
+            (TypePrimitive PrimitiveInt []) $2 (IntegerLiteral $5))) : (CycleStatement (CycleFor (For $5 $7 
+             (Block ( DPMStatement(AssignmentExpression $2 (ExpressionPlus (ExpressionLitVar (VarIdentifier $2)) (ExpressionLitVar (IntegerLiteral 1))))
+ : statements) ) ) )) : []
+
+          }
+
 
 DoublePlusMinus :
         var_identifier "++" {AssignmentExpression $1 (ExpressionPlus (ExpressionLitVar (VarIdentifier $1)) (ExpressionLitVar (IntegerLiteral 1))) }

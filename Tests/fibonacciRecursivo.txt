@@ -16,4 +16,7 @@ Int i,j,k,l;
 
 main{
     i = fibo(5);
+    for (1..10){
+        
+    }
 }

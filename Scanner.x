@@ -66,6 +66,7 @@ tokens :-
   "}"                               { \p s -> TRightBrace p }
   "("                               { \p s -> TLeftParen p }
   ")"                               { \p s -> TRightParen p }
+  "in"                              { \p s -> TIn p }
   "Int"                             { \p s -> TInt p }
   "Integer"                         { \p s -> TInteger p }
   "Double"                          { \p s -> TDouble p }
@@ -133,6 +134,7 @@ data Token =
       TRightBrace AlexPosn          |
       TLeftParen AlexPosn           |
       TRightParen AlexPosn          |
+      TIn AlexPosn                  |
       TInt AlexPosn                 |
       TInteger AlexPosn             |
       TDouble AlexPosn              |
@@ -197,6 +199,7 @@ tokenPosn (TLeftBrace p) = p
 tokenPosn (TRightBrace p) = p
 tokenPosn (TLeftParen p) = p
 tokenPosn (TRightParen p) = p
+tokenPosn (TIn p) = p
 tokenPosn (TInt p) = p
 tokenPosn (TInteger p) = p
 tokenPosn (TDouble p) = p
