@@ -37,7 +37,7 @@ func1 => Int :: Int kooa -> Money ko{
     kooa++;
     return 1;
   }
-  return func1(kokoa,1.2);
+  return func1(kokoa,1.2) + func1(kokoa,1.2);
 }
 func => Humano :: Int kooa -> Money ko -> Humano j{
   Int kokoa = 1;
