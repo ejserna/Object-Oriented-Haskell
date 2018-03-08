@@ -8,41 +8,41 @@ import qualified Data.HashMap.Strict as Map
 import Data.List (intercalate, maximumBy)
 import Data.Ord (comparing)
 
-expressionProcess :: Scope -> Expression -> SymbolTable -> Maybe Primitive  
-expressionProcess scp (ExpressionMult exp1 exp2) symTab = expressionCheckOp scp exp1 exp2 symTab
-expressionProcess scp (ExpressionDiv exp1 exp2) symTab = expressionCheckOp scp exp1 exp2 symTab
-expressionProcess scp (ExpressionPow exp1 exp2) symTab = expressionCheckOp scp exp1 exp2 symTab
-expressionProcess scp (ExpressionPars exp) symTab = expressionProcess scp exp symTab
-expressionProcess scp (ExpressionGreater exp1 exp2) symTab = expressionCheckRel2 scp exp1 exp2 symTab
-expressionProcess scp (ExpressionLower exp1 exp2) symTab = expressionCheckRel2 scp exp1 exp2 symTab
-expressionProcess scp (ExpressionGreaterEq exp1 exp2) symTab = expressionCheckRel2 scp exp1 exp2 symTab
-expressionProcess scp (ExpressionLowerEq exp1 exp2) symTab = expressionCheckRel2 scp exp1 exp2 symTab
-expressionProcess scp (ExpressionEqEq exp1 exp2) symTab = expressionCheckRel1 scp exp1 exp2 symTab
-expressionProcess scp (ExpressionNotEq exp1 exp2) symTab = expressionCheckRel1 scp exp1 exp2 symTab
-expressionProcess scp (ExpressionAnd exp1 exp2) symTab = expressionCheckRel3 scp exp1 exp2 symTab
-expressionProcess scp (ExpressionOr exp1 exp2) symTab = expressionCheckRel3 scp exp1 exp2 symTab
-expressionProcess scp (ExpressionPlus exp1 exp2) symTab = expressionCheckOp scp exp1 exp2 symTab
-expressionProcess scp (ExpressionMinus exp1 exp2) symTab = expressionCheckOp scp exp1 exp2 symTab
-expressionProcess scp (ExpressionMod exp1 exp2) symTab = expressionCheckMOD scp exp1 exp2 symTab
-expressionProcess scp (ExpressionNot exp) symTab = expressionCheckNOT scp exp symTab
-expressionProcess scp (ExpressionLitVar litVar) symTab = checkDataTypeOfLitVar scp litVar symTab
+expressionProcess :: Scope -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive  
+expressionProcess scp (ExpressionMult exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionDiv exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionPow exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionPars exp) symTab classSymTab = expressionProcess scp exp symTab classSymTab
+expressionProcess scp (ExpressionGreater exp1 exp2) symTab classSymTab = expressionCheckRel2 scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionLower exp1 exp2) symTab classSymTab = expressionCheckRel2 scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionGreaterEq exp1 exp2) symTab classSymTab = expressionCheckRel2 scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionLowerEq exp1 exp2) symTab classSymTab = expressionCheckRel2 scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionEqEq exp1 exp2) symTab classSymTab = expressionCheckRel1 scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionNotEq exp1 exp2) symTab classSymTab = expressionCheckRel1 scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionAnd exp1 exp2) symTab classSymTab = expressionCheckRel3 scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionOr exp1 exp2) symTab classSymTab = expressionCheckRel3 scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionPlus exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionMinus exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionMod exp1 exp2) symTab classSymTab = expressionCheckMOD scp exp1 exp2 symTab classSymTab
+expressionProcess scp (ExpressionNot exp) symTab classSymTab = expressionCheckNOT scp exp symTab classSymTab
+expressionProcess scp (ExpressionLitVar litVar) symTab classSymTab = checkDataTypeOfLitVar scp litVar symTab
 
-expressionProcess scp (ExpressionVarArray identifier ((ArrayAccessExpression expression) : [])) symTab = case (expressionProcess scp expression symTab) of 
+expressionProcess scp (ExpressionVarArray identifier ((ArrayAccessExpression expression) : [])) symTab classSymTab = case (expressionProcess scp expression symTab classSymTab) of 
                                                                                                         Just PrimitiveInt -> checkArrayID scp identifier symTab 1
                                                                                                         Just PrimitiveInteger -> checkArrayID scp identifier symTab 1
                                                                                                         _ -> Nothing
-expressionProcess scp (ExpressionVarArray identifier ((ArrayAccessExpression expression1) : (ArrayAccessExpression expression2) :[])) symTab = 
-                                                  case (expressionProcess scp expression1 symTab) of 
+expressionProcess scp (ExpressionVarArray identifier ((ArrayAccessExpression expression1) : (ArrayAccessExpression expression2) :[])) symTab classSymTab = 
+                                                  case (expressionProcess scp expression1 symTab classSymTab) of 
                                                      Just PrimitiveInt -> 
-                                                            case (expressionProcess scp expression2 symTab) of
+                                                            case (expressionProcess scp expression2 symTab classSymTab) of
                                                               Just PrimitiveInt -> checkArrayID scp identifier symTab 2
                                                               _ -> Nothing  
                                                      Just PrimitiveInteger -> 
-                                                            case (expressionProcess scp expression2 symTab) of
+                                                            case (expressionProcess scp expression2 symTab classSymTab) of
                                                               Just PrimitiveInteger -> checkArrayID scp identifier symTab 2
                                                               _ -> Nothing
                                                      _ -> Nothing
-expressionProcess scp (ExpressionNeg exp) symTab = expressionCheckNEG scp exp symTab
+expressionProcess scp (ExpressionNeg exp) symTab classSymTab = expressionCheckNEG scp exp symTab classSymTab
 
 
 checkArrayID :: Scope -> Identifier -> SymbolTable -> Int -> Maybe Primitive
@@ -71,43 +71,43 @@ checkDataTypeOfLitVar scp (StringLiteral int) symTab = (Just PrimitiveString)
 checkDataTypeOfLitVar scp (BoolLiteral _) symTab = (Just PrimitiveBool)
 
 
-expressionCheckOp :: Scope -> Expression -> Expression -> SymbolTable -> Maybe Primitive
-expressionCheckOp scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesMult (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
-expressionCheckOp scp (ExpressionLitVar litVar1) exp symTab = checkDataTypesMult (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab) symTab
-expressionCheckOp scp exp (ExpressionLitVar litVar1) symTab = expressionCheckOp scp (ExpressionLitVar litVar1) exp symTab
-expressionCheckOp scp exp1 exp2 symTab = checkDataTypesMult (expressionProcess scp exp1 symTab) (expressionProcess scp exp2 symTab) symTab
+expressionCheckOp :: Scope -> Expression -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
+expressionCheckOp scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab classSymTab = checkDataTypesMult (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
+expressionCheckOp scp (ExpressionLitVar litVar1) exp symTab classSymTab = checkDataTypesMult (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab classSymTab) symTab
+expressionCheckOp scp exp (ExpressionLitVar litVar1) symTab classSymTab = expressionCheckOp scp (ExpressionLitVar litVar1) exp symTab classSymTab
+expressionCheckOp scp exp1 exp2 symTab classSymTab = checkDataTypesMult (expressionProcess scp exp1 symTab classSymTab) (expressionProcess scp exp2 symTab classSymTab) symTab
 
-expressionCheckMOD :: Scope -> Expression -> Expression -> SymbolTable -> Maybe Primitive
-expressionCheckMOD scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesMOD  (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
-expressionCheckMOD scp (ExpressionLitVar litVar1) exp symTab = checkDataTypesMOD (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab) symTab
-expressionCheckMOD scp exp (ExpressionLitVar litVar1) symTab = expressionCheckMOD scp (ExpressionLitVar litVar1) exp symTab
-expressionCheckMOD scp exp1 exp2 symTab = checkDataTypesMOD (expressionProcess scp exp1 symTab) (expressionProcess scp exp2 symTab) symTab
+expressionCheckMOD :: Scope -> Expression -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
+expressionCheckMOD scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab classSymTab = checkDataTypesMOD  (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
+expressionCheckMOD scp (ExpressionLitVar litVar1) exp symTab classSymTab = checkDataTypesMOD (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab classSymTab) symTab
+expressionCheckMOD scp exp (ExpressionLitVar litVar1) symTab classSymTab = expressionCheckMOD scp (ExpressionLitVar litVar1) exp symTab classSymTab
+expressionCheckMOD scp exp1 exp2 symTab classSymTab = checkDataTypesMOD (expressionProcess scp exp1 symTab classSymTab) (expressionProcess scp exp2 symTab classSymTab) symTab
 
-expressionCheckNOT :: Scope -> Expression -> SymbolTable -> Maybe Primitive
-expressionCheckNOT scp (ExpressionLitVar litVar1) symTab = checkDataTypesNOT (checkDataTypeOfLitVar scp litVar1 symTab) symTab
-expressionCheckNOT scp exp symTab = checkDataTypesNOT  (expressionProcess scp exp symTab) symTab
+expressionCheckNOT :: Scope -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
+expressionCheckNOT scp (ExpressionLitVar litVar1) symTab classSymTab = checkDataTypesNOT (checkDataTypeOfLitVar scp litVar1 symTab) symTab
+expressionCheckNOT scp exp symTab classSymTab = checkDataTypesNOT  (expressionProcess scp exp symTab classSymTab) symTab
 
-expressionCheckNEG :: Scope -> Expression -> SymbolTable -> Maybe Primitive
-expressionCheckNEG scp (ExpressionLitVar litVar1) symTab = checkDataTypesNEG (checkDataTypeOfLitVar scp litVar1 symTab) symTab
-expressionCheckNEG scp exp symTab = checkDataTypesNEG (expressionProcess scp exp symTab) symTab
+expressionCheckNEG :: Scope -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
+expressionCheckNEG scp (ExpressionLitVar litVar1) symTab classSymTab = checkDataTypesNEG (checkDataTypeOfLitVar scp litVar1 symTab) symTab
+expressionCheckNEG scp exp symTab classSymTab = checkDataTypesNEG (expressionProcess scp exp symTab classSymTab) symTab
 
-expressionCheckRel1 :: Scope -> Expression -> Expression -> SymbolTable -> Maybe Primitive
-expressionCheckRel1 scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesRel1 (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
-expressionCheckRel1 scp (ExpressionLitVar litVar1) exp symTab = checkDataTypesRel1 (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab) symTab
-expressionCheckRel1 scp exp (ExpressionLitVar litVar1) symTab = expressionCheckRel1 scp (ExpressionLitVar litVar1) exp symTab
-expressionCheckRel1 scp exp1 exp2 symTab = checkDataTypesRel1 (expressionProcess scp exp1 symTab) (expressionProcess scp exp2 symTab) symTab
+expressionCheckRel1 :: Scope -> Expression -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
+expressionCheckRel1 scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab classSymTab = checkDataTypesRel1 (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
+expressionCheckRel1 scp (ExpressionLitVar litVar1) exp symTab classSymTab = checkDataTypesRel1 (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab classSymTab) symTab
+expressionCheckRel1 scp exp (ExpressionLitVar litVar1) symTab classSymTab = expressionCheckRel1 scp (ExpressionLitVar litVar1) exp symTab classSymTab
+expressionCheckRel1 scp exp1 exp2 symTab classSymTab = checkDataTypesRel1 (expressionProcess scp exp1 symTab classSymTab) (expressionProcess scp exp2 symTab classSymTab) symTab
 
-expressionCheckRel2 :: Scope -> Expression -> Expression -> SymbolTable -> Maybe Primitive
-expressionCheckRel2 scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesRel2 (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
-expressionCheckRel2 scp (ExpressionLitVar litVar1) exp symTab = checkDataTypesRel2 (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab) symTab
-expressionCheckRel2 scp exp (ExpressionLitVar litVar1) symTab = expressionCheckRel2 scp (ExpressionLitVar litVar1) exp symTab
-expressionCheckRel2 scp exp1 exp2 symTab = checkDataTypesRel2 (expressionProcess scp exp1 symTab) (expressionProcess scp exp2 symTab) symTab
+expressionCheckRel2 :: Scope -> Expression -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
+expressionCheckRel2 scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab classSymTab = checkDataTypesRel2 (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
+expressionCheckRel2 scp (ExpressionLitVar litVar1) exp symTab classSymTab = checkDataTypesRel2 (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab classSymTab) symTab
+expressionCheckRel2 scp exp (ExpressionLitVar litVar1) symTab classSymTab = expressionCheckRel2 scp (ExpressionLitVar litVar1) exp symTab classSymTab
+expressionCheckRel2 scp exp1 exp2 symTab classSymTab = checkDataTypesRel2 (expressionProcess scp exp1 symTab classSymTab) (expressionProcess scp exp2 symTab classSymTab) symTab
 
-expressionCheckRel3 :: Scope -> Expression -> Expression -> SymbolTable -> Maybe Primitive
-expressionCheckRel3 scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab = checkDataTypesRel3 (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
-expressionCheckRel3 scp (ExpressionLitVar litVar1) exp symTab = checkDataTypesRel3 (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab) symTab
-expressionCheckRel3 scp exp (ExpressionLitVar litVar1) symTab = expressionCheckRel3 scp (ExpressionLitVar litVar1) exp symTab
-expressionCheckRel3 scp exp1 exp2 symTab = checkDataTypesRel3 (expressionProcess scp exp1 symTab) (expressionProcess scp exp2 symTab) symTab
+expressionCheckRel3 :: Scope -> Expression -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
+expressionCheckRel3 scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab classSymTab = checkDataTypesRel3 (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
+expressionCheckRel3 scp (ExpressionLitVar litVar1) exp symTab classSymTab = checkDataTypesRel3 (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab classSymTab) symTab
+expressionCheckRel3 scp exp (ExpressionLitVar litVar1) symTab classSymTab = expressionCheckRel3 scp (ExpressionLitVar litVar1) exp symTab classSymTab
+expressionCheckRel3 scp exp1 exp2 symTab classSymTab = checkDataTypesRel3 (expressionProcess scp exp1 symTab classSymTab) (expressionProcess scp exp2 symTab classSymTab) symTab
 
 checkDataTypesNOT :: Maybe Primitive -> SymbolTable -> Maybe Primitive
 checkDataTypesNOT (Just PrimitiveBool) symTab = (Just PrimitiveBool)
@@ -165,32 +165,32 @@ checkDataTypesMOD (Just PrimitiveInt) (Just PrimitiveInteger) _ = (Just Primitiv
 checkDataTypesMOD _ _ _ = Nothing -- Todo lo demas, falso
 
 
-compareListOfTypesWithFuncCall :: Scope -> [Type] -> [Params] -> SymbolTable -> Bool
-compareListOfTypesWithFuncCall _ [] [] _ = True
-compareListOfTypesWithFuncCall _ [] (sp : sps) _ = False
-compareListOfTypesWithFuncCall _ (rpType : rps) [] _ = False
-compareListOfTypesWithFuncCall scp (rpType : rps) (sp : sps) symTab = 
+compareListOfTypesWithFuncCall :: Scope -> [Type] -> [Params] -> SymbolTable -> ClassSymbolTable -> Bool
+compareListOfTypesWithFuncCall _ [] [] _ _ = True
+compareListOfTypesWithFuncCall _ [] (sp : sps) _ _ = False
+compareListOfTypesWithFuncCall _ (rpType : rps) [] _ _ = False
+compareListOfTypesWithFuncCall scp (rpType : rps) (sp : sps) symTab classSymTab = 
                         case sp of 
                             (ParamsExpression (ExpressionVarArray identifier ((ArrayAccessExpression innerExp) : []))) ->
                                 -- Checamos que sea un arreglo
                                 case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypePrimitive prim (("[",size,"]") : []) ) varScp _) 
                                        | varScp >= scp -> 
-                                            case (expressionProcess scp innerExp symTab) of 
+                                            case (expressionProcess scp innerExp symTab classSymTab) of 
                                                 Just PrimitiveInt ->  (TypePrimitive prim []) == rpType 
-                                                            && compareListOfTypesWithFuncCall scp rps sps symTab
+                                                            && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                                                 Just PrimitiveInteger ->  (TypePrimitive prim []) == rpType
-                                                            && compareListOfTypesWithFuncCall scp rps sps symTab
+                                                            && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                                                 _ -> False
                                             
                                        | otherwise -> False
                                     Just (SymbolVar (TypeClassId classId (("[",size,"]") : []) ) varScp _) 
                                        | varScp >= scp -> 
-                                                case (expressionProcess scp innerExp symTab) of 
+                                                case (expressionProcess scp innerExp symTab classSymTab) of 
                                                     Just PrimitiveInt -> (TypeClassId classId []) == rpType 
-                                                        && compareListOfTypesWithFuncCall scp rps sps symTab
+                                                        && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                                                     Just PrimitiveInteger -> (TypeClassId classId []) == rpType 
-                                                        && compareListOfTypesWithFuncCall scp rps sps symTab
+                                                        && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                                                     _ -> False
                                        | otherwise -> False
                                     _ -> False
@@ -199,37 +199,37 @@ compareListOfTypesWithFuncCall scp (rpType : rps) (sp : sps) symTab =
                                 case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]") : [])) varScp _)
                                         | varScp >= scp -> 
-                                            let rowExpType = expressionProcess scp rowExp symTab
-                                                colExpType = expressionProcess scp colExp symTab
+                                            let rowExpType = expressionProcess scp rowExp symTab classSymTab
+                                                colExpType = expressionProcess scp colExp symTab classSymTab
                                             in if(rowExpType == colExpType) 
                                                 then case rowExpType of 
                                                     Just PrimitiveInt -> (TypePrimitive prim []) == rpType
-                                                            && compareListOfTypesWithFuncCall scp rps sps symTab
+                                                            && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                                                     Just PrimitiveInteger -> (TypePrimitive prim []) == rpType
-                                                            && compareListOfTypesWithFuncCall scp rps sps symTab
+                                                            && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                                                     _ -> False
                                                 else False
                                         | otherwise -> False
                                     Just (SymbolVar (TypeClassId classId (("[",rows,"]") : ("[",cols,"]") : [])) varScp _)
                                         | varScp >= scp -> 
-                                            let rowExpType = expressionProcess scp rowExp symTab
-                                                colExpType = expressionProcess scp colExp symTab
+                                            let rowExpType = expressionProcess scp rowExp symTab classSymTab
+                                                colExpType = expressionProcess scp colExp symTab classSymTab
                                             in if(rowExpType == colExpType) 
                                                 then case rowExpType of 
                                                     Just PrimitiveInt -> (TypeClassId classId []) == rpType 
-                                                            && compareListOfTypesWithFuncCall scp rps sps symTab
+                                                            && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                                                     Just PrimitiveInteger -> (TypeClassId classId []) == rpType 
-                                                            && compareListOfTypesWithFuncCall scp rps sps symTab
+                                                            && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                                                     _ -> False
                                                 else False
                                         | otherwise -> False
                                     _ -> False
                             (ParamsExpression (ExpressionLitVar ((VarIdentifier identifier)))) ->
-                                            checkDataTypes scp rpType (VarIdentifier identifier) symTab
-                                            && compareListOfTypesWithFuncCall scp rps sps symTab
+                                            checkDataTypes scp rpType (VarIdentifier identifier) symTab 
+                                            && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                             (ParamsExpression expression) -> 
-                                case (expressionProcess scp expression symTab) of
-                                    Just expType -> (TypePrimitive expType []) == rpType && (compareListOfTypesWithFuncCall scp rps sps symTab)
+                                case (expressionProcess scp expression symTab classSymTab) of
+                                    Just expType -> (TypePrimitive expType []) == rpType && (compareListOfTypesWithFuncCall scp rps sps symTab classSymTab)
                                     Nothing -> False 
 
 analyzeFunctionCall :: FunctionCall -> Scope -> SymbolTable -> ClassSymbolTable -> Bool
@@ -237,7 +237,7 @@ analyzeFunctionCall (FunctionCallVar funcIdentifier callParams) scp symTab class
                             case (Map.lookup funcIdentifier symTab) of
                                     Just (SymbolFunction params returnTypeFunc _ _ _ _ _) -> 
                                                     let funcParamTypes = map (\p -> fst p) params
-                                                    in (compareListOfTypesWithFuncCall scp funcParamTypes callParams symTab)         
+                                                    in (compareListOfTypesWithFuncCall scp funcParamTypes callParams symTab classTab)         
                                     _ -> False
 analyzeFunctionCall (FunctionCallObjMem (ObjectMember objectIdentifier functionIdentifier) callParams) scp symTab classTab = 
                            case (Map.lookup objectIdentifier symTab) of
@@ -249,7 +249,7 @@ analyzeFunctionCall (FunctionCallObjMem (ObjectMember objectIdentifier functionI
                                                             -- Si y solo si es publica la funcion, la accedemos
                                                             Just (SymbolFunction params returnTypeFunc _ _ _ (Just True) _) ->
                                                                 let funcParamTypes = map (\p -> fst p) params
-                                                                in (compareListOfTypesWithFuncCall scp funcParamTypes callParams symTab)  
+                                                                in (compareListOfTypesWithFuncCall scp funcParamTypes callParams symTab classTab)  
                                                             _ -> False   
                                                 _ -> False
                                         else False
