@@ -255,6 +255,27 @@ analyzeFunctionCall (FunctionCallObjMem (ObjectMember objectIdentifier functionI
                                         else False
                                     _ -> False
 
+functionCallType :: FunctionCall -> Scope -> SymbolTable -> ClassSymbolTable -> Maybe Type
+functionCallType (FunctionCallVar funcIdentifier callParams) scp symTab classTab = 
+                            case (Map.lookup funcIdentifier symTab) of
+                                    Just (SymbolFunction params returnTypeFunc _ _ _ _ _) -> 
+                                                    returnTypeFunc         
+                                    _ -> Nothing
+functionCallType (FunctionCallObjMem (ObjectMember objectIdentifier functionIdentifier) callParams) scp symTab classTab = 
+                           case (Map.lookup objectIdentifier symTab) of
+                                    Just (SymbolVar (TypeClassId classIdentifier _) objScp _ ) -> 
+                                        if objScp >= scp 
+                                            then case (Map.lookup classIdentifier classTab) of
+                                                Just symbolTableOfClass ->
+                                                        case (Map.lookup functionIdentifier symbolTableOfClass) of
+                                                            -- Si y solo si es publica la funcion, la accedemos
+                                                            Just (SymbolFunction params returnTypeFunc _ _ _ (Just True) _) ->
+                                                                returnTypeFunc 
+                                                            _ -> Nothing   
+                                                _ -> Nothing
+                                        else Nothing
+                                    _ -> Nothing
+
 -- Aqui checamos si el literal or variable que se esta asignando al arreglo sea del tipo indicado
 -- es decir, en Humano [10] humanos = [h1,h2,h3,h4] checa que h1,h2,h3 y h4 sean del tipo humano
 checkArrayAssignment :: Scope -> Type -> LiteralOrVariable -> SymbolTable -> Bool 
