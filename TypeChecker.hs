@@ -278,36 +278,36 @@ analyzeFuncParams ((dataType,identifier) : rest) symTab classSymTab =
 
 -- El tipo de regreso de una funcion solo puede ser un elemento atomico!
 checkCorrectReturnTypes :: Scope -> Type -> Return -> SymbolTable -> SymbolTable -> ClassSymbolTable -> Bool
-checkCorrectReturnTypes  scp dataType (ReturnFunctionCall (FunctionCallVar identifier callParams)) symTab ownFuncSymTab classTab =  
-                    case (Map.lookup identifier (Map.union symTab ownFuncSymTab)) of
-                        Just (SymbolFunction params returnTypeFunc _ _ _ _ _) -> 
-                                        let funcParamTypes = map (\p -> fst p) params
-                                        in  case returnTypeFunc of
-                                                Just retType -> dataType == retType
-                                                                && (compareListOfTypesWithFuncCall scp funcParamTypes callParams (Map.union symTab ownFuncSymTab))
-                                                _ -> False           
-                        _ -> False
-checkCorrectReturnTypes scp dataType (ReturnFunctionCall (FunctionCallObjMem (ObjectMember identifier functionIdentifier) callParams)) symTab ownFuncSymTab classTab =  
-                    case (Map.lookup identifier (Map.union symTab ownFuncSymTab)) of
-                        Just (SymbolVar symDataType varScp _)  
-                                   | varScp >= scp ->
-                                      case symDataType of
-                                        TypeClassId classIdentifier _ -> 
-                                                    case (Map.lookup classIdentifier classTab) of
-                                                        Just symbolTable ->
-                                                                case (Map.lookup functionIdentifier symbolTable) of
-                                                                    Just (SymbolFunction params returnTypeFunc _ _ _ (Just True) _) ->
-                                                                        case returnTypeFunc of
-                                                                            Just retType -> retType == dataType
-                                                                                && (compareListOfTypesWithFuncCall scp (map (\p -> fst p) (params)) callParams (Map.union symTab ownFuncSymTab))
-                                                                            _ -> False   
-                                                                    _ -> False   
-                                                        _ -> False
-                                        _ -> False
-                                    | otherwise -> False
-                        _ -> False
+-- checkCorrectReturnTypes  scp dataType (ReturnFunctionCall (FunctionCallVar identifier callParams)) symTab ownFuncSymTab classTab =  
+--                     case (Map.lookup identifier (Map.union symTab ownFuncSymTab)) of
+--                         Just (SymbolFunction params returnTypeFunc _ _ _ _ _) -> 
+--                                         let funcParamTypes = map (\p -> fst p) params
+--                                         in  case returnTypeFunc of
+--                                                 Just retType -> dataType == retType
+--                                                                 && (compareListOfTypesWithFuncCall scp funcParamTypes callParams (Map.union symTab ownFuncSymTab))
+--                                                 _ -> False           
+--                         _ -> False
+-- checkCorrectReturnTypes scp dataType (ReturnFunctionCall (FunctionCallObjMem (ObjectMember identifier functionIdentifier) callParams)) symTab ownFuncSymTab classTab =  
+--                     case (Map.lookup identifier (Map.union symTab ownFuncSymTab)) of
+--                         Just (SymbolVar symDataType varScp _)  
+--                                    | varScp >= scp ->
+--                                       case symDataType of
+--                                         TypeClassId classIdentifier _ -> 
+--                                                     case (Map.lookup classIdentifier classTab) of
+--                                                         Just symbolTable ->
+--                                                                 case (Map.lookup functionIdentifier symbolTable) of
+--                                                                     Just (SymbolFunction params returnTypeFunc _ _ _ (Just True) _) ->
+--                                                                         case returnTypeFunc of
+--                                                                             Just retType -> retType == dataType
+--                                                                                 && (compareListOfTypesWithFuncCall scp (map (\p -> fst p) (params)) callParams (Map.union symTab ownFuncSymTab))
+--                                                                             _ -> False   
+--                                                                     _ -> False   
+--                                                         _ -> False
+--                                         _ -> False
+--                                     | otherwise -> False
+--                         _ -> False
 checkCorrectReturnTypes scp dataType (ReturnExp expression) symTab ownFuncSymTab classTab =  
-                                            case (preProcessExpression scp expression (Map.union symTab ownFuncSymTab)) of
+                                            case (preProcessExpression scp expression (Map.union symTab ownFuncSymTab) classTab) of
                                                 Just expType -> dataType == expType
                                                 _ -> False   
 
@@ -378,7 +378,7 @@ analyzeStatement (ReturnStatement (ReturnFunctionCall functionCall)) scp symTab 
             in if (isFuncCallOk) then (symTab,False)
                 else (emptySymbolTable, True)
 analyzeStatement (ReturnStatement (ReturnExp expression)) scp symTab classTab =  
-            case (preProcessExpression scp expression symTab) of
+            case (preProcessExpression scp expression symTab classTab) of
                 Just expType -> (symTab,False)
                 Nothing -> (emptySymbolTable, True)
 
@@ -414,7 +414,7 @@ analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression express
                             case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) varScp _ ) -> 
                                         if (varScp >= scp) then
-                                         let typeIndexExp = (preProcessExpression scp expressionIndex symTab)
+                                         let typeIndexExp = (preProcessExpression scp expressionIndex symTab classTab)
                                                         in case typeIndexExp of
                                                                Just (TypePrimitive primExp _) ->  
                                                                     primExp == prim
@@ -422,7 +422,7 @@ analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression express
                                          else False
                                     Just (SymbolVar (TypeClassId classIdentifier (("[",size,"]") : [])) varScp _ ) -> 
                                         if (varScp >= scp) then
-                                         let typeIndexExp = (preProcessExpression scp expressionIndex symTab)
+                                         let typeIndexExp = (preProcessExpression scp expressionIndex symTab classTab)
                                                         in case typeIndexExp of
                                                                Just (TypeClassId classId _) ->  
                                                                     classIdentifier == classId
@@ -463,7 +463,7 @@ isAssignmentOk (AssignmentExpression identifier expression) scp symTab classSymT
                                                                                                     -- Si el scope de esta variable es mayor al scope de este assignment, si puedo accederlo
                                                                                                     if (varScp >= scp) 
                                                                                                         then 
-                                                                                                            let typeExp = (preProcessExpression scp expression symTab)
+                                                                                                            let typeExp = (preProcessExpression scp expression symTab classSymTab)
                                                                                                                 in case typeExp of
                                                                                                                        Just (TypePrimitive primExp _) ->  
                                                                                                                             primExp == prim
@@ -472,49 +472,49 @@ isAssignmentOk (AssignmentExpression identifier expression) scp symTab classSymT
                                                                                         Just (SymbolVar (TypeClassId classIdentifier []) varScp _) -> 
                                                                                                     -- Si el scope de esta variable es mayor al scope de este assignment, si puedo accederlo
                                                                                                     if (varScp >= scp) 
-                                                                                                        then let typeExp = (preProcessExpression scp expression symTab)
+                                                                                                        then let typeExp = (preProcessExpression scp expression symTab classSymTab)
                                                                                                                 in case typeExp of
                                                                                                                        Just (TypeClassId classId _) ->  
                                                                                                                             classIdentifier == classId
                                                                                                                        _ -> False
                                                                                                         else False
                                                                                         _ -> False
-isAssignmentOk (AssignmentFunctionCall identifier (FunctionCallObjMem (ObjectMember objectIdentifier functionIdentifier) callParams)) scp symTab classSymTab = 
-                                                                                    case (Map.lookup identifier symTab) of
-                                                                                        Just (SymbolVar dataType varScp _) ->
-                                                                                            if varScp >= scp
-                                                                                                then case (Map.lookup objectIdentifier symTab) of
-                                                                                                    Just (SymbolVar (TypeClassId classIdentifier _) objScp _ ) -> 
-                                                                                                        if objScp >= scp 
-                                                                                                            then case (Map.lookup classIdentifier classSymTab) of
-                                                                                                                Just symbolTableOfClass ->
-                                                                                                                        case (Map.lookup functionIdentifier symbolTableOfClass) of
-                                                                                                                            -- Si y solo si es publica la funcion, la accedemos
-                                                                                                                            Just (SymbolFunction params returnTypeFunc _ _ _ (Just True) _) ->
-                                                                                                                                let funcParamTypes = map (\p -> fst p) params
-                                                                                                                                in case returnTypeFunc of
-                                                                                                                                        Just retType -> dataType == retType
-                                                                                                                                                        && (compareListOfTypesWithFuncCall scp funcParamTypes callParams symTab)
-                                                                                                                                        _ -> False   
-                                                                                                                            _ -> False   
-                                                                                                                _ -> False
-                                                                                                        else False
-                                                                                                    _ -> False
-                                                                                            else False
-                                                                                        _ -> False
-isAssignmentOk  (AssignmentFunctionCall identifier (FunctionCallVar funcIdentifier callParams)) scp symTab classSymTab =  
-                      case (Map.lookup identifier symTab) of
-                        Just (SymbolVar dataType varScp _) ->
-                            if (varScp >= scp)
-                                then case (Map.lookup funcIdentifier symTab) of
-                                    Just (SymbolFunction params returnTypeFunc _ _ _ _ _) -> 
-                                                    let funcParamTypes = map (\p -> fst p) params
-                                                    in case returnTypeFunc of
-                                                            Just retType -> dataType == retType
-                                                                            && (compareListOfTypesWithFuncCall scp funcParamTypes callParams symTab)
-                                                            _ -> False           
-                                    _ -> False
-                            else False
+-- isAssignmentOk (AssignmentFunctionCall identifier (FunctionCallObjMem (ObjectMember objectIdentifier functionIdentifier) callParams)) scp symTab classSymTab = 
+--                                                                                     case (Map.lookup identifier symTab) of
+--                                                                                         Just (SymbolVar dataType varScp _) ->
+--                                                                                             if varScp >= scp
+--                                                                                                 then case (Map.lookup objectIdentifier symTab) of
+--                                                                                                     Just (SymbolVar (TypeClassId classIdentifier _) objScp _ ) -> 
+--                                                                                                         if objScp >= scp 
+--                                                                                                             then case (Map.lookup classIdentifier classSymTab) of
+--                                                                                                                 Just symbolTableOfClass ->
+--                                                                                                                         case (Map.lookup functionIdentifier symbolTableOfClass) of
+--                                                                                                                             -- Si y solo si es publica la funcion, la accedemos
+--                                                                                                                             Just (SymbolFunction params returnTypeFunc _ _ _ (Just True) _) ->
+--                                                                                                                                 let funcParamTypes = map (\p -> fst p) params
+--                                                                                                                                 in case returnTypeFunc of
+--                                                                                                                                         Just retType -> dataType == retType
+--                                                                                                                                                         && (compareListOfTypesWithFuncCall scp funcParamTypes callParams symTab)
+--                                                                                                                                         _ -> False   
+--                                                                                                                             _ -> False   
+--                                                                                                                 _ -> False
+--                                                                                                         else False
+--                                                                                                     _ -> False
+--                                                                                             else False
+--                                                                                         _ -> False
+-- isAssignmentOk  (AssignmentFunctionCall identifier (FunctionCallVar funcIdentifier callParams)) scp symTab classSymTab =  
+--                       case (Map.lookup identifier symTab) of
+--                         Just (SymbolVar dataType varScp _) ->
+--                             if (varScp >= scp)
+--                                 then case (Map.lookup funcIdentifier symTab) of
+--                                     Just (SymbolFunction params returnTypeFunc _ _ _ _ _) -> 
+--                                                     let funcParamTypes = map (\p -> fst p) params
+--                                                     in case returnTypeFunc of
+--                                                             Just retType -> dataType == retType
+--                                                                             && (compareListOfTypesWithFuncCall scp funcParamTypes callParams symTab)
+--                                                             _ -> False           
+--                                     _ -> False
+--                             else False
 isAssignmentOk  (AssignmentObjectMember identifier (ObjectMember objectIdentifier attrIdentifier)) scp symTab classSymTab =  
                       case (Map.lookup identifier symTab) of
                         Just (SymbolVar dataType varScp _) ->
@@ -546,7 +546,7 @@ isAssignmentOk  (AssignmentObjectMemberExpression (ObjectMember objectIdentifier
                                             case (Map.lookup attrIdentifier symbolTableOfClass) of
                                                 -- Si y solo si es publico el atributo, la accedemos
                                                 Just (SymbolVar attrDataType attrScp (Just True)) ->
-                                                    let typeExp = (preProcessExpression scp expression symTab)
+                                                    let typeExp = (preProcessExpression scp expression symTab classSymTab)
                                                         in case typeExp of
                                                                Just dataTypeExp ->  
                                                                     dataTypeExp == attrDataType
@@ -563,11 +563,11 @@ isAssignmentOk  (AssignmentArrayExpression identifier ((ArrayAccessExpression in
                                    let typeIndexExp = (expressionProcess scp innerExp symTab)
                                             in case typeIndexExp of
                                                    Just PrimitiveInt ->  
-                                                        case (preProcessExpression scp expression symTab) of
+                                                        case (preProcessExpression scp expression symTab classSymTab) of
                                                             Just (TypePrimitive primExp _) -> primExp == prim
                                                             _ -> False 
                                                    Just PrimitiveInteger -> 
-                                                         case (preProcessExpression scp expression symTab) of
+                                                         case (preProcessExpression scp expression symTab classSymTab) of
                                                             Just (TypePrimitive primExp _) -> primExp == prim
                                                             _ -> False  
                                                    _ -> False
@@ -578,11 +578,11 @@ isAssignmentOk  (AssignmentArrayExpression identifier ((ArrayAccessExpression in
                                     let typeIndexExp = (expressionProcess scp innerExp symTab)
                                             in case typeIndexExp of
                                                    Just PrimitiveInt ->  
-                                                        case (preProcessExpression scp expression symTab) of
+                                                        case (preProcessExpression scp expression symTab classSymTab) of
                                                             Just (TypeClassId classId _) -> classId == classIdentifier
                                                             _ -> False 
                                                    Just PrimitiveInteger -> 
-                                                         case (preProcessExpression scp expression symTab) of
+                                                         case (preProcessExpression scp expression symTab classSymTab) of
                                                             Just (TypeClassId classId _) -> classId == classIdentifier
                                                             _ -> False  
                                                    _ -> False
@@ -598,12 +598,12 @@ isAssignmentOk  (AssignmentArrayExpression identifier ((ArrayAccessExpression in
                                             in if (typeColExp == typeRowExp) then
                                                 case typeRowExp of
                                                    Just PrimitiveInt ->  
-                                                    case (preProcessExpression scp expression symTab) of 
+                                                    case (preProcessExpression scp expression symTab classSymTab) of 
                                                         Just (TypePrimitive primAssignment _) -> 
                                                             primAssignment == prim
                                                         _ -> False
                                                    Just PrimitiveInteger ->  
-                                                    case (preProcessExpression scp expression symTab) of 
+                                                    case (preProcessExpression scp expression symTab classSymTab) of 
                                                         Just (TypePrimitive primAssignment _) -> 
                                                             primAssignment == prim
                                                         _ -> False
@@ -618,12 +618,12 @@ isAssignmentOk  (AssignmentArrayExpression identifier ((ArrayAccessExpression in
                                             in if (typeColExp == typeRowExp) then
                                                 case typeRowExp of
                                                    Just PrimitiveInt ->  
-                                                    case (preProcessExpression scp expression symTab) of 
+                                                    case (preProcessExpression scp expression symTab classSymTab) of 
                                                         Just (TypeClassId classIdAssignment _) -> 
                                                             classIdentifier == classIdAssignment
                                                         _ -> False
                                                    Just PrimitiveInteger ->  
-                                                    case (preProcessExpression scp expression symTab) of 
+                                                    case (preProcessExpression scp expression symTab classSymTab) of 
                                                         Just (TypeClassId classIdAssignment _) -> 
                                                             classIdentifier == classIdAssignment
                                                         _ -> False
@@ -680,11 +680,9 @@ checkLiteralOrVariablesAndDataTypes2D scp dataType (listOfLitVars : rest) symTab
                                 then checkLiteralOrVariablesAndDataTypes2D scp dataType rest symTab
                                 else False -- Alguna literal o variable asignada no existe, o bien, el tipo de dato que se esta asignando no concuerda con la declaracion
 
-
-
 -- Podriamos necesitar preprocesar una expresion en busqueda de un literal or variable que sea un tipo de alguna clase
-preProcessExpression :: Scope -> Expression -> SymbolTable -> Maybe Type
-preProcessExpression scp (ExpressionLitVar (VarIdentifier identifier)) symTab =
+preProcessExpression :: Scope -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Type
+preProcessExpression scp (ExpressionLitVar (VarIdentifier identifier)) symTab _ =
                          case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypeClassId classIdentifier []) varScp _)  
                                         | varScp >= scp ->
@@ -695,7 +693,9 @@ preProcessExpression scp (ExpressionLitVar (VarIdentifier identifier)) symTab =
                                             Just (TypePrimitive prim [])
                                         | otherwise -> Nothing
                                     _ -> Nothing
-preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression expressionIndex) : [])) symTab =
+
+preProcessExpression scp (ExpressionFuncCall functionCall) symTab classSymTab = functionCallType functionCall scp symTab classSymTab
+preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression expressionIndex) : [])) symTab _ =
                                 -- Checamos que sea una matriz ese identificador
                                 case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypePrimitive prim (("[",size,"]") : []) ) varScp _)  
@@ -715,7 +715,7 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                                    _ -> Nothing
                                        | otherwise -> Nothing
                                     _ -> Nothing
-preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression rowExp) : (ArrayAccessExpression colExp)  : [])) symTab =
+preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression rowExp) : (ArrayAccessExpression colExp)  : [])) symTab _ =
                                 -- Checamos que sea una matriz ese identificador
                                 case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]") : [])) varScp _) 
@@ -741,6 +741,6 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                                 else Nothing
                                       | otherwise -> Nothing
                                     _ -> Nothing
-preProcessExpression scp expression symTab = case (expressionProcess scp expression symTab) of
+preProcessExpression scp expression symTab _ = case (expressionProcess scp expression symTab) of
                                                 Just prim -> (Just (TypePrimitive prim []) )
                                                 Nothing -> Nothing
