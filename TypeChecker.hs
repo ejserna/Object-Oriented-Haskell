@@ -318,7 +318,7 @@ checkIfParamsAreCorrect scp sendingParams classIdentifier symTab classTab =
                                     case (Map.lookup classIdentifier classTab) of
                                         Just symbolTableOfClass -> 
                                                 case (Map.lookup "_constructor" symbolTableOfClass) of
-                                                    Just (symbolFunc) -> (compareListOfTypesWithFuncCall scp (map (\f -> fst f) (params symbolFunc)) sendingParams symTab)
+                                                    Just (symbolFunc) -> (compareListOfTypesWithFuncCall scp (map (\f -> fst f) (params symbolFunc)) sendingParams symTab classTab)
                                                     Nothing -> False 
                                         Nothing -> False 
 
@@ -359,13 +359,13 @@ analyzeStatement (FunctionCallStatement functionCall) scp symTab classTab = if (
                                                                                 else (emptySymbolTable, True) 
 analyzeStatement (VariableStatement var) scp symTab classTab = analyzeVariable var scp Nothing symTab classTab
 analyzeStatement (ConditionStatement (If expression (Block statements))) scp symTab classTab = 
-                                                case (expressionProcess scp expression symTab) of
+                                                case (expressionProcess scp expression symTab classTab) of
                                                     -- Si la expresión del if regresa booleano, entonces está bien
                                                     Just (PrimitiveBool) -> analyzeStatements statements (scp - 1) symTab classTab
                                                    -- De lo contrario, no se puede tener esa expresión en el if
                                                     _ -> (emptySymbolTable, True)  
 analyzeStatement (CycleStatement (CycleWhile (While expression (Block statements)))) scp symTab classTab = 
-                case (expressionProcess scp expression symTab) of
+                case (expressionProcess scp expression symTab classTab) of
                     Just PrimitiveBool -> analyzeStatements statements (scp - 1) symTab classTab
                     _ -> (emptySymbolTable, True) 
 analyzeStatement (CycleStatement (CycleFor (For lowerRange greaterRange (Block statements)))) scp symTab classTab = 
@@ -434,8 +434,8 @@ analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression innerEx
                                     Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",columns,"]") : [])) varScp _ ) -> 
                                         if (varScp >= scp) 
                                             then
-                                                let typeRowExp = (expressionProcess scp innerExpRow symTab)
-                                                    typeColExp = (expressionProcess scp innerExpCol symTab)
+                                                let typeRowExp = (expressionProcess scp innerExpRow symTab classTab)
+                                                    typeColExp = (expressionProcess scp innerExpCol symTab classTab)
                                                         in if (typeColExp == typeRowExp) then
                                                             case typeRowExp of
                                                                Just PrimitiveInt ->  True
@@ -446,8 +446,8 @@ analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression innerEx
                                     Just (SymbolVar (TypeClassId classIdentifier (("[",size,"]") : [])) varScp _ ) -> 
                                         if (varScp >= scp)
                                             then
-                                                let typeRowExp = (expressionProcess scp innerExpRow symTab)
-                                                    typeColExp = (expressionProcess scp innerExpCol symTab)
+                                                let typeRowExp = (expressionProcess scp innerExpRow symTab classTab)
+                                                    typeColExp = (expressionProcess scp innerExpCol symTab classTab)
                                                         in if (typeColExp == typeRowExp) then
                                                             case typeRowExp of
                                                                Just PrimitiveInt -> True
@@ -560,7 +560,7 @@ isAssignmentOk  (AssignmentArrayExpression identifier ((ArrayAccessExpression in
                         Just (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) varScp _) -> 
                             if (varScp >= scp) 
                                 then
-                                   let typeIndexExp = (expressionProcess scp innerExp symTab)
+                                   let typeIndexExp = (expressionProcess scp innerExp symTab classSymTab)
                                             in case typeIndexExp of
                                                    Just PrimitiveInt ->  
                                                         case (preProcessExpression scp expression symTab classSymTab) of
@@ -575,7 +575,7 @@ isAssignmentOk  (AssignmentArrayExpression identifier ((ArrayAccessExpression in
                         Just (SymbolVar (TypeClassId classIdentifier (("[",size,"]") : [])) varScp _) -> 
                             if (varScp >= scp) 
                                 then
-                                    let typeIndexExp = (expressionProcess scp innerExp symTab)
+                                    let typeIndexExp = (expressionProcess scp innerExp symTab classSymTab)
                                             in case typeIndexExp of
                                                    Just PrimitiveInt ->  
                                                         case (preProcessExpression scp expression symTab classSymTab) of
@@ -593,8 +593,8 @@ isAssignmentOk  (AssignmentArrayExpression identifier ((ArrayAccessExpression in
                         Just (SymbolVar (TypePrimitive prim (("[",sizeRows,"]") : ("[",sizeCols,"]") : [])) varScp _) -> 
                             if (varScp >= scp) 
                                 then
-                                    let typeRowExp = (expressionProcess scp innerExpRow symTab)
-                                        typeColExp = (expressionProcess scp innerExpCol symTab)
+                                    let typeRowExp = (expressionProcess scp innerExpRow symTab classSymTab)
+                                        typeColExp = (expressionProcess scp innerExpCol symTab classSymTab)
                                             in if (typeColExp == typeRowExp) then
                                                 case typeRowExp of
                                                    Just PrimitiveInt ->  
@@ -613,8 +613,8 @@ isAssignmentOk  (AssignmentArrayExpression identifier ((ArrayAccessExpression in
                         Just (SymbolVar (TypeClassId classIdentifier (("[",sizeRows,"]") : ("[",sizeCols,"]") : [])) varScp _) -> 
                             if (varScp >= scp) 
                                 then
-                                    let typeRowExp = (expressionProcess scp innerExpRow symTab)
-                                        typeColExp = (expressionProcess scp innerExpCol symTab)
+                                    let typeRowExp = (expressionProcess scp innerExpRow symTab classSymTab)
+                                        typeColExp = (expressionProcess scp innerExpCol symTab classSymTab)
                                             in if (typeColExp == typeRowExp) then
                                                 case typeRowExp of
                                                    Just PrimitiveInt ->  
@@ -695,12 +695,12 @@ preProcessExpression scp (ExpressionLitVar (VarIdentifier identifier)) symTab _ 
                                     _ -> Nothing
 
 preProcessExpression scp (ExpressionFuncCall functionCall) symTab classSymTab = functionCallType functionCall scp symTab classSymTab
-preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression expressionIndex) : [])) symTab _ =
+preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression expressionIndex) : [])) symTab classSymTab =
                                 -- Checamos que sea una matriz ese identificador
                                 case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypePrimitive prim (("[",size,"]") : []) ) varScp _)  
                                        | varScp >= scp ->
-                                            let typeIndexExp = (expressionProcess scp expressionIndex symTab)
+                                            let typeIndexExp = (expressionProcess scp expressionIndex symTab classSymTab )
                                             in case typeIndexExp of
                                                    Just PrimitiveInt ->  Just (TypePrimitive prim [])
                                                    Just PrimitiveInteger ->  Just (TypePrimitive prim [])
@@ -708,20 +708,20 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                        | otherwise -> Nothing
                                     Just (SymbolVar (TypeClassId classIdentifier (("[",size,"]") : []) ) varScp _)  
                                        | varScp >= scp ->
-                                            let typeIndexExp = (expressionProcess scp expressionIndex symTab)
+                                            let typeIndexExp = (expressionProcess scp expressionIndex symTab classSymTab)
                                             in case typeIndexExp of
                                                    Just PrimitiveInt ->  Just (TypeClassId classIdentifier [])
                                                    Just PrimitiveInteger ->  Just (TypeClassId classIdentifier [])
                                                    _ -> Nothing
                                        | otherwise -> Nothing
                                     _ -> Nothing
-preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression rowExp) : (ArrayAccessExpression colExp)  : [])) symTab _ =
+preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression rowExp) : (ArrayAccessExpression colExp)  : [])) symTab classSymTab =
                                 -- Checamos que sea una matriz ese identificador
                                 case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]") : [])) varScp _) 
                                        | varScp >= scp ->
-                                            let typeRowExp = (expressionProcess scp rowExp symTab)
-                                                typeColExp = (expressionProcess scp colExp symTab)
+                                            let typeRowExp = (expressionProcess scp rowExp symTab classSymTab)
+                                                typeColExp = (expressionProcess scp colExp symTab classSymTab)
                                             in if (typeColExp == typeRowExp) then
                                                 case typeRowExp of
                                                    Just PrimitiveInt ->  Just (TypePrimitive prim [])
@@ -731,8 +731,8 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                        | otherwise -> Nothing
                                     Just (SymbolVar (TypeClassId classIdentifier (("[",rows,"]") : ("[",cols,"]") : [])) varScp _) 
                                        | varScp >= scp ->
-                                            let typeRowExp = (expressionProcess scp rowExp symTab)
-                                                typeColExp = (expressionProcess scp colExp symTab)
+                                            let typeRowExp = (expressionProcess scp rowExp symTab classSymTab)
+                                                typeColExp = (expressionProcess scp colExp symTab classSymTab)
                                             in if (typeColExp == typeRowExp) then
                                                 case typeRowExp of
                                                    Just PrimitiveInt ->  Just (TypeClassId classIdentifier [])
@@ -741,6 +741,6 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                                 else Nothing
                                       | otherwise -> Nothing
                                     _ -> Nothing
-preProcessExpression scp expression symTab _ = case (expressionProcess scp expression symTab) of
+preProcessExpression scp expression symTab classSymTab = case (expressionProcess scp expression symTab classSymTab) of
                                                 Just prim -> (Just (TypePrimitive prim []) )
                                                 Nothing -> Nothing
