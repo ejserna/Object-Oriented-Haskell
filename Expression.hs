@@ -26,6 +26,9 @@ expressionProcess scp (ExpressionMinus exp1 exp2) symTab classSymTab = expressio
 expressionProcess scp (ExpressionMod exp1 exp2) symTab classSymTab = expressionCheckMOD scp exp1 exp2 symTab classSymTab
 expressionProcess scp (ExpressionNot exp) symTab classSymTab = expressionCheckNOT scp exp symTab classSymTab
 expressionProcess scp (ExpressionLitVar litVar) symTab classSymTab = checkDataTypeOfLitVar scp litVar symTab
+expressionProcess scp (ExpressionFuncCall funcCall) symTab classSymTab = case functionCallType funcCall scp symTab classSymTab of
+                                                                          Just (TypePrimitive prim []) -> Just prim
+                                                                          _ -> Nothing   
 
 expressionProcess scp (ExpressionVarArray identifier ((ArrayAccessExpression expression) : [])) symTab classSymTab = case (expressionProcess scp expression symTab classSymTab) of 
                                                                                                         Just PrimitiveInt -> checkArrayID scp identifier symTab 1
