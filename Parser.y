@@ -243,7 +243,7 @@ Statement :
 
 Assignment :
         var_identifier "=" Expression        {AssignmentExpression $1 $3}
-      | var_identifier "=" FunctionCall      {AssignmentFunctionCall $1 $3}
+      -- | var_identifier "=" FunctionCall      {AssignmentFunctionCall $1 $3}
       | var_identifier "=" ObjectMember      {AssignmentObjectMember $1 $3}
       | ObjectMember "=" Expression   {AssignmentObjectMemberExpression $1 $3}
       -- | ObjectMember "=" FunctionCall        {AssignmentObjectFuncCall $1 $3}
@@ -287,7 +287,8 @@ Expression :
     | Expression "^" Expression {ExpressionPow $1 $3}
     | Expression "%" Expression {ExpressionMod $1 $3}
     | LiteralOrVariable {ExpressionLitVar $1}
-    | var_identifier ArrayIndexesExpression {ExpressionVarArray $1 $2}
+    | var_identifier ArrayIndexesExpression {ExpressionVarArray $1 $2 }
+    | FunctionCall { ExpressionFuncCall $1 }
     | "!" Expression  {ExpressionNot $2}
     | "-" Expression %prec NEG {ExpressionNeg $2}
     | "(" Expression ")" {ExpressionPars $2}
@@ -356,8 +357,8 @@ ObjectMember :
         var_identifier "." var_identifier {ObjectMember $1 $3}
 
 Return :
-        "return" FunctionCall      {ReturnFunctionCall $2}
-      | "return" Expression        {ReturnExp $2}
+        -- "return" FunctionCall      {ReturnFunctionCall $2}
+      "return" Expression        {ReturnExp $2}
 
 {
 parseError :: [Token] -> a

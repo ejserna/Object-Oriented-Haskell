@@ -175,7 +175,8 @@ data Expression
     | ExpressionNot Expression 
     | ExpressionLitVar LiteralOrVariable
     | ExpressionNeg Expression 
-    | ExpressionPars Expression 
+    | ExpressionPars Expression
+    | ExpressionFuncCall FunctionCall
   deriving(Show, Eq)
 
 
