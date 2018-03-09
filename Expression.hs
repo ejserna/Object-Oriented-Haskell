@@ -8,6 +8,9 @@ import qualified Data.HashMap.Strict as Map
 import Data.List (intercalate, maximumBy)
 import Data.Ord (comparing)
 
+data ExpResult = ResDecimal Decimal
+                 | ResBool Bool
+
 expressionProcess :: Scope -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive  
 expressionProcess scp (ExpressionMult exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
 expressionProcess scp (ExpressionDiv exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
@@ -134,8 +137,9 @@ checkDataTypesMult (Just PrimitiveMoney) _ _ = (Just PrimitiveMoney)
 checkDataTypesMult _ (Just PrimitiveMoney) _ = (Just PrimitiveMoney)
 checkDataTypesMult (Just PrimitiveDouble) _ _ = (Just PrimitiveDouble)
 checkDataTypesMult _ (Just PrimitiveDouble) _ = (Just PrimitiveDouble)
-checkDataTypesMult _ _ _ = Nothing -- Todo lo demas, falso  
-                               
+checkDataTypesMult (Just PrimitiveString) (Just PrimitiveString) _ = Just PrimitiveString 
+checkDataTypesMult _ _ _ = Nothing -- Todo lo demas, falso
+
 
 checkDataTypesRel1 :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive 
 checkDataTypesRel1 (Just PrimitiveBool) (Just PrimitiveBool) _ = (Just PrimitiveBool)
