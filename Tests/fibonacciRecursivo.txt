@@ -7,16 +7,18 @@ fibo => Int :: Int n{
     if (n == 1){
         return 1;
     }
-    i = fibo(n - 1);
-    k = fibo(n - 2);
-    result = i + k;
-    return result;
+    return 2;
 }
-Int i,j,k,l;
 
+Int i,j,k,l;
+Money m;
+Bool b;
+String s;
 main{
     i = fibo(5);
-    for (1..10){
+    m = 2 ^ 2 / 2000.0;
+    s = "1" + "2" + "3" + "4" + "5";
+    for z in (1..10){
         
     }
 }

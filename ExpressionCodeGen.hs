@@ -29,7 +29,7 @@ expressionProcess (ExpressionMod exp1 exp2) = functionMOD (mod) exp1 exp2
 functionExpression :: (Decimal -> Decimal -> Decimal) -> Expression -> Expression -> Decimal
 functionExpression f (ExpressionLitVar (IntegerLiteral int1)) (ExpressionLitVar (IntegerLiteral int2)) = f (intToDecimal int1) (intToDecimal int2)
 functionExpression f (ExpressionLitVar (DecimalLiteral dec1)) (ExpressionLitVar (IntegerLiteral int1)) = f dec1 (intToDecimal int1)
-functionExpression f (ExpressionLitVar (IntegerLiteral int1)) (ExpressionLitVar (DecimalLiteral dec1)) = f dec1 (intToDecimal int1)
+functionExpression f (ExpressionLitVar (IntegerLiteral int1)) (ExpressionLitVar (DecimalLiteral dec1)) = f (intToDecimal int1) dec1 
 functionExpression f (ExpressionLitVar (DecimalLiteral dec1)) (ExpressionLitVar (DecimalLiteral dec2)) = f dec1 dec2
 functionExpression f (ExpressionLitVar (IntegerLiteral int1)) exp = f (intToDecimal int1) (expressionProcess exp)
 functionExpression f (ExpressionLitVar (DecimalLiteral dec1)) exp = f dec1 (expressionProcess exp)
@@ -40,19 +40,19 @@ functionExpression f exp1 exp2 = f (expressionProcess exp1) (expressionProcess e
 functionPOW :: (Double -> Double -> Double) -> Expression -> Expression -> Decimal
 functionPOW f (ExpressionLitVar (IntegerLiteral int1)) (ExpressionLitVar (IntegerLiteral int2)) = doubleToDecimal (f (intToDouble int1) (intToDouble int2))
 functionPOW f (ExpressionLitVar (DecimalLiteral dec1)) (ExpressionLitVar (IntegerLiteral int1)) = doubleToDecimal (f (decToDouble dec1) (intToDouble int1))
-functionPOW f (ExpressionLitVar (IntegerLiteral int1)) (ExpressionLitVar (DecimalLiteral dec1)) = doubleToDecimal (f (decToDouble dec1) (intToDouble int1))
+functionPOW f (ExpressionLitVar (IntegerLiteral int1)) (ExpressionLitVar (DecimalLiteral dec1)) = doubleToDecimal (f (intToDouble int1) (decToDouble dec1))
 functionPOW f (ExpressionLitVar (DecimalLiteral dec1)) (ExpressionLitVar (DecimalLiteral dec2)) = doubleToDecimal (f (decToDouble dec1) (decToDouble dec2))
 functionPOW f (ExpressionLitVar (IntegerLiteral int1)) exp = doubleToDecimal (f (intToDouble int1) (decToDouble (expressionProcess exp)))
 functionPOW f (ExpressionLitVar (DecimalLiteral dec1)) exp = doubleToDecimal (f (decToDouble dec1) (decToDouble (expressionProcess exp)))
-functionPOW f exp (ExpressionLitVar (IntegerLiteral int1)) = doubleToDecimal (f (intToDouble int1) (decToDouble (expressionProcess exp)))
-functionPOW f exp (ExpressionLitVar (DecimalLiteral dec1)) = doubleToDecimal (f (decToDouble dec1) (decToDouble (expressionProcess exp)))
+functionPOW f exp (ExpressionLitVar (IntegerLiteral int1)) = doubleToDecimal (f (decToDouble (expressionProcess exp)) (intToDouble int1))
+functionPOW f exp (ExpressionLitVar (DecimalLiteral dec1)) = doubleToDecimal (f (decToDouble (expressionProcess exp)) (decToDouble dec1))
 functionPOW f exp1 exp2 = doubleToDecimal (f (decToDouble (expressionProcess exp1)) (decToDouble (expressionProcess exp2)))
   
 
 functionMOD :: (Integer -> Integer -> Integer) -> Expression -> Expression -> Decimal
 functionMOD f (ExpressionLitVar (IntegerLiteral int1)) (ExpressionLitVar (IntegerLiteral int2)) = intToDecimal (f int1 int2)
 functionMOD f (ExpressionLitVar (IntegerLiteral int1)) exp = intToDecimal (f int1 (decToInt (expressionProcess exp)))
-functionMOD f exp (ExpressionLitVar (IntegerLiteral int1)) = intToDecimal (f int1 (decToInt (expressionProcess exp)))
+functionMOD f exp (ExpressionLitVar (IntegerLiteral int1)) = intToDecimal (f (decToInt (expressionProcess exp)) int1)
 functionMOD f exp1 exp2 = intToDecimal (f (decToInt (expressionProcess exp1)) (decToInt (expressionProcess exp2)))
 
 resultUnwrapperDecimal :: ExpResult -> Decimal
