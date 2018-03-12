@@ -4,6 +4,9 @@ import Data.Decimal
 type Identifier = String
 type ClassIdentifier = String
 
+type Address = Integer
+type QuadNum = Integer
+
 data Program 
     = Program [Class] [Function] [Variable] Block
   deriving (Show, Eq)

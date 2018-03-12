@@ -2,9 +2,6 @@ module Quadruple where
 import DataTypes
 import Data.List (intercalate)
 
--- Esta sección tiene las producciones semánticas para producir el árbol abstracto de sintaxis 
-type Address = Integer
-type QuadNum = Integer
 
 -- Operation dice la operacion que hará el cuádruplo
 data Operation = 
@@ -86,9 +83,7 @@ buildQuadrupleThreeAddresses :: QuadNum -> Operation -> (Address,Address,Address
 buildQuadrupleThreeAddresses quadNum op (address1,address2,address3) = (QuadrupleThreeAddresses quadNum op address1 address2 address3)
 
 buildQuadrupleTwoAddresses :: QuadNum -> Operation -> (Address,Address)-> Quadruple
-buildQuadrupleTwoAddresses quadNum op (address1,address2) = (QuadrupleTwoAddresses quadNum op address1 address2 address3)
-
-buildQuadruple quadNum op (address1,address2,address3) = (QuadrupleThreeAddresses quadNum op address1 address2 address3)
+buildQuadrupleTwoAddresses quadNum op (address1,address2) = (QuadrupleTwoAddresses quadNum op address1 address2)
 
 buildGoto :: QuadNum -> QuadNum -> Quadruple
 buildGoto quadNum quadNumAssigned = (QuadrupleOneQuad quadNum (GOTO) quadNumAssigned) 
@@ -99,10 +94,6 @@ buildGotoCondition quadNum quadNumAssigned = (QuadrupleOneQuad quadNum (GOTO) qu
 -- buildEmptyQuadruple :: QuadNum -> Operation -> Result -> Quadruple
 -- buildEmptyQuadruple quadNum op result = (QuadrupleEmpty quadNum op result) 
 
-main = do
-  let q1 = buildQuadruple 1 (GT_) (1000,2000,3000) in putStrLn $ id $ show q1
-  let q2 = buildQuadruple 2 (ADD_) (1001,2001,3001) in putStrLn $ id $ show q2
-  let q3 = buildGoto 3 1 in putStrLn $ id $ show q3
 
 
 

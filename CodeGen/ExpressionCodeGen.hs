@@ -2,8 +2,6 @@ module Expression where
 import Data.Decimal
 import DataTypes
 import Text.Show.Pretty
-import SymbolTable
-import ClassSymbolTable
 import qualified Data.HashMap.Strict as Map
 import Data.List (intercalate, maximumBy)
 import Data.Ord (comparing)
