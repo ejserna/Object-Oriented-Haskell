@@ -30,7 +30,6 @@ startSemanticAnalysis (Program classList functionList varsList (Block statements
                 else do putStrLn $ ppShow $ "[2]: Semantic Variable Analysis Passed."
                         putStrLn $ ppShow $  symbolTableStatements
             
-
 -- Analyze classes regresa una tabla de simbolos de clase y un booleano. Si es true, significa que hubo errores, si es false, no hubo errores
 analyzeClasses :: [Class] -> ClassSymbolTable -> (ClassSymbolTable, Bool)
 analyzeClasses [] _ = (emptyClassSymbolTable, False) 
@@ -677,6 +676,8 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                                 else Nothing
                                       | otherwise -> Nothing
                                     _ -> Nothing
+                                    
 preProcessExpression scp expression symTab classSymTab = case (expressionProcess scp expression symTab classSymTab) of
                                                 Just prim -> (Just (TypePrimitive prim []) )
                                                 Nothing -> Nothing
+

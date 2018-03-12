@@ -10,6 +10,7 @@ import Data.Ord (comparing)
 
 data ExpResult = ResDecimal Decimal
                  | ResBool Bool
+                 
 
 expressionProcess :: Scope -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive  
 expressionProcess scp (ExpressionMult exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
