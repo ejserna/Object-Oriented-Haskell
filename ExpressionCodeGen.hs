@@ -10,9 +10,54 @@ import Data.Ord (comparing)
 
 data ExpResult
     = ResultDecimal Decimal
-    | ResltBool Bool
+    | ResultBool Bool
     | ResultString String
+    deriving (Show,Eq)
 
+processStart :: Expression -> ExpResult
+processStart (ExpressionMult exp1 exp2) = (ResultDecimal (expressionProcess (ExpressionMult exp1 exp2)))
+processStart (ExpressionPlus exp1 exp2) = case (checkIfString exp1) of
+                                          True -> (ResultString (expressionConcatString (ExpressionPlus exp1 exp2)))
+                                          False -> (ResultDecimal (expressionProcess (ExpressionPlus exp1 exp2)))
+processStart (ExpressionPow exp1 exp2) = (ResultDecimal (expressionProcess (ExpressionPow exp1 exp2)))
+processStart (ExpressionDiv exp1 exp2) = (ResultDecimal (expressionProcess (ExpressionDiv exp1 exp2)))
+processStart (ExpressionMinus exp1 exp2) = (ResultDecimal (expressionProcess (ExpressionMinus exp1 exp2)))
+processStart (ExpressionPars exp) = processStart exp
+processStart (ExpressionNeg exp) = (ResultDecimal (expressionProcess (ExpressionNeg exp)))
+processStart (ExpressionMod exp1 exp2) = (ResultDecimal (expressionProcess (ExpressionMod exp1 exp2)))
+processStart (ExpressionGreater exp1 exp2) = (ResultBool (expressionRel (ExpressionGreater exp1 exp2)))
+processStart (ExpressionLower exp1 exp2) = (ResultBool (expressionRel (ExpressionLower exp1 exp2)))
+processStart (ExpressionGreaterEq exp1 exp2) = (ResultBool (expressionRel (ExpressionGreaterEq exp1 exp2)))
+processStart (ExpressionLowerEq exp1 exp2) = (ResultBool (expressionRel (ExpressionLowerEq exp1 exp2)))
+processStart (ExpressionEqEq exp1 exp2) = (ResultBool (expressionRel (ExpressionEqEq exp1 exp2)))
+processStart (ExpressionNotEq exp1 exp2) = (ResultBool (expressionRel (ExpressionNotEq exp1 exp2)))
+processStart (ExpressionAnd exp1 exp2) = (ResultBool (expressionRel (ExpressionAnd exp1 exp2)))
+processStart (ExpressionOr exp1 exp2) = (ResultBool (expressionRel (ExpressionOr exp1 exp2)))
+processStart (ExpressionNot exp) = (ResultBool (expressionRel (ExpressionNot exp)))
+
+checkIfString :: Expression -> Bool
+checkIfString (ExpressionLitVar (StringLiteral str)) = True
+checkIfString (ExpressionLitVar (DecimalLiteral dec)) = False
+checkIfString (ExpressionLitVar (IntegerLiteral int)) = False
+checkIfString (ExpressionPlus exp1 exp2) = checkIfString exp1
+
+expressionConcatString :: Expression -> String
+expressionConcatString (ExpressionPlus exp1 exp2) = functionConcatString (++) exp1 exp2
+
+expressionRel :: Expression -> Bool
+expressionRel (ExpressionGreater exp1 exp2) = (expressionProcess exp1) > (expressionProcess exp2)
+expressionRel (ExpressionLower exp1 exp2) = (expressionProcess exp1) < (expressionProcess exp2)
+expressionRel (ExpressionGreaterEq exp1 exp2) = (expressionProcess exp1) >= (expressionProcess exp2)
+expressionRel (ExpressionLowerEq exp1 exp2) = (expressionProcess exp1) <= (expressionProcess exp2)
+expressionRel (ExpressionEqEq exp1 exp2) = (expressionProcess exp1) == (expressionProcess exp2)
+expressionRel (ExpressionNotEq exp1 exp2) = (expressionProcess exp1) /= (expressionProcess exp2)
+expressionRel (ExpressionAnd exp1 exp2) = (expressionRel exp1) && (expressionRel exp2)
+expressionRel (ExpressionOr exp1 exp2) = (expressionRel exp1) || (expressionRel exp2)
+expressionRel (ExpressionPars exp) = expressionRel exp
+expressionRel (ExpressionLitVar (BoolLiteral b)) = b
+expressionRel (ExpressionNot exp1) = case (expressionRel exp1) of
+                                      True -> False
+                                      False -> True
 
 expressionProcess :: Expression -> Decimal 
 expressionProcess (ExpressionMult exp1 exp2) = functionExpression (*) exp1 exp2
@@ -23,7 +68,14 @@ expressionProcess (ExpressionMinus exp1 exp2) = functionExpression (-) exp1 exp2
 expressionProcess (ExpressionPars exp) = expressionProcess exp
 expressionProcess (ExpressionNeg exp) = functionExpression (-) (ExpressionLitVar (IntegerLiteral 0)) exp
 expressionProcess (ExpressionMod exp1 exp2) = functionMOD (mod) exp1 exp2
+expressionProcess (ExpressionLitVar (IntegerLiteral int)) = intToDecimal (int)
+expressionProcess (ExpressionLitVar (DecimalLiteral dec)) = dec
 
+functionConcatString :: ([Char] -> [Char] -> [Char]) -> Expression -> Expression -> String
+functionConcatString f (ExpressionLitVar (StringLiteral str1)) (ExpressionLitVar (StringLiteral str2)) = f str1 str2
+functionConcatString f (ExpressionLitVar (StringLiteral str1)) exp = f str1 (expressionConcatString exp)
+functionConcatString f exp (ExpressionLitVar (StringLiteral str1)) = f (expressionConcatString exp) str1
+functionConcatString f exp1 exp2 = f (expressionConcatString exp1) (expressionConcatString exp2)
 
 
 functionExpression :: (Decimal -> Decimal -> Decimal) -> Expression -> Expression -> Decimal
