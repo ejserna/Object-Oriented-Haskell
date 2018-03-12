@@ -3,9 +3,9 @@ ARCH?=1.txt
 default:
 	rm -f Parser.hs
 	rm -f Scanner.hs
-	alex Scanner.x
-	happy Parser.y
-	ghc -o ObjectiveOrientedHaskell DataTypes.hs SymbolTable.hs Expression.hs ClassSymbolTable.hs TypeChecker.hs Scanner.hs Parser.hs
+	alex Analysis/Scanner.x
+	happy Analysis/Parser.y
+	ghc -o ObjectiveOrientedHaskell DataTypes.hs Analysis/SymbolTable.hs Analysis/Expression.hs Analysis/ClassSymbolTable.hs Analysis/TypeChecker.hs Analysis/Scanner.hs Analysis/Parser.hs
 
 
 pruebaClases:
