@@ -101,7 +101,14 @@ data LiteralOrVariable
     | DecimalLiteral Decimal
     | StringLiteral String
     | BoolLiteral Bool
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Show LiteralOrVariable where
+    show (VarIdentifier identifier) = id identifier
+    show (IntegerLiteral integer) =  id $ show integer
+    show (DecimalLiteral dec) =  id $ show dec
+    show (StringLiteral str) = id $ str
+    show (BoolLiteral bool) = id $ show bool
 
 data Block 
     = Block [Statement]
