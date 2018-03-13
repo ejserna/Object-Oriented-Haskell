@@ -13,13 +13,23 @@ fibo => Int :: Int n{
 Int i,j,k,l;
 Money m;
 Bool b;
-
 main{
     i = fibo(5);
     String s;
-    m = 2 ^ 2 / 2000.0;
+    m = 2 ^ 30 / 2000.0;
     s = "1" + "2" + "3" + "4" + "5";
     for z in (1..10){
-        
+        Integer lolo;
+        if (i > k){
+            Int jeje;
+            jeje = 1 + 2 + 3 + 9000;
+            String soso;
+        }
+        else{
+            s = "hola perro";
+            if (s == "hola" || s == "pe"){
+                s = "perro";
+            }
+        }
     }
 }

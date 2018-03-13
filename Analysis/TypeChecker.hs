@@ -6,6 +6,7 @@ import Text.Show.Pretty
 import SymbolTable
 import ClassSymbolTable
 import Expression
+import CodeGen
 -- import qualified Data.Map.Strict as Map
 import qualified Data.HashMap.Strict as Map
 
@@ -29,6 +30,10 @@ startSemanticAnalysis (Program classList functionList varsList (Block statements
                 then putStrLn $ show "[2] ERROR: Semantic Error in Variable Checking."
                 else do putStrLn $ ppShow $ "[2]: Semantic Variable Analysis Passed."
                         putStrLn $ ppShow $  symbolTableStatements
+                        putStrLn $ show "Starting CodeGen"
+                        startCodeGen (Program classList functionList varsList (Block statements)) symbolTableStatements classSymbolTable 
+
+
             
 -- Analyze classes regresa una tabla de simbolos de clase y un booleano. Si es true, significa que hubo errores, si es false, no hubo errores
 analyzeClasses :: [Class] -> ClassSymbolTable -> (ClassSymbolTable, Bool)
@@ -329,6 +334,15 @@ analyzeStatement (ConditionStatement (If expression (Block statements))) scp sym
                                                 case (expressionProcess scp expression symTab classTab) of
                                                     -- Si la expresión del if regresa booleano, entonces está bien
                                                     Just (PrimitiveBool) -> analyzeStatements statements (scp - 1) symTab classTab
+                                                   -- De lo contrario, no se puede tener esa expresión en el if
+                                                    _ -> (emptySymbolTable, True)  
+analyzeStatement (ConditionStatement (IfElse expression (Block statements) (Block statements2))) scp symTab classTab = 
+                                                case (expressionProcess scp expression symTab classTab) of
+                                                    -- Si la expresión del if regresa booleano, entonces está bien
+                                                    Just (PrimitiveBool) -> 
+                                                        let (newSymTab,hasErrors) = analyzeStatements statements (scp - 1) symTab classTab
+                                                            in if (hasErrors) then (emptySymbolTable, True)
+                                                                else analyzeStatements statements2 (scp - 1) newSymTab classTab
                                                    -- De lo contrario, no se puede tener esa expresión en el if
                                                     _ -> (emptySymbolTable, True)  
 analyzeStatement (CycleStatement (CycleWhile (While expression (Block statements)))) scp symTab classTab = 

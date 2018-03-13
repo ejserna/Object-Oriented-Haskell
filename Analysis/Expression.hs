@@ -144,10 +144,9 @@ checkDataTypesMult _ _ _ = Nothing -- Todo lo demas, falso
 
 checkDataTypesRel1 :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive 
 checkDataTypesRel1 (Just PrimitiveBool) (Just PrimitiveBool) _ = (Just PrimitiveBool)
+checkDataTypesRel1 (Just PrimitiveString) (Just PrimitiveString) _ = (Just PrimitiveBool)
 checkDataTypesRel1 (Just PrimitiveBool) _ _  = Nothing
 checkDataTypesRel1 _ (Just PrimitiveBool) _ = Nothing
-checkDataTypesRel1 (Just PrimitiveString) _ _ = Nothing
-checkDataTypesRel1 _ (Just PrimitiveString) _ = Nothing
 checkDataTypesRel1 (Just PrimitiveInt) (Just PrimitiveDouble) _ = Nothing
 checkDataTypesRel1 (Just PrimitiveDouble) (Just PrimitiveInt) _ = Nothing
 checkDataTypesRel1 (Just PrimitiveInteger) (Just PrimitiveDouble) _ = Nothing
