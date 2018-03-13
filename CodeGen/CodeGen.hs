@@ -106,6 +106,31 @@ prepareConstantAddressMap (st : sts) literalCounters constantAddressMap =
             in let (newLiteralCounters2, newConsAddressMap2) = (prepareConstantAddressMap sts newLiteralCounters newConsAddressMap)
                 in (newLiteralCounters2, newConsAddressMap2)
 
+
+fillFromLiteralOrVariables :: [LiteralOrVariable] -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
+fillFromLiteralOrVariables [] literalCounters constantAddressMap = (literalCounters,constantAddressMap)
+fillFromLiteralOrVariables (litVar : litVars) literalCounters constantAddressMap
+            = let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap (ExpressionLitVar litVar)
+                in fillFromLiteralOrVariables litVars newLiteralCounters newConsAddressMap
+
+fillFromListOfLiteralOrVariables :: [[LiteralOrVariable]] -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
+fillFromListOfLiteralOrVariables [] literalCounters constantAddressMap = (literalCounters,constantAddressMap)
+fillFromListOfLiteralOrVariables (listLitVars : rest) literalCounters constantAddressMap
+            = let (newLiteralCounters, newConsAddressMap) = fillFromLiteralOrVariables listLitVars literalCounters constantAddressMap
+                in fillFromListOfLiteralOrVariables rest newLiteralCounters newConsAddressMap
+
+fillFromVariable :: Variable -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
+fillFromVariable (VariableAssignmentLiteralOrVariable dataType identifier literalOrVariable) literalCounters constantAddressMap =
+                                fillFromExpression literalCounters constantAddressMap (ExpressionLitVar literalOrVariable) 
+fillFromVariable (VariableAssignment1D _ _ literalOrVariables) literalCounters constantAddressMap = 
+                                fillFromLiteralOrVariables literalOrVariables literalCounters constantAddressMap
+fillFromVariable (VariableAssignment2D dt identifier listOfListVars) literalCounters constantAddressMap = 
+                                fillFromListOfLiteralOrVariables listOfListVars literalCounters constantAddressMap
+fillFromVariable (VariableAssignmentObject _ _ (ObjectCreation _ params)) literalCounters constantAddressMap = 
+                                fillFromCallParams literalCounters constantAddressMap params
+fillFromVariable _ literalCounters constantAddressMap  = (literalCounters,constantAddressMap)
+
+
 fillFromAssignment :: Assignment -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
 fillFromAssignment (AssignmentExpression identifier expression) literalCounters constantAddressMap = fillFromExpression literalCounters constantAddressMap expression
 fillFromAssignment  (AssignmentObjectMemberExpression (ObjectMember objectIdentifier attrIdentifier) expression) literalCounters constantAddressMap =  fillFromExpression literalCounters constantAddressMap expression
@@ -119,6 +144,8 @@ fillFromAssignment _ literalCounters constantAddressMap  = (literalCounters,cons
 
 fillFromStatement :: Statement -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
 fillFromStatement (AssignStatement assignment) literalCounters constantAddressMap = fillFromAssignment assignment literalCounters constantAddressMap
+fillFromStatement (VariableStatement var) literalCounters constantAddressMap = fillFromVariable var literalCounters constantAddressMap
+
 fillFromStatement (ConditionStatement (If expression (Block statements))) literalCounters constantAddressMap = 
                                                 let (newLiteralCounters, newConsAddressMap) = fillFromExpression literalCounters constantAddressMap expression
                                                     in let (newLiteralCounters2, newConsAddressMap2) = prepareConstantAddressMap statements newLiteralCounters newConsAddressMap
@@ -192,7 +219,6 @@ fillFromCallParams literalCounters constantAddressMap ((ParamsExpression exp) : 
 --                                         _ -> (emptySymbolTable, True)
 
 
--- analyzeStatement (VariableStatement var) scp symTab classTab = analyzeVariable var scp Nothing symTab classTab
 
 
 

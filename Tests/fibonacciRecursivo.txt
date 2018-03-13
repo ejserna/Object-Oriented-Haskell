@@ -16,6 +16,9 @@ Bool b;
 main{
     i = fibo(12);
     String s;
+    Int [10][10] arr = [[17,22,27,31,35,29,77],
+                        [222,220,223,224,225]];
+    Int kokooo = 20000000;
     m = 2 ^ 30 / 2000.0;
     s = "1" + "2" + "3" + "4" + "5";
     for z in (1..10){
@@ -29,6 +32,7 @@ main{
             s = "hola perro";
             if (s == "hola" || s == "pe" || True){
                 s = "perro";
+                Money ko;
             }
         }
     }
