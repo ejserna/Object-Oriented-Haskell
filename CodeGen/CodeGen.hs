@@ -88,6 +88,7 @@ endBoolLiteralMemory = 84000
 -- Los primeros 4 son los contadores globales de Integers,Decimales,Strings,Bool y los ultimos son locales, en el mismo orden
 type VariableCounters = (Address,Address,Address,Address,Address,Address,Address,Address) 
 
+-- Contadores de literales de integers,decimales,strings y booleanos
 type LiteralCounters = (Address,Address,Address,Address) 
 
 startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> IO()
@@ -293,62 +294,3 @@ fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2 = let (newLi
                                                                       in let (newLiteralCounters2,constAddressMap2) = fillFromExpression newLiteralCounters1 constAddressMap1 exp2
                                                                             in (newLiteralCounters2,(Map.union constAddressMap1 constAddressMap2))
 
--- analyzeStatements :: [Statement] -> IdentifierAddressMap -> ConstantAddressMap -> [Quadruple]
--- analyzeStatements [] _ symTab _ = []
--- analyzeStatements (st : sts) scp symTab classTab = 
---                                 let (newSymTab, hasErrors) = analyzeStatement st scp symTab classTab
---                                 in if (hasErrors) then (emptySymbolTable, True)
---                                     else let (newSymTab2,hasErrors2) = analyzeStatements sts scp newSymTab classTab
---                                          in if (hasErrors2) then (emptySymbolTable,True)
---                                             else ((Map.union newSymTab newSymTab2), False)
-
--- analyzeStatement :: Statement -> Scope -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
--- analyzeStatement (AssignStatement assignment) scp symTab classTab = if (isAssignmentOk assignment scp symTab classTab)
---                                                                         then (symTab, False)
---                                                                         else (emptySymbolTable, True)
--- analyzeStatement (DisplayStatement displays) scp symTab classTab = if analyzeDisplays displays 
---                                                                     then (symTab, False)
---                                                                     else (emptySymbolTable, True)
---                                                                 where 
---                                                                     analyzeDisplays :: [Display] -> Bool
---                                                                     analyzeDisplays [] = True
---                                                                     analyzeDisplays (disp : disps) = 
---                                                                             analyzeDisplay disp scp symTab classTab
---                                                                             && analyzeDisplays disps
-
--- analyzeStatement (ReadStatement (Reading identifier)) scp symTab classTab = 
---                                     case (Map.lookup identifier symTab) of
---                                         Just (SymbolVar (TypePrimitive _ []) varScp _) ->
---                                             if varScp >= scp then
---                                                 (symTab,False)
---                                             else (emptySymbolTable, True)
---                                         _ -> (emptySymbolTable, True)
-
--- analyzeStatement (DPMStatement assignment) scp symTab classTab = analyzeStatement (AssignStatement assignment) scp symTab classTab
--- analyzeStatement (FunctionCallStatement functionCall) scp symTab classTab = if (analyzeFunctionCall functionCall scp symTab classTab) 
---                                                                                 then (symTab, False)
---                                                                                 else (emptySymbolTable, True) 
--- analyzeStatement (VariableStatement var) scp symTab classTab = analyzeVariable var scp Nothing symTab classTab
--- analyzeStatement (ConditionStatement (If expression (Block statements))) scp symTab classTab = 
---                                                 case (expressionProcess scp expression symTab classTab) of
---                                                     -- Si la expresión del if regresa booleano, entonces está bien
---                                                     Just (PrimitiveBool) -> analyzeStatements statements (scp - 1) symTab classTab
---                                                    -- De lo contrario, no se puede tener esa expresión en el if
---                                                     _ -> (emptySymbolTable, True)  
--- analyzeStatement (CycleStatement (CycleWhile (While expression (Block statements)))) scp symTab classTab = 
---                 case (expressionProcess scp expression symTab classTab) of
---                     Just PrimitiveBool -> analyzeStatements statements (scp - 1) symTab classTab
---                     _ -> (emptySymbolTable, True) 
--- analyzeStatement (CycleStatement (CycleFor (For lowerRange greaterRange (Block statements)))) scp symTab classTab = 
---                                                                             if (greaterRange > lowerRange) 
---                                                                                 then analyzeStatements statements (scp - 1) symTab classTab
---                                                                                 else (emptySymbolTable,True)
--- analyzeStatement (CycleStatement (CycleForVar statements)) scp symTab classTab = analyzeStatements statements scp symTab classTab
--- analyzeStatement (ReturnStatement (ReturnFunctionCall functionCall)) scp symTab classTab =  
---             let isFuncCallOk = analyzeFunctionCall functionCall scp symTab classTab
---             in if (isFuncCallOk) then (symTab,False)
---                 else (emptySymbolTable, True)
--- analyzeStatement (ReturnStatement (ReturnExp expression)) scp symTab classTab =  
---             case (preProcessExpression scp expression symTab classTab) of
---                 Just expType -> (symTab,False)
---                 Nothing -> (emptySymbolTable, True)
