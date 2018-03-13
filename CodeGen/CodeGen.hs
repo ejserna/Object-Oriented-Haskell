@@ -85,16 +85,15 @@ startBoolLiteralMemory = 80001
 endBoolLiteralMemory :: Address
 endBoolLiteralMemory = 84000
 
--- Los primeros 4 son los contadores globales de Integers,Decimales,Strings,Bool y los ultimos son locales, en el mismo orden
-type VariableCounters = (Address,Address,Address,Address,Address,Address,Address,Address) 
+-- Los primeros 4 son los contadores de variables de tipo Integers,Decimales,Strings,Bool 
+type VariableCounters = (Address,Address,Address,Address) 
 
 -- Contadores de literales de integers,decimales,strings y booleanos
 type LiteralCounters = (Address,Address,Address,Address) 
 
 startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> IO()
 startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab = 
-            do putStrLn $ ppShow $ (prepareAddressMapsFromSymbolTable symTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory,
-                                                                startIntLocalMemory,startDecimalLocalMemory,startStringLocalMemory,startBoolLocalMemory)
+            do putStrLn $ ppShow $ (prepareAddressMapsFromSymbolTable symTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory)
                                                                 (Map.empty))
                putStrLn $ ppShow $ (prepareConstantAddressMap statements (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory)
                                                                 (Map.empty))
@@ -234,7 +233,7 @@ prepareAddressMapsFromSymbolTable symTab counters identifierAddressMap =
 fillIdentifierAddressMap :: [(Identifier,Symbol)] -> IdentifierAddressMap -> VariableCounters -> IdentifierAddressMap 
 fillIdentifierAddressMap [] identifierAddressMap _ = identifierAddressMap
 fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim _) _ _)) : rest ) identifierAddressMap
-                                                                    (intGC,decGC,strGC,boolGC,intLC,decLC,strLC,boolLC)  |
+                                                                    (intGC,decGC,strGC,boolGC)  |
                                                                     intGC <= endIntGlobalMemory
                                                                     && decGC <= endDecimalGlobalMemory
                                                                     && strGC <= endStringGlobalMemory 
@@ -242,26 +241,26 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim _) _ _)) :
                             case prim of
                                 PrimitiveBool -> (Map.union (Map.insert identifier boolGC identifierAddressMap)
                                                             (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC,strGC,boolGC + 1,intLC,decLC,strLC,boolLC)))
+                                                            (intGC,decGC,strGC,boolGC + 1)))
                                 PrimitiveInt -> (Map.union (Map.insert identifier intGC identifierAddressMap)
                                                             (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC + 1,decGC,strGC,boolGC,intLC,decLC,strLC,boolLC)))
+                                                            (intGC + 1,decGC,strGC,boolGC)))
                                 PrimitiveInteger -> (Map.union (Map.insert identifier intGC identifierAddressMap)
                                                             (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC + 1,decGC,strGC,boolGC,intLC,decLC,strLC,boolLC)))
+                                                            (intGC + 1,decGC,strGC,boolGC)))
                                 PrimitiveString -> (Map.union (Map.insert identifier strGC identifierAddressMap)
                                                             (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC,strGC + 1,boolGC,intLC,decLC,strLC,boolLC)))
+                                                            (intGC,decGC,strGC + 1,boolGC)))
                                 PrimitiveMoney -> (Map.union (Map.insert identifier decGC identifierAddressMap)
                                                             (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC + 1,strGC,boolGC,intLC,decLC,strLC,boolLC)))
+                                                            (intGC,decGC + 1,strGC,boolGC)))
                                 PrimitiveDouble -> (Map.union (Map.insert identifier decGC identifierAddressMap)
                                                             (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC + 1,strGC,boolGC,intLC,decLC,strLC,boolLC)))
+                                                            (intGC,decGC + 1,strGC,boolGC)))
 -- MARK TODO: Clases, funciones
-fillIdentifierAddressMap (x : xs) identifierAddressMap (intGC,decGC,strGC,boolGC,intLC,decLC,strLC,boolLC) = 
+fillIdentifierAddressMap (x : xs) identifierAddressMap (intGC,decGC,strGC,boolGC) = 
             (fillIdentifierAddressMap xs identifierAddressMap
-                                                            (intGC,decGC,strGC,boolGC,intLC,decLC,strLC,boolLC))
+                                                            (intGC,decGC,strGC,boolGC))
                             
 
 
