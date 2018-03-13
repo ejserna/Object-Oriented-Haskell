@@ -14,7 +14,7 @@ Int i,j,k,l;
 Money m;
 Bool b;
 main{
-    i = fibo(5);
+    i = fibo(12);
     String s;
     m = 2 ^ 30 / 2000.0;
     s = "1" + "2" + "3" + "4" + "5";
@@ -27,7 +27,7 @@ main{
         }
         else{
             s = "hola perro";
-            if (s == "hola" || s == "pe"){
+            if (s == "hola" || s == "pe" || True){
                 s = "perro";
             }
         }

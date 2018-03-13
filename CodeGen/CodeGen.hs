@@ -179,7 +179,7 @@ fillFromCallParams :: LiteralCounters -> ConstantAddressMap -> [Params] -> (Lite
 fillFromCallParams literalCounters constantAddressMap [] = (literalCounters,constantAddressMap)
 fillFromCallParams literalCounters constantAddressMap ((ParamsExpression exp) : params) =
         let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap exp
-            in fillFromCallParams newLiteralCounters constantAddressMap params
+            in fillFromCallParams newLiteralCounters newConsAddressMap params
                 
 
 
