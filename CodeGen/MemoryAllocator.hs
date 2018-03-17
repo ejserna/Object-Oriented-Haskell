@@ -1,4 +1,4 @@
-module CodeGen where 
+module MemoryAllocator where 
 import Data.Decimal
 import DataTypes
 import Quadruple
@@ -7,12 +7,10 @@ import ClassSymbolTable
 import Text.Show.Pretty
 import qualified Data.HashMap.Strict as Map
 import ExpressionOptimizer
+import Data.List (sortBy)
+import Data.Ord (comparing)
+import Data.Function (on)
 
-type TypeIdentifier = String -- Integer, Decimal, String, Bool
-
--- Estos tipos le sirven a ExpressionCodeGen saber qué Identifiador/Constante están mappeados en memorias con qué dirección
-type IdentifierAddressMap = Map.HashMap Identifier Address
-type ConstantAddressMap = Map.HashMap String Address
 
 startIntGlobalMemory :: Address
 startIntGlobalMemory = 1
@@ -92,12 +90,20 @@ type VariableCounters = (Address,Address,Address,Address)
 -- Contadores de literales de integers,decimales,strings y booleanos
 type LiteralCounters = (Address,Address,Address,Address) 
 
-startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> IO()
-startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab = 
-            do putStrLn $ ppShow $ (prepareAddressMapsFromSymbolTable symTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory)
+type TypeIdentifier = String -- Integer, Decimal, String, Bool
+
+-- Estos tipos le sirven a ExpressionCodeGen saber qué Identifiador/Constante están mappeados en memorias con qué dirección
+type IdentifierAddressMap = Map.HashMap Identifier Address
+type ConstantAddressMap = Map.HashMap String Address
+
+startMemoryAllocation :: Program -> SymbolTable -> ClassSymbolTable -> IO()
+startMemoryAllocation (Program classes functions variables (Block statements)) symTab classSymTab =
+            let (_,constantAddressMap) =  (prepareConstantAddressMap statements (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory)
                                                                 (Map.empty))
-               putStrLn $ ppShow $ (prepareConstantAddressMap statements (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory)
-                                                                (Map.empty))
+                in 
+            do putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList (prepareAddressMapsFromSymbolTable symTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory)
+                                                                (Map.empty)) ) )
+               putStrLn $ ppShow $ (sortBy (compare `on` snd) ( Map.toList constantAddressMap ) )
 
 prepareConstantAddressMap :: [Statement] -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
 prepareConstantAddressMap [] literalCounters constantAddressMap = (literalCounters,constantAddressMap)
@@ -135,11 +141,17 @@ fillFromAssignment :: Assignment -> LiteralCounters -> ConstantAddressMap -> (Li
 fillFromAssignment (AssignmentExpression identifier expression) literalCounters constantAddressMap = fillFromExpression literalCounters constantAddressMap expression
 fillFromAssignment  (AssignmentObjectMemberExpression (ObjectMember objectIdentifier attrIdentifier) expression) literalCounters constantAddressMap =  fillFromExpression literalCounters constantAddressMap expression
 
-fillFromAssignment  (AssignmentArrayExpression _ ((ArrayAccessExpression innerExp) : []) expression) literalCounters constantAddressMap =  -- MARK TODO: Llenar literalCounter de expresiones
+fillFromAssignment  (AssignmentArrayExpression _ ((ArrayAccessExpression innerExp) : []) expression) literalCounters constantAddressMap =  
                                                                                         let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap innerExp
                                                                                         in fillFromExpression newLiteralCounters newConsAddressMap expression
-fillFromAssignment  (AssignmentArrayExpression _ ((ArrayAccessExpression innerExpRow) : (ArrayAccessExpression innerExpCol)  : []) expression) literalCounters constantAddressMap =  -- MARK TODO: Llenar literalCounter de expresiones
-                                                                                                                (literalCounters,constantAddressMap)
+fillFromAssignment  (AssignmentArrayExpression _ ((ArrayAccessExpression innerExpRow) : (ArrayAccessExpression innerExpCol)  : []) expression) literalCounters constantAddressMap = 
+                                                                                                                let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap innerExpRow
+                                                                                                                    in let (newLiteralCounters2,newConsAddressMap2) = fillFromExpression newLiteralCounters newConsAddressMap innerExpCol
+                                                                                                                        in fillFromExpression newLiteralCounters2 newConsAddressMap2 expression
+
+
+
+
 fillFromAssignment _ literalCounters constantAddressMap  = (literalCounters,constantAddressMap)
 
 fillFromStatement :: Statement -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
@@ -290,7 +302,7 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows
                                 PrimitiveDouble -> (Map.union (Map.insert identifier decGC identifierAddressMap)
                                                             (fillIdentifierAddressMap rest identifierAddressMap
                                                             (intGC,decGC + rows * cols,strGC,boolGC)))
--- MARK TODO: Clases, funciones
+-- MARK TODO: Objetos, funciones
 fillIdentifierAddressMap (x : xs) identifierAddressMap (intGC,decGC,strGC,boolGC) = 
             (fillIdentifierAddressMap xs identifierAddressMap
                                                             (intGC,decGC,strGC,boolGC))
@@ -349,7 +361,6 @@ fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionVarArray
 fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionFuncCall funcCall) =
                             fillFromFunctionCall funcCall literalCounters constantAddressMap
 
---Mark TODO: CallParams from function
 fillFromTwoExpressions :: LiteralCounters -> ConstantAddressMap -> Expression -> Expression -> (LiteralCounters,ConstantAddressMap)
 fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2 = let (newLiteralCounters1,constAddressMap1) =
                                                                             fillFromExpression literalCounters constantAddressMap exp1

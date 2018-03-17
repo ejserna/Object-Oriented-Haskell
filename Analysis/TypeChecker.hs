@@ -6,7 +6,7 @@ import Text.Show.Pretty
 import SymbolTable
 import ClassSymbolTable
 import Expression
-import CodeGen
+import MemoryAllocator
 -- import qualified Data.Map.Strict as Map
 import qualified Data.HashMap.Strict as Map
 
@@ -19,19 +19,19 @@ startSemanticAnalysis :: Program -> IO ()
 startSemanticAnalysis (Program classList functionList varsList (Block statements)) =  do 
             let (classSymbolTable, classErrors) = analyzeClasses classList emptyClassSymbolTable
             if (classErrors) 
-                then putStrLn $ show "[1] ERROR: Semantic Error in Class Checking."
-                else do putStrLn $ ppShow $ "[1]: Semantic Class Analysis Passed."
-                        putStrLn $ ppShow $ classSymbolTable
+                then putStrLn $ show "[SEMANTIC ANALYSIS 1] ERROR: Semantic Error in Class Checking."
+                else do putStrLn $ ppShow $ "[SEMANTIC ANALYSIS 1]: Semantic Class Analysis Passed."
+                        -- putStrLn $ ppShow $ classSymbolTable
             let (symbolTableWithFuncs,semanticErrorFuncs) = analyzeFunctions functionList globalScope Nothing emptySymbolTable classSymbolTable
             let (symbolTableWithFuncsVars,semanticErrorVars) = analyzeVariables varsList globalScope Nothing symbolTableWithFuncs classSymbolTable
             let returnListInMain = getReturnStatements statements
             let (symbolTableStatements,semanticErrorBlock) = analyzeStatements statements defScope symbolTableWithFuncsVars  classSymbolTable
             if (semanticErrorFuncs || semanticErrorVars || semanticErrorBlock || (length returnListInMain) > 0) 
-                then putStrLn $ show "[2] ERROR: Semantic Error in Variable Checking."
-                else do putStrLn $ ppShow $ "[2]: Semantic Variable Analysis Passed."
-                        putStrLn $ ppShow $  symbolTableStatements
-                        putStrLn $ show "Starting CodeGen"
-                        startCodeGen (Program classList functionList varsList (Block statements)) symbolTableStatements classSymbolTable 
+                then putStrLn $ show "[SEMANTIC ANALYSIS 2] ERROR: Semantic Error in Variable Checking."
+                else do putStrLn $ ppShow $ "[SEMANTIC ANALYSIS 2]: Semantic Variable Analysis Passed."
+                        -- putStrLn $ ppShow $  symbolTableStatements
+                        putStrLn $ show "[CODEGEN 1] Starting Memory Allocation for CodeGen"
+                        startMemoryAllocation (Program classList functionList varsList (Block statements)) symbolTableStatements classSymbolTable 
 
 
             
