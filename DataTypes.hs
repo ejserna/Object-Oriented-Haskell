@@ -106,6 +106,8 @@ data LiteralOrVariable
     | BoolLiteral Bool
   deriving (Eq)
 
+  -- deriving (Show,Eq)
+
 instance Show LiteralOrVariable where
     show (VarIdentifier identifier) = id identifier
     show (IntegerLiteral integer) =  id $ show integer
@@ -189,6 +191,41 @@ data Expression
     | ExpressionFuncCall FunctionCall
   deriving(Show, Eq)
 
+
+class ExpressionOperation a where
+   (|+|) :: a -> a -> a
+   (|*|) :: a -> a -> a
+   (|-|) :: a -> a -> a
+   (|/|) :: a -> a -> a
+   (|^|) :: a -> a -> a
+   (|==|) :: a -> a -> a
+   (|!=|) :: a -> a -> a
+   (|&&|) :: a -> a -> a
+   (|-||-|) :: a -> a -> a
+   (|%|) :: a -> a -> a
+   (|!|) :: a -> a
+   (|>|) :: a -> a -> a
+   (|<|) :: a -> a -> a
+   (|>=|) :: a -> a -> a
+   (|<=|) :: a -> a -> a
+
+instance ExpressionOperation Expression where
+   a |+| b = (ExpressionPlus a b)
+   a |*| b = (ExpressionMult a b)
+   a |-| b = (ExpressionMinus a b)
+   a |/| b = (ExpressionDiv a b)
+   a |^| b = (ExpressionPow a b)
+   a |==| b = (ExpressionEqEq a b)
+   a |!=| b = (ExpressionNotEq a b)
+   a |&&| b = (ExpressionAnd a b)
+   a |-||-| b = (ExpressionOr a b)
+   a |>| b = (ExpressionGreater a b)
+   a |<| b = (ExpressionLower a b)
+   a |>=| b = (ExpressionGreaterEq a b)
+   a |<=| b = (ExpressionLowerEq a b)
+   a |%| b = (ExpressionMod a b)
+   (|!|) a   = (ExpressionNeg a)
+   
 
 data If
     = If Expression Block
