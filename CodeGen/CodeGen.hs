@@ -207,24 +207,6 @@ fillFromCallParams literalCounters constantAddressMap ((ParamsExpression exp) : 
         let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap exp
             in fillFromCallParams newLiteralCounters newConsAddressMap params
                 
-
-
--- analyzeStatement (ReadStatement (Reading identifier)) scp symTab classTab = 
---                                     case (Map.lookup identifier symTab) of
---                                         Just (SymbolVar (TypePrimitive _ []) varScp _) ->
---                                             if varScp >= scp then
---                                                 (symTab,False)
---                                             else (emptySymbolTable, True)
---                                         _ -> (emptySymbolTable, True)
-
-
-
-
-
-
-
-
-
 prepareAddressMapsFromSymbolTable :: SymbolTable -> VariableCounters -> IdentifierAddressMap -> IdentifierAddressMap
 prepareAddressMapsFromSymbolTable symTab counters identifierAddressMap = 
                             let symTabList = (Map.toList symTab)
@@ -232,7 +214,7 @@ prepareAddressMapsFromSymbolTable symTab counters identifierAddressMap =
 
 fillIdentifierAddressMap :: [(Identifier,Symbol)] -> IdentifierAddressMap -> VariableCounters -> IdentifierAddressMap 
 fillIdentifierAddressMap [] identifierAddressMap _ = identifierAddressMap
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim _) _ _)) : rest ) identifierAddressMap
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) : rest ) identifierAddressMap
                                                                     (intGC,decGC,strGC,boolGC)  |
                                                                     intGC <= endIntGlobalMemory
                                                                     && decGC <= endDecimalGlobalMemory
@@ -257,13 +239,61 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim _) _ _)) :
                                 PrimitiveDouble -> (Map.union (Map.insert identifier decGC identifierAddressMap)
                                                             (fillIdentifierAddressMap rest identifierAddressMap
                                                             (intGC,decGC + 1,strGC,boolGC)))
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) _ _)) : rest ) identifierAddressMap
+                                                                    (intGC,decGC,strGC,boolGC)  |
+                                                                    intGC <= endIntGlobalMemory
+                                                                    && decGC <= endDecimalGlobalMemory
+                                                                    && strGC <= endStringGlobalMemory 
+                                                                    && boolGC <= endBoolGlobalMemory =
+                            case prim of
+                                PrimitiveBool -> (Map.union (Map.insert identifier boolGC identifierAddressMap)
+                                                            (fillIdentifierAddressMap rest identifierAddressMap
+                                                            (intGC,decGC,strGC,boolGC + size)))
+                                PrimitiveInt -> (Map.union (Map.insert identifier intGC identifierAddressMap)
+                                                            (fillIdentifierAddressMap rest identifierAddressMap
+                                                            (intGC + size,decGC,strGC,boolGC)))
+                                PrimitiveInteger -> (Map.union (Map.insert identifier intGC identifierAddressMap)
+                                                            (fillIdentifierAddressMap rest identifierAddressMap
+                                                            (intGC + size,decGC,strGC,boolGC)))
+                                PrimitiveString -> (Map.union (Map.insert identifier strGC identifierAddressMap)
+                                                            (fillIdentifierAddressMap rest identifierAddressMap
+                                                            (intGC,decGC,strGC + size,boolGC)))
+                                PrimitiveMoney -> (Map.union (Map.insert identifier decGC identifierAddressMap)
+                                                            (fillIdentifierAddressMap rest identifierAddressMap
+                                                            (intGC,decGC + size,strGC,boolGC)))
+                                PrimitiveDouble -> (Map.union (Map.insert identifier decGC identifierAddressMap)
+                                                            (fillIdentifierAddressMap rest identifierAddressMap
+                                                            (intGC,decGC + size,strGC,boolGC)))
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) _ _)) : rest ) identifierAddressMap
+                                                                    (intGC,decGC,strGC,boolGC)  |
+                                                                    intGC <= endIntGlobalMemory
+                                                                    && decGC <= endDecimalGlobalMemory
+                                                                    && strGC <= endStringGlobalMemory 
+                                                                    && boolGC <= endBoolGlobalMemory =
+                            case prim of
+                                PrimitiveBool -> (Map.union (Map.insert identifier boolGC identifierAddressMap)
+                                                            (fillIdentifierAddressMap rest identifierAddressMap
+                                                            (intGC,decGC,strGC,boolGC + rows * cols)))
+                                PrimitiveInt -> (Map.union (Map.insert identifier intGC identifierAddressMap)
+                                                            (fillIdentifierAddressMap rest identifierAddressMap
+                                                            (intGC + rows * cols,decGC,strGC,boolGC)))
+                                PrimitiveInteger -> (Map.union (Map.insert identifier intGC identifierAddressMap)
+                                                            (fillIdentifierAddressMap rest identifierAddressMap
+                                                            (intGC + rows * cols,decGC,strGC,boolGC)))
+                                PrimitiveString -> (Map.union (Map.insert identifier strGC identifierAddressMap)
+                                                            (fillIdentifierAddressMap rest identifierAddressMap
+                                                            (intGC,decGC,strGC + rows * cols,boolGC)))
+                                PrimitiveMoney -> (Map.union (Map.insert identifier decGC identifierAddressMap)
+                                                            (fillIdentifierAddressMap rest identifierAddressMap
+                                                            (intGC,decGC + rows * cols,strGC,boolGC)))
+                                PrimitiveDouble -> (Map.union (Map.insert identifier decGC identifierAddressMap)
+                                                            (fillIdentifierAddressMap rest identifierAddressMap
+                                                            (intGC,decGC + rows * cols,strGC,boolGC)))
 -- MARK TODO: Clases, funciones
 fillIdentifierAddressMap (x : xs) identifierAddressMap (intGC,decGC,strGC,boolGC) = 
             (fillIdentifierAddressMap xs identifierAddressMap
                                                             (intGC,decGC,strGC,boolGC))
                             
-
-
 fillFromExpression :: LiteralCounters -> ConstantAddressMap -> Expression -> (LiteralCounters,ConstantAddressMap)
 fillFromExpression literalCounters constantAddressMap (ExpressionMult exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
 fillFromExpression literalCounters constantAddressMap (ExpressionPlus exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
