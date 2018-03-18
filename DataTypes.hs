@@ -1,11 +1,24 @@
 module DataTypes where
 import Data.Decimal
+import qualified Data.HashMap.Strict as Map
 -- Esta sección tiene las producciones semánticas para producir el árbol abstracto de sintaxis 
 type Identifier = String
 type ClassIdentifier = String
 
 type Address = Integer
 type QuadNum = Integer
+
+-- Los primeros 4 son los contadores de variables de tipo Integers,Decimales,Strings,Bool 
+type VariableCounters = (Address,Address,Address,Address) 
+
+-- Contadores de literales de integers,decimales,strings y booleanos
+type LiteralCounters = (Address,Address,Address,Address) 
+
+type TypeIdentifier = String -- Integer, Decimal, String, Bool
+
+-- Estos tipos le sirven a ExpressionCodeGen saber qué Identifiador/Constante están mappeados en memorias con qué dirección
+type IdentifierAddressMap = Map.HashMap Identifier Address
+type ConstantAddressMap = Map.HashMap String Address
 
 data Program 
     = Program [Class] [Function] [Variable] Block
@@ -208,6 +221,8 @@ class ExpressionOperation a where
    (|<|) :: a -> a -> a
    (|>=|) :: a -> a -> a
    (|<=|) :: a -> a -> a
+
+
 
 instance ExpressionOperation Expression where
    a |+| b = (ExpressionPlus a b)

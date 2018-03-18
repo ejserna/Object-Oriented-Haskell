@@ -5,7 +5,7 @@ default:
 	rm -f Scanner.hs
 	alex Analysis/Scanner.x
 	happy Analysis/Parser.y
-	ghc -o ObjectiveOrientedHaskell DataTypes.hs CodeGen/ExpressionOptimizer.hs Analysis/SymbolTable.hs Analysis/Expression.hs Analysis/ClassSymbolTable.hs CodeGen/Quadruple.hs CodeGen/MemoryAllocator.hs Analysis/TypeChecker.hs Analysis/Scanner.hs Analysis/Parser.hs
+	ghc -o ObjectiveOrientedHaskell DataTypes.hs CodeGen/ExpressionOptimizer.hs Analysis/SymbolTable.hs Analysis/Expression.hs Analysis/ClassSymbolTable.hs CodeGen/Quadruple.hs CodeGen/CodeGen.hs CodeGen/MemoryAllocator.hs Analysis/TypeChecker.hs Analysis/Scanner.hs Analysis/Parser.hs
 
 
 pruebaClases:
@@ -16,6 +16,9 @@ pruebaVariables:
 
 pruebaFibo:
 	cat Tests/fibonacciRecursivo.txt | ./ObjectiveOrientedHaskell
+
+pruebaDisplays:
+	cat Tests/displays.txt | ./ObjectiveOrientedHaskell
 
 prueba: 
 	cat Tests/$(ARCH) | ./ObjectiveOrientedHaskell

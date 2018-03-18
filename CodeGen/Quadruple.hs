@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Quadruple where
 import DataTypes
 import Data.List (intercalate)
@@ -29,6 +30,8 @@ data Operation =
         | GOTO_IF_FALSE
         | GOTO_IF_TRUE
         | GOTO_NORMAL
+        | DISPLAY
+        | READ
 
 instance Show Operation where
     show op = case op of
@@ -52,6 +55,8 @@ instance Show Operation where
         GOTO_IF_FALSE  -> id "GOTO_F"
         GOTO_IF_TRUE  -> id  "GOTO_T" 
         ASSIGNMENT  -> id  "="
+        DISPLAY -> id "print"
+        READ -> id "read"
 
 -- data Result =
 --       ResultRegister Register
@@ -68,6 +73,7 @@ data Quadruple =
   | QuadrupleTwoAddresses QuadNum Operation Address Address -- Assignment 1002 _ 1003
   | QuadrupleOneAddressOneQuad QuadNum Operation Address QuadNum -- GOTOF 1002 _ 8
   | QuadrupleOneQuad QuadNum Operation QuadNum -- GOTO _ _ 8
+  | QuadrupleOneAddress QuadNum Operation Address -- GOTO _ _ 8
 
 
 instance Show Quadruple where
@@ -75,15 +81,28 @@ instance Show Quadruple where
     show (QuadrupleTwoAddresses quadNum op address1 address2) = show quadNum ++ ". "  ++ intercalate "\t," [show op,show address1, id "_" ,show address2]
     show (QuadrupleOneAddressOneQuad quadNum op address1 quadNumAssigned) = show quadNum ++ ". "  ++ intercalate "\t" [show op,show address1, id "_" ,show quadNumAssigned]
     show (QuadrupleOneQuad quadNum op quadNumAssigned) = show quadNum ++ ". "  ++ intercalate "\t" [show op,id "_", id "_" ,show quadNumAssigned]
+    show (QuadrupleOneAddress quadNum op address) = show quadNum ++ ". "  ++ intercalate "\t" [show op,id "_", id "_" ,show address]
 
 -- buildAssignmentQuadruple :: QuadNum -> Result -> Identifier -> Quadruple
 -- buildAssignmentQuadruple quadNum resultRegister identifier = (QuadrupleAssignment quadNum (ASSIGNMENT) resultRegister identifier) 
+
+-- class QuadOperation a b c  where
+--    (|+|) :: a -> b -> b -> c -> d
+
+-- instance QuadOperation Quadruple where
+--     (|+|) :: a -> b -> b -> c -> d
+
 
 buildQuadrupleThreeAddresses :: QuadNum -> Operation -> (Address,Address,Address)-> Quadruple
 buildQuadrupleThreeAddresses quadNum op (address1,address2,address3) = (QuadrupleThreeAddresses quadNum op address1 address2 address3)
 
 buildQuadrupleTwoAddresses :: QuadNum -> Operation -> (Address,Address)-> Quadruple
 buildQuadrupleTwoAddresses quadNum op (address1,address2) = (QuadrupleTwoAddresses quadNum op address1 address2)
+
+buildQuadOneAddress :: QuadNum -> Operation -> Address -> Quadruple
+buildQuadOneAddress quadNum op address = (QuadrupleOneAddress quadNum op address)
+
+
 
 buildGoto :: QuadNum -> QuadNum -> Quadruple
 buildGoto quadNum quadNumAssigned = (QuadrupleOneQuad quadNum (GOTO) quadNumAssigned) 

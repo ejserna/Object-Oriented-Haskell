@@ -7,6 +7,7 @@ import ClassSymbolTable
 import Text.Show.Pretty
 import qualified Data.HashMap.Strict as Map
 import ExpressionOptimizer
+import CodeGen
 import Data.List (sortBy)
 import Data.Ord (comparing)
 import Data.Function (on)
@@ -84,26 +85,21 @@ startBoolLiteralMemory = 80001
 endBoolLiteralMemory :: Address
 endBoolLiteralMemory = 84000
 
--- Los primeros 4 son los contadores de variables de tipo Integers,Decimales,Strings,Bool 
-type VariableCounters = (Address,Address,Address,Address) 
 
--- Contadores de literales de integers,decimales,strings y booleanos
-type LiteralCounters = (Address,Address,Address,Address) 
-
-type TypeIdentifier = String -- Integer, Decimal, String, Bool
-
--- Estos tipos le sirven a ExpressionCodeGen saber qué Identifiador/Constante están mappeados en memorias con qué dirección
-type IdentifierAddressMap = Map.HashMap Identifier Address
-type ConstantAddressMap = Map.HashMap String Address
 
 startMemoryAllocation :: Program -> SymbolTable -> ClassSymbolTable -> IO()
 startMemoryAllocation (Program classes functions variables (Block statements)) symTab classSymTab =
-            let (_,constantAddressMap) =  (prepareConstantAddressMap statements (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory)
+            let (newLiteralCounters,constantAddressMap) =  (prepareConstantAddressMap statements (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory)
                                                                 (Map.empty))
-                in 
-            do putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList (prepareAddressMapsFromSymbolTable symTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory)
-                                                                (Map.empty)) ) )
-               putStrLn $ ppShow $ (sortBy (compare `on` snd) ( Map.toList constantAddressMap ) )
+            in let (newLiteralCounters2,constantAddressMap2) = fillFromExpression newLiteralCounters constantAddressMap (ExpressionLitVar (DecimalLiteral 0.0))
+            in let (newLiteralCounters3,constantAddressMap3) = fillFromExpression newLiteralCounters2 constantAddressMap2 (ExpressionLitVar (IntegerLiteral 0))
+            in let (newLiteralCounters4,constantAddressMap4) = fillFromExpression newLiteralCounters3 constantAddressMap3 (ExpressionLitVar (StringLiteral ""))
+            in let (newLiteralCounters5,constantAddressMap5) = fillFromExpression newLiteralCounters4 constantAddressMap4 (ExpressionLitVar (BoolLiteral True))
+            in let (varCounters,newIdMap) = (prepareAddressMapsFromSymbolTable symTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory)
+                                                                (Map.empty))
+            in do putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList newIdMap) )
+                  putStrLn $ ppShow $ (sortBy (compare `on` snd) ( Map.toList constantAddressMap5 ) )
+                  startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters newIdMap constantAddressMap5
 
 prepareConstantAddressMap :: [Statement] -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
 prepareConstantAddressMap [] literalCounters constantAddressMap = (literalCounters,constantAddressMap)
@@ -220,13 +216,13 @@ fillFromCallParams literalCounters constantAddressMap ((ParamsExpression exp) : 
         let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap exp
             in fillFromCallParams newLiteralCounters newConsAddressMap params
                 
-prepareAddressMapsFromSymbolTable :: SymbolTable -> VariableCounters -> IdentifierAddressMap -> IdentifierAddressMap
+prepareAddressMapsFromSymbolTable :: SymbolTable -> VariableCounters -> IdentifierAddressMap -> (VariableCounters,IdentifierAddressMap)
 prepareAddressMapsFromSymbolTable symTab counters identifierAddressMap = 
                             let symTabList = (Map.toList symTab)
                             in fillIdentifierAddressMap symTabList identifierAddressMap counters  
 
-fillIdentifierAddressMap :: [(Identifier,Symbol)] -> IdentifierAddressMap -> VariableCounters -> IdentifierAddressMap 
-fillIdentifierAddressMap [] identifierAddressMap _ = identifierAddressMap
+fillIdentifierAddressMap :: [(Identifier,Symbol)] -> IdentifierAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap) 
+fillIdentifierAddressMap [] identifierAddressMap varCounters = (varCounters,identifierAddressMap)
 fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) : rest ) identifierAddressMap
                                                                     (intGC,decGC,strGC,boolGC)  |
                                                                     intGC <= endIntGlobalMemory
@@ -234,24 +230,26 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) 
                                                                     && strGC <= endStringGlobalMemory 
                                                                     && boolGC <= endBoolGlobalMemory =
                             case prim of
-                                PrimitiveBool -> (Map.union (Map.insert identifier boolGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC,strGC,boolGC + 1)))
-                                PrimitiveInt -> (Map.union (Map.insert identifier intGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC + 1,decGC,strGC,boolGC)))
-                                PrimitiveInteger -> (Map.union (Map.insert identifier intGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC + 1,decGC,strGC,boolGC)))
-                                PrimitiveString -> (Map.union (Map.insert identifier strGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC,strGC + 1,boolGC)))
-                                PrimitiveMoney -> (Map.union (Map.insert identifier decGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC + 1,strGC,boolGC)))
-                                PrimitiveDouble -> (Map.union (Map.insert identifier decGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC + 1,strGC,boolGC)))
+                                PrimitiveBool -> let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
+                                                    in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC,decGC,strGC,boolGC + 1))
+                                PrimitiveInt -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
+                                                    in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC + 1,decGC,strGC,boolGC))
+
+                                PrimitiveInteger -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
+                                                        in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC + 1,decGC,strGC,boolGC)) 
+                                PrimitiveString -> let newIdMap = (Map.insert identifier strGC identifierAddressMap)
+                                                        in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC,decGC,strGC + 1,boolGC)) 
+                                PrimitiveMoney -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
+                                                        in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC,decGC + 1,strGC,boolGC))
+                                PrimitiveDouble -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
+                                                        in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC,decGC + 1,strGC,boolGC))
+
 fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) _ _)) : rest ) identifierAddressMap
                                                                     (intGC,decGC,strGC,boolGC)  |
                                                                     intGC <= endIntGlobalMemory
@@ -259,24 +257,44 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",size
                                                                     && strGC <= endStringGlobalMemory 
                                                                     && boolGC <= endBoolGlobalMemory =
                             case prim of
-                                PrimitiveBool -> (Map.union (Map.insert identifier boolGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC,strGC,boolGC + size)))
-                                PrimitiveInt -> (Map.union (Map.insert identifier intGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC + size,decGC,strGC,boolGC)))
-                                PrimitiveInteger -> (Map.union (Map.insert identifier intGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC + size,decGC,strGC,boolGC)))
-                                PrimitiveString -> (Map.union (Map.insert identifier strGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC,strGC + size,boolGC)))
-                                PrimitiveMoney -> (Map.union (Map.insert identifier decGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC + size,strGC,boolGC)))
-                                PrimitiveDouble -> (Map.union (Map.insert identifier decGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC + size,strGC,boolGC)))
+                                PrimitiveBool -> let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
+                                                    in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC,decGC,strGC,boolGC + size))
+                                PrimitiveInt -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
+                                                    in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC + size,decGC,strGC,boolGC))
+
+                                PrimitiveInteger -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
+                                                        in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC + size,decGC,strGC,boolGC)) 
+                                PrimitiveString -> let newIdMap = (Map.insert identifier strGC identifierAddressMap)
+                                                        in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC,decGC,strGC + size,boolGC)) 
+                                PrimitiveMoney -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
+                                                        in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC,decGC + size,strGC,boolGC))
+                                PrimitiveDouble -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
+                                                        in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC,decGC + size,strGC,boolGC))
+
+                                -- PrimitiveBool -> (Map.union (Map.insert identifier boolGC identifierAddressMap)
+                                --                             (fillIdentifierAddressMap rest identifierAddressMap
+                                --                             (intGC,decGC,strGC,boolGC + size)))
+                                -- PrimitiveInt -> (Map.union (Map.insert identifier intGC identifierAddressMap)
+                                --                             (fillIdentifierAddressMap rest identifierAddressMap
+                                --                             (intGC + size,decGC,strGC,boolGC)))
+                                -- PrimitiveInteger -> (Map.union (Map.insert identifier intGC identifierAddressMap)
+                                --                             (fillIdentifierAddressMap rest identifierAddressMap
+                                --                             (intGC + size,decGC,strGC,boolGC)))
+                                -- PrimitiveString -> (Map.union (Map.insert identifier strGC identifierAddressMap)
+                                --                             (fillIdentifierAddressMap rest identifierAddressMap
+                                --                             (intGC,decGC,strGC + size,boolGC)))
+                                -- PrimitiveMoney -> (Map.union (Map.insert identifier decGC identifierAddressMap)
+                                --                             (fillIdentifierAddressMap rest identifierAddressMap
+                                --                             (intGC,decGC + size,strGC,boolGC)))
+                                -- PrimitiveDouble -> (Map.union (Map.insert identifier decGC identifierAddressMap)
+                                --                             (fillIdentifierAddressMap rest identifierAddressMap
+                                --                             (intGC,decGC + size,strGC,boolGC)))
 fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) _ _)) : rest ) identifierAddressMap
                                                                     (intGC,decGC,strGC,boolGC)  |
                                                                     intGC <= endIntGlobalMemory
@@ -284,24 +302,44 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows
                                                                     && strGC <= endStringGlobalMemory 
                                                                     && boolGC <= endBoolGlobalMemory =
                             case prim of
-                                PrimitiveBool -> (Map.union (Map.insert identifier boolGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC,strGC,boolGC + rows * cols)))
-                                PrimitiveInt -> (Map.union (Map.insert identifier intGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC + rows * cols,decGC,strGC,boolGC)))
-                                PrimitiveInteger -> (Map.union (Map.insert identifier intGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC + rows * cols,decGC,strGC,boolGC)))
-                                PrimitiveString -> (Map.union (Map.insert identifier strGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC,strGC + rows * cols,boolGC)))
-                                PrimitiveMoney -> (Map.union (Map.insert identifier decGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC + rows * cols,strGC,boolGC)))
-                                PrimitiveDouble -> (Map.union (Map.insert identifier decGC identifierAddressMap)
-                                                            (fillIdentifierAddressMap rest identifierAddressMap
-                                                            (intGC,decGC + rows * cols,strGC,boolGC)))
+                                PrimitiveBool -> let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
+                                                    in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC,decGC,strGC,boolGC + rows * cols))
+                                PrimitiveInt -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
+                                                    in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC + rows * cols,decGC,strGC,boolGC))
+
+                                PrimitiveInteger -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
+                                                        in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC + rows * cols,decGC,strGC,boolGC)) 
+                                PrimitiveString -> let newIdMap = (Map.insert identifier strGC identifierAddressMap)
+                                                        in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC,decGC,strGC + rows * cols,boolGC)) 
+                                PrimitiveMoney -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
+                                                        in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC,decGC + rows * cols,strGC,boolGC))
+                                PrimitiveDouble -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
+                                                        in (fillIdentifierAddressMap rest newIdMap
+                                                            (intGC,decGC + rows * cols,strGC,boolGC))
+
+                                -- PrimitiveBool -> (Map.union (Map.insert identifier boolGC identifierAddressMap)
+                                --                             (fillIdentifierAddressMap rest identifierAddressMap
+                                --                             (intGC,decGC,strGC,boolGC + rows * cols)))
+                                -- PrimitiveInt -> (Map.union (Map.insert identifier intGC identifierAddressMap)
+                                --                             (fillIdentifierAddressMap rest identifierAddressMap
+                                --                             (intGC + rows * cols,decGC,strGC,boolGC)))
+                                -- PrimitiveInteger -> (Map.union (Map.insert identifier intGC identifierAddressMap)
+                                --                             (fillIdentifierAddressMap rest identifierAddressMap
+                                --                             (intGC + rows * cols,decGC,strGC,boolGC)))
+                                -- PrimitiveString -> (Map.union (Map.insert identifier strGC identifierAddressMap)
+                                --                             (fillIdentifierAddressMap rest identifierAddressMap
+                                --                             (intGC,decGC,strGC + rows * cols,boolGC)))
+                                -- PrimitiveMoney -> (Map.union (Map.insert identifier decGC identifierAddressMap)
+                                --                             (fillIdentifierAddressMap rest identifierAddressMap
+                                --                             (intGC,decGC + rows * cols,strGC,boolGC)))
+                                -- PrimitiveDouble -> (Map.union (Map.insert identifier decGC identifierAddressMap)
+                                --                             (fillIdentifierAddressMap rest identifierAddressMap
+                                --                             (intGC,decGC + rows * cols,strGC,boolGC)))
 -- MARK TODO: Objetos, funciones
 fillIdentifierAddressMap (x : xs) identifierAddressMap (intGC,decGC,strGC,boolGC) = 
             (fillIdentifierAddressMap xs identifierAddressMap

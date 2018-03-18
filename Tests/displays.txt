@@ -1,0 +1,9 @@
+main{
+    Int i;
+    Money m,j,k;
+    j = 2.0 ^ 100.0;
+    i = 999;
+    read(i);
+    display("Hello ", "World",i,j,m,999);
+    read(i);
+}
