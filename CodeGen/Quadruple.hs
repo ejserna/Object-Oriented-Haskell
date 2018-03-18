@@ -33,6 +33,7 @@ data Operation =
         | DISPLAY
         | READ
         | NOP
+        | FOR
 
 instance Show Operation where
     show op = case op of
@@ -56,9 +57,10 @@ instance Show Operation where
         GOTO_IF_FALSE  -> id "GOTO_F"
         GOTO_IF_TRUE  -> id  "GOTO_T" 
         ASSIGNMENT  -> id  "="
-        DISPLAY -> id "print"
-        READ -> id "read"
-        NOP -> id "noop"
+        DISPLAY -> id "PRINT"
+        READ -> id "READ"
+        NOP -> id "NOP"
+        FOR -> id "FOR"
 
 -- data Result =
 --       ResultRegister Register
@@ -77,6 +79,7 @@ data Quadruple =
   | QuadrupleOneQuad QuadNum Operation QuadNum -- GOTO _ _ 8
   | QuadrupleOneAddress QuadNum Operation Address -- GOTO _ _ 8
   | QuadrupleEmpty QuadNum Operation  -- No Operation
+  | QuadrupleTwoAddressesOneQuad QuadNum Operation Address Address QuadNum -- FOR 6002 6003 SALTO
 
 
 instance Show Quadruple where
@@ -86,6 +89,7 @@ instance Show Quadruple where
     show (QuadrupleOneQuad quadNum op quadNumAssigned) = show quadNum ++ ". "  ++ intercalate "\t" [show op,id "_", id "_" ,show quadNumAssigned]
     show (QuadrupleOneAddress quadNum op address) = show quadNum ++ ". "  ++ intercalate "\t" [show op,id "_", id "_" ,show address]
     show (QuadrupleEmpty quadNum op) = show quadNum ++ ". "  ++ intercalate "\t" [show op,id "_", id "_" ,id "_"]
+    show (QuadrupleTwoAddressesOneQuad quadNum op address1 address2 quadNumAssigned) = show quadNum ++ ". "  ++ intercalate "\t" [show op,show address1, show address2 ,show quadNumAssigned]
 
 -- buildAssignmentQuadruple :: QuadNum -> Result -> Identifier -> Quadruple
 -- buildAssignmentQuadruple quadNum resultRegister identifier = (QuadrupleAssignment quadNum (ASSIGNMENT) resultRegister identifier) 
@@ -112,6 +116,9 @@ buildQuadOneAddress quadNum op address = (QuadrupleOneAddress quadNum op address
 buildNoOpQuad :: QuadNum -> Quadruple
 buildNoOpQuad quadNum = (QuadrupleEmpty quadNum (NOP))
 
+buildForLoopQuad :: QuadNum -> (Address,Address) -> QuadNum -> Quadruple
+buildForLoopQuad quadNum (address1,address2) quadNumAssigned = (QuadrupleTwoAddressesOneQuad quadNum (FOR) address1 address2 quadNumAssigned)
+
 getQuadNum :: Quadruple -> QuadNum
 getQuadNum (QuadrupleThreeAddresses quadNum op address1 address2 address3) = quadNum
 getQuadNum (QuadrupleTwoAddresses quadNum op address1 address2) = quadNum
@@ -119,6 +126,7 @@ getQuadNum (QuadrupleOneAddressOneQuad quadNum op address1 quadNumAssigned) = qu
 getQuadNum (QuadrupleOneQuad quadNum op quadNumAssigned) = quadNum
 getQuadNum (QuadrupleOneAddress quadNum op address) = quadNum
 getQuadNum (QuadrupleEmpty quadNum op) = quadNum
+getQuadNum (QuadrupleTwoAddressesOneQuad quadNum op address1 address2 quadNumAssigned) = quadNum
 
 buildGoto :: QuadNum -> QuadNum -> Quadruple
 buildGoto quadNum quadNumAssigned = (QuadrupleOneQuad quadNum (GOTO) quadNumAssigned) 

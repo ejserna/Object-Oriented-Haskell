@@ -11,6 +11,17 @@ main{
         l = 2 ^ 200 + i + (2 * 400);
         read(l);
         display(True,l);
+        for counter in (1..10){
+            display("for 1", counter);
+            for counter2 in (1..10){
+                display("for 2", counter2);
+                for counter3 in (1..10){
+                    display("for 3", counter3);
+                }
+                display("end for 2");
+            }
+            display("end for 1");
+        }
     }
     else{
         display(False,"yoyoyo");
@@ -21,4 +32,6 @@ main{
         while (i < 95){
         }
     }
+
+    
 }

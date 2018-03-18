@@ -170,12 +170,12 @@ fillFromStatement (CycleStatement (CycleFor (For lowerRange greaterRange (Block 
                                                              case (Map.lookup ("<int>" ++ (show lowerRange)) constantAddressMap) of
                                                                 Just _ -> 
                                                                         case (Map.lookup ("<int>" ++ (show greaterRange)) constantAddressMap) of
-                                                                            Just _ -> ((intLitC, decLitC, strLitC, boolLitC), constantAddressMap)
+                                                                            Just _ -> ( prepareConstantAddressMap statements (intLitC, decLitC, strLitC, boolLitC) constantAddressMap)
                                                                             _ -> let newConsAddressMap2 = (Map.insert ("<int>" ++ (show greaterRange)) intLitC constantAddressMap)
                                                                                     in ( prepareConstantAddressMap statements (intLitC + 1, decLitC, strLitC, boolLitC) newConsAddressMap2 )
                                                                 _ -> let newConsAddressMap = (Map.insert ("<int>" ++ (show lowerRange)) intLitC constantAddressMap)
                                                                         in case (Map.lookup ("<int>" ++ (show greaterRange)) constantAddressMap) of
-                                                                            Just _ -> ((intLitC + 1, decLitC, strLitC, boolLitC), newConsAddressMap)
+                                                                            Just _ -> ( prepareConstantAddressMap statements (intLitC + 1, decLitC, strLitC, boolLitC) newConsAddressMap ) 
                                                                             _ -> let newConsAddressMap2 = (Map.insert ("<int>" ++ (show greaterRange)) (intLitC + 1) newConsAddressMap)
                                                                                     in ( prepareConstantAddressMap statements (intLitC + 2, decLitC, strLitC, boolLitC) newConsAddressMap2 )
 fillFromStatement (CycleStatement (CycleForVar statements)) literalCounters constantAddressMap = prepareConstantAddressMap statements literalCounters constantAddressMap

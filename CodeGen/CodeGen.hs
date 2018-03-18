@@ -41,9 +41,19 @@ generateCodeFromStatements ((CycleStatement (CycleWhile (While expression (Block
             in let gotoFQuad = buildQuadForConditions quadNum (GOTO_IF_FALSE) (0) (getQuadNum $ head $ quadsStatements) -- MARK TODO: Cambiar 0 por lo que de expresion
             in let gotoCondition = buildGoto lastQuadNum2 quadNumExp
             in (varCounters3, ([gotoFQuad] ++ quadsInnerStatements ++ [gotoCondition]  ++  quadsStatements), lastQuadNum3)
-    
+generateCodeFromStatements ((CycleStatement (CycleFor (For lowerBound upperBound (Block innerSts)))) : sts) quadNum symTab classSymTab varCounters idTable constTable =
+            case (Map.lookup ("<int>" ++ (show lowerBound)) constTable) of
+                Just addressLB ->
+                    case (Map.lookup ("<int>" ++ (show upperBound)) constTable) of 
+                        Just addressUB -> let (varCounters2, quadsInnerStatements, lastQuadNum2) = generateCodeFromStatements innerSts (quadNum + 1) symTab classSymTab varCounters idTable constTable
+                                          in let (varCounters3, quadsStatements, lastQuadNum3) = generateCodeFromStatements sts lastQuadNum2 symTab classSymTab varCounters2 idTable constTable
+                                          in let forLoopQuad = buildForLoopQuad quadNum (addressLB,addressUB) (getQuadNum $ head $ quadsStatements)
+                                          in (varCounters3, [forLoopQuad] ++ quadsInnerStatements ++ quadsStatements,lastQuadNum3)
 
-
+generateCodeFromStatements ((CycleStatement (CycleForVar forVarSts ) : sts)) quadNum symTab classSymTab varCounters idTable constTable =
+                let (varCounters2, quadsForVarSts, lastQuadNum2) = generateCodeFromStatements forVarSts quadNum symTab classSymTab varCounters idTable constTable
+                    in let (varCounters3, quadsSts, lastQuadNum3) = generateCodeFromStatements sts lastQuadNum2 symTab classSymTab varCounters idTable constTable
+                        in (varCounters3, quadsForVarSts ++ quadsSts, lastQuadNum3)
 generateCodeFromStatements (st : sts) quadNum symTab classSymTab varCounters idTable constTable = 
             let (varCounters1, quads,lastQuadNum) = generateCodeFromStatement st quadNum symTab classSymTab varCounters idTable constTable 
             in let (varCounters2, quadsStatements, lastQuadNum2) = generateCodeFromStatements sts lastQuadNum symTab classSymTab varCounters1 idTable constTable
@@ -67,18 +77,7 @@ generateCodeFromStatement :: Statement -> QuadNum -> SymbolTable -> ClassSymbolT
 --                 let (newLiteralCounters, newConsAddressMap) = fillFromExpression literalCounters constantAddressMap expression
 --                     in let (newLiteralCounters2, newConsAddressMap2) = prepareConstantAddressMap statements newLiteralCounters newConsAddressMap
 --                         in (newLiteralCounters2, newConsAddressMap2)
--- generateCodeFromStatement (CycleStatement (CycleFor (For lowerRange greaterRange (Block statements)))) (intLitC,decLitC, strLitC, boolLitC) constantAddressMap =
---                                                              case (Map.lookup ("<int>" ++ (show lowerRange)) constantAddressMap) of
---                                                                 Just _ -> 
---                                                                         case (Map.lookup ("<int>" ++ (show greaterRange)) constantAddressMap) of
---                                                                             Just _ -> ((intLitC, decLitC, strLitC, boolLitC), constantAddressMap)
---                                                                             _ -> let newConsAddressMap2 = (Map.insert ("<int>" ++ (show greaterRange)) intLitC constantAddressMap)
---                                                                                     in ( prepareConstantAddressMap statements (intLitC + 1, decLitC, strLitC, boolLitC) newConsAddressMap2 )
---                                                                 _ -> let newConsAddressMap = (Map.insert ("<int>" ++ (show lowerRange)) intLitC constantAddressMap)
---                                                                         in case (Map.lookup ("<int>" ++ (show greaterRange)) constantAddressMap) of
---                                                                             Just _ -> ((intLitC + 1, decLitC, strLitC, boolLitC), newConsAddressMap)
---                                                                             _ -> let newConsAddressMap2 = (Map.insert ("<int>" ++ (show greaterRange)) (intLitC + 1) newConsAddressMap)
---                                                                                     in ( prepareConstantAddressMap statements (intLitC + 2, decLitC, strLitC, boolLitC) newConsAddressMap2 )
+
 -- generateCodeFromStatement (CycleStatement (CycleForVar statements)) literalCounters constantAddressMap = prepareConstantAddressMap statements literalCounters constantAddressMap
 -- generateCodeFromStatement (DPMStatement assignment) literalCounters constantAddressMap = fillFromStatement (AssignStatement assignment) literalCounters constantAddressMap
 -- generateCodeFromStatement (FunctionCallStatement functionCall) literalCounters constantAddressMap = fillFromFunctionCall functionCall literalCounters constantAddressMap

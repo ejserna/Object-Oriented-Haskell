@@ -333,8 +333,11 @@ ForVar :
     let (Block statements) = $9 in
     (VariableStatement (VariableAssignmentLiteralOrVariable
             (TypePrimitive PrimitiveInt []) $2 (IntegerLiteral $5))) : (CycleStatement (CycleFor (For $5 $7 
-             (Block ( DPMStatement(AssignmentExpression $2 (ExpressionPlus (ExpressionLitVar (VarIdentifier $2)) (ExpressionLitVar (IntegerLiteral 1))))
- : statements) ) ) )) : []
+             (Block (statements ++ [( 
+              DPMStatement(AssignmentExpression $2 (ExpressionPlus (ExpressionLitVar (VarIdentifier $2)) (ExpressionLitVar (IntegerLiteral 1)))) 
+                                    )]
+                    ) 
+             ) ))) : []
 
           }
 
