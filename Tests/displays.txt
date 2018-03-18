@@ -6,4 +6,19 @@ main{
     read(i);
     display("Hello ", "World",i,j,m,999);
     read(i);
+    if (i < 10){
+        Int l;
+        l = 2 ^ 200 + i + (2 * 400);
+        read(l);
+        display(True,l);
+    }
+    else{
+        display(False,"yoyoyo");
+    }
+    while (i < 100){
+        i++;
+        display(i);
+        while (i < 95){
+        }
+    }
 }

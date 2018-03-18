@@ -28,6 +28,7 @@ install_dependencies:
 	cabal install happy
 	cabal install Decimal
 	cabal install pretty-show
+	cabal install Stack
 
 clean:
 	rm -f Parser.hs

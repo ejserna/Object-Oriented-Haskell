@@ -5,6 +5,9 @@ import SymbolTable
 import ClassSymbolTable
 import Text.Show.Pretty
 import qualified Data.HashMap.Strict as Map
+-- import Data.Stack as Stack
+
+-- type JumpsStack = Stack Quadruple
 
 startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> IO()
 startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters idTable constTable =
@@ -14,10 +17,36 @@ startCodeGen (Program classes functions variables (Block statements)) symTab cla
 
 
 generateCodeFromStatements :: [Statement] -> QuadNum ->SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> (VariableCounters,[Quadruple],QuadNum)
-generateCodeFromStatements [] quadNum symTab classSymTab varCounters idTable constTable = (varCounters,[],quadNum)
+generateCodeFromStatements [] quadNum symTab classSymTab varCounters idTable constTable = (varCounters,[(buildNoOpQuad quadNum)],quadNum + 1)
+generateCodeFromStatements ((ConditionStatement (If expression (Block innerSts))) : sts) quadNum symTab classSymTab varCounters idTable constTable  = 
+            -- Le sumamos uno porque el de antes va a ser el goto en falso
+            let (varCounters2, quadsInnerStatements, lastQuadNum2) = generateCodeFromStatements innerSts (quadNum + 1) symTab classSymTab varCounters idTable constTable
+            in let (varCounters3, quadsStatements, lastQuadNum3) = generateCodeFromStatements sts lastQuadNum2 symTab classSymTab varCounters2 idTable constTable
+            in let gotoFQuad = buildQuadForConditions quadNum (GOTO_IF_FALSE) (0) (getQuadNum $ head $ quadsStatements) -- MARK TODO: Cambiar 0 por lo que de expresion
+            in (varCounters3, ([gotoFQuad] ++ quadsInnerStatements ++ quadsStatements), lastQuadNum3)
+generateCodeFromStatements ((ConditionStatement (IfElse expression (Block trueStatements) (Block elseStatements))) : sts) quadNum symTab classSymTab varCounters idTable constTable  = 
+            -- Le sumamos uno porque el de antes va a ser el goto en falso
+            let (varCounters2, trueQuadStatements, lastQuadNum2) = generateCodeFromStatements trueStatements (quadNum + 1) symTab classSymTab varCounters idTable constTable
+            -- Aqui tambien le sumamos mas uno porque el anterior sera un GOTO a los quadsStatements!
+            in let (varCounters3, elseQuadStatements, lastQuadNum3) = generateCodeFromStatements elseStatements (lastQuadNum2 + 1) symTab classSymTab varCounters2 idTable constTable
+            in let (varCounters4, quadsStatements, lastQuadNum4) = generateCodeFromStatements sts lastQuadNum3 symTab classSymTab varCounters3 idTable constTable
+            in let gotoFQuad = buildQuadForConditions quadNum (GOTO_IF_FALSE) (0) (getQuadNum $ head $ elseQuadStatements) -- MARK TODO: Cambiar 0 por lo que de expresion
+            in let gotoOutOfTrue = buildGoto lastQuadNum2 (getQuadNum $ head $ quadsStatements)
+            in (varCounters4, ([gotoFQuad] ++ trueQuadStatements ++ [gotoOutOfTrue] ++ elseQuadStatements ++ quadsStatements), lastQuadNum4)
+generateCodeFromStatements ((CycleStatement (CycleWhile (While expression (Block innerSts)))) : sts) quadNum symTab classSymTab varCounters idTable constTable  = 
+            -- Le sumamos uno porque el de antes va a ser el goto en falso
+            let quadNumExp = 10000
+            in let (varCounters2, quadsInnerStatements, lastQuadNum2) = generateCodeFromStatements innerSts (quadNum + 1) symTab classSymTab varCounters idTable constTable
+            in let (varCounters3, quadsStatements, lastQuadNum3) = generateCodeFromStatements sts (lastQuadNum2 + 1) symTab classSymTab varCounters2 idTable constTable
+            in let gotoFQuad = buildQuadForConditions quadNum (GOTO_IF_FALSE) (0) (getQuadNum $ head $ quadsStatements) -- MARK TODO: Cambiar 0 por lo que de expresion
+            in let gotoCondition = buildGoto lastQuadNum2 quadNumExp
+            in (varCounters3, ([gotoFQuad] ++ quadsInnerStatements ++ [gotoCondition]  ++  quadsStatements), lastQuadNum3)
+    
+
+
 generateCodeFromStatements (st : sts) quadNum symTab classSymTab varCounters idTable constTable = 
             let (varCounters1, quads,lastQuadNum) = generateCodeFromStatement st quadNum symTab classSymTab varCounters idTable constTable 
-            in let (varCounters2, quadsStatements, lastQuadNum2) = generateCodeFromStatements sts lastQuadNum symTab classSymTab varCounters1 idTable constTable 
+            in let (varCounters2, quadsStatements, lastQuadNum2) = generateCodeFromStatements sts lastQuadNum symTab classSymTab varCounters1 idTable constTable
                 in (varCounters2, (quads ++ quadsStatements), lastQuadNum2)
 
 generateCodeFromStatement :: Statement -> QuadNum -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> (VariableCounters,[Quadruple],QuadNum)
@@ -26,6 +55,7 @@ generateCodeFromStatement :: Statement -> QuadNum -> SymbolTable -> ClassSymbolT
 -- generateCodeFromStatement (VariableStatement var) symTab classSymTab varCounters idTable constTable = fillFromVariable var literalCounters constantAddressMap
 
 -- generateCodeFromStatement (ConditionStatement (If expression (Block statements))) quadNumInit _ _ varCounters idTable constTable = 
+--                                                 -- # MARK TODO: Generar cuadruplos de expresion
 --                                                 let (newLiteralCounters, newConsAddressMap) = fillFromExpression literalCounters constantAddressMap expression
 --                                                     in let (newLiteralCounters2, newConsAddressMap2) = prepareConstantAddressMap statements newLiteralCounters newConsAddressMap
 --                                                         in (newLiteralCounters2, newConsAddressMap2)  
