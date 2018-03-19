@@ -81,8 +81,9 @@ genQuadrupleArithmetic symTab constMap idMap varCounters quadNum exp1 exp2 op = 
                                                                                         Just PrimitiveInt -> ((intLitCUpdate2 + 1, decLitCUpdate2, strLitCUpdate2, boolLitCUpdate2), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (intLitCUpdate - 1, intLitCUpdate2 - 1, (intLitCUpdate2)))], quadNum2 + 1)
                                                                                         Just PrimitiveInteger -> ((intLitCUpdate2 + 1, decLitCUpdate2, strLitCUpdate2, boolLitCUpdate2), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (intLitCUpdate - 1, intLitCUpdate2 - 1, (intLitCUpdate2)))], quadNum2 + 1)
                                                                                         Just PrimitiveString -> ((intLitCUpdate2, decLitCUpdate2, strLitCUpdate2 + 1, boolLitCUpdate2), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (strLitCUpdate - 1, strLitCUpdate2 - 1, (strLitCUpdate2)))], quadNum2 + 1)
-                                                                                    -- Aqui hay un else porque nuestro lenguaje permite hacer mezclas de tipos enteros y decimales en operaciones aritmeticas
-                                                                                    else case (typeExp1) of 
+                                                                                    -- Aqui hay un else porque nuestro lenguaje permite hacer mezclas de tipos enteros y decimales en operaciones
+                                                                                    else 
+                                                                                        case (typeExp1) of 
                                                                                         Just PrimitiveDouble -> ((intLitCUpdate2, decLitCUpdate2 + 1, strLitCUpdate2, boolLitCUpdate2), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (decLitCUpdate - 1, intLitCUpdate2 - 1, (decLitCUpdate2)))], quadNum2 + 1)
                                                                                         Just PrimitiveMoney -> ((intLitCUpdate2, decLitCUpdate2 + 1, strLitCUpdate2, boolLitCUpdate2), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (decLitCUpdate - 1, intLitCUpdate2 - 1, (decLitCUpdate2)))], quadNum2 + 1)
                                                                                         Just PrimitiveInt -> ((intLitCUpdate2, decLitCUpdate2 + 1, strLitCUpdate2, boolLitCUpdate2), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (intLitCUpdate - 1, decLitCUpdate2 - 1, (decLitCUpdate2)))], quadNum2 + 1)
@@ -99,15 +100,8 @@ genQuadrupleRelational symTab constMap idMap varCounters quadNum exp1 exp2 op = 
                                                                                     case (typeExp1) of 
                                                                                         Just PrimitiveDouble -> ((intLitCUpdate2, decLitCUpdate2, strLitCUpdate2, boolLitCUpdate2 + 1), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (decLitCUpdate - 1, decLitCUpdate2 - 1, boolLitCUpdate2))], quadNum2 + 1)
                                                                                         Just PrimitiveMoney -> ((intLitCUpdate2, decLitCUpdate2, strLitCUpdate2, boolLitCUpdate2 + 1), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (decLitCUpdate - 1, decLitCUpdate2 - 1, boolLitCUpdate2))], quadNum2 + 1)
-
                                                                                         Just PrimitiveInt -> ((intLitCUpdate2, decLitCUpdate2, strLitCUpdate2, boolLitCUpdate2 + 1), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (intLitCUpdate - 1, intLitCUpdate2 - 1, boolLitCUpdate2))], quadNum2 + 1)
                                                                                         Just PrimitiveInteger -> ((intLitCUpdate2, decLitCUpdate2, strLitCUpdate2, boolLitCUpdate2 + 1), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (intLitCUpdate - 1, intLitCUpdate2 - 1, boolLitCUpdate2))], quadNum2 + 1)
                                                                                         Just PrimitiveString -> ((intLitCUpdate2, decLitCUpdate2, strLitCUpdate2, boolLitCUpdate2 + 1), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (strLitCUpdate - 1, strLitCUpdate2 - 1, boolLitCUpdate2))], quadNum2 + 1)
                                                                                         Just PrimitiveBool -> ((intLitCUpdate2, decLitCUpdate2, strLitCUpdate2, boolLitCUpdate2 + 1), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (boolLitCUpdate - 1, boolLitCUpdate2 - 1, boolLitCUpdate2))], quadNum2 + 1)
-                                                                                    -- Aqui no hay un else. Cuando se hace una comparacion de tipos, SIEMPRE tienen que ser iguales
-
-
-
-
-
-
+                                                                                    else ((intLitCUpdate2, decLitCUpdate2, strLitCUpdate2, boolLitCUpdate2), quad2, quadNum2)

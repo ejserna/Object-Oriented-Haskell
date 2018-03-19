@@ -66,24 +66,9 @@ generateCodeFromStatements (st : sts) quadNum symTab classSymTab varCounters idT
 generateCodeFromStatement :: Statement -> QuadNum -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> (VariableCounters,[Quadruple],QuadNum)
 
 generateCodeFromStatement (AssignStatement assignment) quadNum symTab classSymTab varCounters idTable constTable = generateCodeFromAssignment assignment quadNum symTab classSymTab varCounters idTable constTable
--- generateCodeFromStatement (VariableStatement var) symTab classSymTab varCounters idTable constTable = fillFromVariable var literalCounters constantAddressMap
+generateCodeFromStatement (VariableStatement varStatement) quadNum symTab classSymTab varCounters idTable constTable = generateCodeFromVariableStatement varStatement quadNum symTab classSymTab varCounters idTable constTable
+generateCodeFromStatement (DPMStatement assignment) quadNum symTab classSymTab varCounters idTable constTable = generateCodeFromStatement (AssignStatement assignment) quadNum symTab classSymTab varCounters idTable constTable
 
--- generateCodeFromStatement (ConditionStatement (If expression (Block statements))) quadNumInit _ _ varCounters idTable constTable = 
---                                                 -- # MARK TODO: Generar cuadruplos de expresion
---                                                 let (newLiteralCounters, newConsAddressMap) = fillFromExpression literalCounters constantAddressMap expression
---                                                     in let (newLiteralCounters2, newConsAddressMap2) = prepareConstantAddressMap statements newLiteralCounters newConsAddressMap
---                                                         in (newLiteralCounters2, newConsAddressMap2)  
--- generateCodeFromStatement (ConditionStatement (IfElse expression (Block statements) (Block statements2)))literalCounters constantAddressMap = 
---                                                 let (newLiteralCounters, newConsAddressMap) = fillFromExpression literalCounters constantAddressMap expression
---                                                     in let (newLiteralCounters2, newConsAddressMap2) = prepareConstantAddressMap statements newLiteralCounters newConsAddressMap
---                                                         in prepareConstantAddressMap statements2 newLiteralCounters2 newConsAddressMap2  
--- generateCodeFromStatement (CycleStatement (CycleWhile (While expression (Block statements)))) literalCounters constantAddressMap = 
---                 let (newLiteralCounters, newConsAddressMap) = fillFromExpression literalCounters constantAddressMap expression
---                     in let (newLiteralCounters2, newConsAddressMap2) = prepareConstantAddressMap statements newLiteralCounters newConsAddressMap
---                         in (newLiteralCounters2, newConsAddressMap2)
-
--- generateCodeFromStatement (CycleStatement (CycleForVar statements)) literalCounters constantAddressMap = prepareConstantAddressMap statements literalCounters constantAddressMap
--- generateCodeFromStatement (DPMStatement assignment) literalCounters constantAddressMap = fillFromStatement (AssignStatement assignment) literalCounters constantAddressMap
 -- generateCodeFromStatement (FunctionCallStatement functionCall) literalCounters constantAddressMap = fillFromFunctionCall functionCall literalCounters constantAddressMap
 -- generateCodeFromStatement (ReturnStatement (ReturnExp expression)) literalCounters constantAddressMap = fillFromExpression literalCounters constantAddressMap expression
 -- generateCodeFromStatement (ReturnStatement (ReturnFunctionCall functionCall)) literalCounters constantAddressMap = fillFromFunctionCall functionCall literalCounters constantAddressMap
@@ -132,6 +117,7 @@ generateCodeFromAssignment (AssignmentExpression identifier expression) quadNum 
     let (varCounters1, quadsExp, lastQuadNum1) = expCodeGen symTab constTable idTable varCounters quadNum (reduceExpression expression) 
     in case (Map.lookup identifier idTable) of
         Just address ->   (varCounters1,(quadsExp ++ [(buildQuadrupleTwoAddresses lastQuadNum1 ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]),lastQuadNum1 + 1)
+generateCodeFromAssignment _ quadNum symTab classSymTab varCounters idTable constTable = (varCounters,[],quadNum)
 -- generateCodeFromAssignment  (AssignmentObjectMemberExpression (ObjectMember objectIdentifier attrIdentifier) expression) literalCounters constantAddressMap =  fillFromExpression literalCounters constantAddressMap expression
 
 -- generateCodeFromAssignment  (AssignmentArrayExpression _ ((ArrayAccessExpression innerExp) : []) expression) literalCounters constantAddressMap =  
@@ -141,4 +127,13 @@ generateCodeFromAssignment (AssignmentExpression identifier expression) quadNum 
 --                                                                                                                 let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap innerExpRow
 --                                                                                                                     in let (newLiteralCounters2,newConsAddressMap2) = fillFromExpression newLiteralCounters newConsAddressMap innerExpCol
 --                                                                                                                         in fillFromExpression newLiteralCounters2 newConsAddressMap2 expression
+
+generateCodeFromVariableStatement :: Variable -> QuadNum ->SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> (VariableCounters,[Quadruple],QuadNum)
+generateCodeFromVariableStatement (VariableAssignmentLiteralOrVariable _ identifier literalOrVariable) quadNum symTab classSymTab varCounters idTable constTable = 
+    let (varCounters1, quadsExp, lastQuadNum1) = expCodeGen symTab constTable idTable varCounters quadNum (ExpressionLitVar literalOrVariable)
+    in case (Map.lookup identifier idTable) of
+        Just address -> (varCounters1,(quadsExp ++ [(buildQuadrupleTwoAddresses lastQuadNum1 ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]),lastQuadNum1 + 1)
+generateCodeFromVariableStatement _ quadNum symTab classSymTab varCounters idTable constTable = (varCounters,[],quadNum)
+
+
 

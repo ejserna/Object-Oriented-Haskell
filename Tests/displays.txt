@@ -1,9 +1,11 @@
 main{
-    Int i;
+    Int i = 1;
+    Money md = 1.2222;
+    Double dm = 1.2222;
     Money m,j,k;
         m = 999 * k * i + 1;
 
-    String s;
+    String s = "hola";
     Bool b,b1,b2,b3;
     b = b1 || b2 || b3;
     i = i % 2;
