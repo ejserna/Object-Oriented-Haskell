@@ -84,7 +84,7 @@ data Quadruple =
 
 instance Show Quadruple where
     show (QuadrupleThreeAddresses quadNum op address1 address2 address3) = show quadNum ++ ". " ++ intercalate "\t" [show op,show address1, show address2, show address3]
-    show (QuadrupleTwoAddresses quadNum op address1 address2) = show quadNum ++ ". "  ++ intercalate "\t," [show op,show address1, id "_" ,show address2]
+    show (QuadrupleTwoAddresses quadNum op address1 address2) = show quadNum ++ ". "  ++ intercalate "\t" [show op,show address1, id "_" ,show address2]
     show (QuadrupleOneAddressOneQuad quadNum op address1 quadNumAssigned) = show quadNum ++ ". "  ++ intercalate "\t" [show op,show address1, id "_" ,show quadNumAssigned]
     show (QuadrupleOneQuad quadNum op quadNumAssigned) = show quadNum ++ ". "  ++ intercalate "\t" [show op,id "_", id "_" ,show quadNumAssigned]
     show (QuadrupleOneAddress quadNum op address) = show quadNum ++ ". "  ++ intercalate "\t" [show op,id "_", id "_" ,show address]
@@ -127,6 +127,9 @@ getQuadNum (QuadrupleOneQuad quadNum op quadNumAssigned) = quadNum
 getQuadNum (QuadrupleOneAddress quadNum op address) = quadNum
 getQuadNum (QuadrupleEmpty quadNum op) = quadNum
 getQuadNum (QuadrupleTwoAddressesOneQuad quadNum op address1 address2 quadNumAssigned) = quadNum
+
+getLastAddress :: Quadruple -> QuadNum
+getLastAddress (QuadrupleThreeAddresses quadNum op address1 address2 address3) = address3
 
 buildGoto :: QuadNum -> QuadNum -> Quadruple
 buildGoto quadNum quadNumAssigned = (QuadrupleOneQuad quadNum (GOTO) quadNumAssigned) 

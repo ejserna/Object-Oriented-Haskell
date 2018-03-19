@@ -29,21 +29,22 @@ generateCodeFromStatements ((ConditionStatement (If expression (Block innerSts))
             in (varCounters3, (quadsExp ++ [gotoFQuad] ++ quadsInnerStatements ++ quadsStatements), lastQuadNum3)
 generateCodeFromStatements ((ConditionStatement (IfElse expression (Block trueStatements) (Block elseStatements))) : sts) quadNum symTab classSymTab varCounters idTable constTable  = 
             -- Le sumamos uno porque el de antes va a ser el goto en falso
-            let (varCounters2, trueQuadStatements, lastQuadNum2) = generateCodeFromStatements trueStatements (quadNum + 1) symTab classSymTab varCounters idTable constTable
+            let ((intC,decC,strC,boolC), quadsExp, lastQuadNum1) = processStart (-1000000000) symTab classSymTab constTable idTable varCounters quadNum (reduceExpression expression) 
+            in let (varCounters2, trueQuadStatements, lastQuadNum2) = generateCodeFromStatements trueStatements (lastQuadNum1 + 1) symTab classSymTab (intC,decC,strC,boolC) idTable constTable
             -- Aqui tambien le sumamos mas uno porque el anterior sera un GOTO a los quadsStatements!
             in let (varCounters3, elseQuadStatements, lastQuadNum3) = generateCodeFromStatements elseStatements (lastQuadNum2 + 1) symTab classSymTab varCounters2 idTable constTable
             in let (varCounters4, quadsStatements, lastQuadNum4) = generateCodeFromStatements sts lastQuadNum3 symTab classSymTab varCounters3 idTable constTable
-            in let gotoFQuad = buildQuadForConditions quadNum (GOTO_IF_FALSE) (0) (getQuadNum $ head $ elseQuadStatements) -- MARK TODO: Cambiar 0 por lo que de expresion
+            in let gotoFQuad = buildQuadForConditions lastQuadNum1 (GOTO_IF_FALSE) (boolC - 1) (getQuadNum $ head $ elseQuadStatements) -- MARK TODO: Cambiar 0 por lo que de expresion
             in let gotoOutOfTrue = buildGoto lastQuadNum2 (getQuadNum $ head $ quadsStatements)
-            in (varCounters4, ([gotoFQuad] ++ trueQuadStatements ++ [gotoOutOfTrue] ++ elseQuadStatements ++ quadsStatements), lastQuadNum4)
+            in (varCounters4, (quadsExp ++ [gotoFQuad] ++ trueQuadStatements ++ [gotoOutOfTrue] ++ elseQuadStatements ++ quadsStatements), lastQuadNum4)
 generateCodeFromStatements ((CycleStatement (CycleWhile (While expression (Block innerSts)))) : sts) quadNum symTab classSymTab varCounters idTable constTable  = 
             -- Le sumamos uno porque el de antes va a ser el goto en falso
-            let quadNumExp = 10000
-            in let (varCounters2, quadsInnerStatements, lastQuadNum2) = generateCodeFromStatements innerSts (quadNum + 1) symTab classSymTab varCounters idTable constTable
+            let ((intC,decC,strC,boolC), quadsExp, lastQuadNum1) = processStart (-1000000000) symTab classSymTab constTable idTable varCounters quadNum (reduceExpression expression) 
+            in let (varCounters2, quadsInnerStatements, lastQuadNum2) = generateCodeFromStatements innerSts (lastQuadNum1 + 1) symTab classSymTab (intC,decC,strC,boolC) idTable constTable
             in let (varCounters3, quadsStatements, lastQuadNum3) = generateCodeFromStatements sts (lastQuadNum2 + 1) symTab classSymTab varCounters2 idTable constTable
-            in let gotoFQuad = buildQuadForConditions quadNum (GOTO_IF_FALSE) (0) (getQuadNum $ head $ quadsStatements) -- MARK TODO: Cambiar 0 por lo que de expresion
-            in let gotoCondition = buildGoto lastQuadNum2 quadNumExp
-            in (varCounters3, ([gotoFQuad] ++ quadsInnerStatements ++ [gotoCondition]  ++  quadsStatements), lastQuadNum3)
+            in let gotoFQuad = buildQuadForConditions lastQuadNum1 (GOTO_IF_FALSE) (boolC - 1) (getQuadNum $ head $ quadsStatements) -- MARK TODO: Cambiar 0 por lo que de expresion
+            in let gotoCondition = buildGoto lastQuadNum2 (getQuadNum $ head $ quadsExp)
+            in (varCounters3, (quadsExp ++ [gotoFQuad] ++ quadsInnerStatements ++ [gotoCondition]  ++  quadsStatements), lastQuadNum3)
 generateCodeFromStatements ((CycleStatement (CycleFor (For lowerBound upperBound (Block innerSts)))) : sts) quadNum symTab classSymTab varCounters idTable constTable =
             case (Map.lookup ("<int>" ++ (show lowerBound)) constTable) of
                 Just addressLB ->
@@ -64,7 +65,7 @@ generateCodeFromStatements (st : sts) quadNum symTab classSymTab varCounters idT
 
 generateCodeFromStatement :: Statement -> QuadNum -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> (VariableCounters,[Quadruple],QuadNum)
 
--- generateCodeFromStatement (AssignStatement assignment) symTab classSymTab varCounters idTable constTable = fillFromAssignment assignment literalCounters constantAddressMap
+generateCodeFromStatement (AssignStatement assignment) quadNum symTab classSymTab varCounters idTable constTable = generateCodeFromAssignment assignment quadNum symTab classSymTab varCounters idTable constTable
 -- generateCodeFromStatement (VariableStatement var) symTab classSymTab varCounters idTable constTable = fillFromVariable var literalCounters constantAddressMap
 
 -- generateCodeFromStatement (ConditionStatement (If expression (Block statements))) quadNumInit _ _ varCounters idTable constTable = 
@@ -126,5 +127,18 @@ generateCodeFromStatement (DisplayStatement displays) quadNumInit _ _ varCounter
                                                                     --     fillFromExpression literalCounters constantAddressMap (ExpressionVarArray identifier arrayAccess)  
 generateCodeFromStatement _ quadNum _ _ varCounters idTable _ = (varCounters,[],quadNum)
 
+generateCodeFromAssignment :: Assignment -> QuadNum ->SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> (VariableCounters,[Quadruple],QuadNum)
+generateCodeFromAssignment (AssignmentExpression identifier expression) quadNum symTab classSymTab varCounters idTable constTable = 
+    let (varCounters1, quadsExp, lastQuadNum1) = processStart (-1000000000) symTab classSymTab constTable idTable varCounters quadNum (reduceExpression expression) 
+    in case (Map.lookup identifier idTable) of
+        Just address ->   (varCounters1,(quadsExp ++ [(buildQuadrupleTwoAddresses lastQuadNum1 ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]),lastQuadNum1 + 1)
+-- generateCodeFromAssignment  (AssignmentObjectMemberExpression (ObjectMember objectIdentifier attrIdentifier) expression) literalCounters constantAddressMap =  fillFromExpression literalCounters constantAddressMap expression
 
+-- generateCodeFromAssignment  (AssignmentArrayExpression _ ((ArrayAccessExpression innerExp) : []) expression) literalCounters constantAddressMap =  
+--                                                                                         let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap innerExp
+--                                                                                         in fillFromExpression newLiteralCounters newConsAddressMap expression
+-- generateCodeFromAssignment  (AssignmentArrayExpression _ ((ArrayAccessExpression innerExpRow) : (ArrayAccessExpression innerExpCol)  : []) expression) literalCounters constantAddressMap = 
+--                                                                                                                 let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap innerExpRow
+--                                                                                                                     in let (newLiteralCounters2,newConsAddressMap2) = fillFromExpression newLiteralCounters newConsAddressMap innerExpCol
+--                                                                                                                         in fillFromExpression newLiteralCounters2 newConsAddressMap2 expression
 
