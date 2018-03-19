@@ -2,13 +2,15 @@ main{
     Int i;
     Money m,j,k;
     String s;
-    j = 2.0 ^ 100.0;
+    Bool b,b1,b2,b3;
+    b = b1 || b2 || b3;
+    j = 2.0 ^ k + j + 2.0 * j;
     i = 999;
     read(i);
     display("Hello ", "World",i,j,m,999);
     read(i);
     s = "Perro" + " Gato";
-    if (i < ((((292929292 - 999) + 99000000000)))) {
+    if (m != j/k ) {
         Int l;
         l = 2 ^ 200 + i + (2 * 400);
         read(l);
@@ -34,3 +36,4 @@ main{
 
     
 }
+

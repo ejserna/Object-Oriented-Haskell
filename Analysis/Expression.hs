@@ -147,10 +147,14 @@ checkDataTypesRel1 (Just PrimitiveBool) (Just PrimitiveBool) _ = (Just Primitive
 checkDataTypesRel1 (Just PrimitiveString) (Just PrimitiveString) _ = (Just PrimitiveBool)
 checkDataTypesRel1 (Just PrimitiveBool) _ _  = Nothing
 checkDataTypesRel1 _ (Just PrimitiveBool) _ = Nothing
-checkDataTypesRel1 (Just PrimitiveInt) (Just PrimitiveDouble) _ = Nothing
-checkDataTypesRel1 (Just PrimitiveDouble) (Just PrimitiveInt) _ = Nothing
-checkDataTypesRel1 (Just PrimitiveInteger) (Just PrimitiveDouble) _ = Nothing
+checkDataTypesRel1 (Just PrimitiveMoney) (Just PrimitiveInteger) _ = Nothing
 checkDataTypesRel1 (Just PrimitiveDouble) (Just PrimitiveInteger) _ = Nothing
+checkDataTypesRel1 (Just PrimitiveMoney) (Just PrimitiveInt) _ = Nothing
+checkDataTypesRel1 (Just PrimitiveDouble) (Just PrimitiveInt) _ = Nothing
+checkDataTypesRel1 (Just PrimitiveInteger) (Just PrimitiveMoney) _ = Nothing
+checkDataTypesRel1 (Just PrimitiveInteger) (Just PrimitiveDouble) _ = Nothing
+checkDataTypesRel1 (Just PrimitiveInt) (Just PrimitiveMoney) _ = Nothing
+checkDataTypesRel1 (Just PrimitiveInt) (Just PrimitiveDouble) _ = Nothing
 checkDataTypesRel1 _ _ _ = (Just PrimitiveBool)
 
 checkDataTypesRel2 :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive 
@@ -158,6 +162,14 @@ checkDataTypesRel2 (Just PrimitiveBool) _ _  = Nothing
 checkDataTypesRel2 _ (Just PrimitiveBool) _ = Nothing
 checkDataTypesRel2 (Just PrimitiveString) _ _ = Nothing
 checkDataTypesRel2 _ (Just PrimitiveString) _ = Nothing
+checkDataTypesRel2 (Just PrimitiveMoney) (Just PrimitiveInteger) _ = Nothing
+checkDataTypesRel2 (Just PrimitiveDouble) (Just PrimitiveInteger) _ = Nothing
+checkDataTypesRel2 (Just PrimitiveMoney) (Just PrimitiveInt) _ = Nothing
+checkDataTypesRel2 (Just PrimitiveDouble) (Just PrimitiveInt) _ = Nothing
+checkDataTypesRel2 (Just PrimitiveInteger) (Just PrimitiveMoney) _ = Nothing
+checkDataTypesRel2 (Just PrimitiveInteger) (Just PrimitiveDouble) _ = Nothing
+checkDataTypesRel2 (Just PrimitiveInt) (Just PrimitiveMoney) _ = Nothing
+checkDataTypesRel2 (Just PrimitiveInt) (Just PrimitiveDouble) _ = Nothing
 checkDataTypesRel2 _ _ _ = (Just PrimitiveBool)
 
 checkDataTypesRel3 :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive
