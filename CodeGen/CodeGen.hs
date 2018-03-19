@@ -3,6 +3,8 @@ import DataTypes
 import Quadruple
 import SymbolTable
 import ClassSymbolTable
+import ExpressionCodeGen
+import ExpressionOptimizer
 import Text.Show.Pretty
 import qualified Data.HashMap.Strict as Map
 -- import Data.Stack as Stack
@@ -20,10 +22,11 @@ generateCodeFromStatements :: [Statement] -> QuadNum ->SymbolTable -> ClassSymbo
 generateCodeFromStatements [] quadNum symTab classSymTab varCounters idTable constTable = (varCounters,[(buildNoOpQuad quadNum)],quadNum + 1)
 generateCodeFromStatements ((ConditionStatement (If expression (Block innerSts))) : sts) quadNum symTab classSymTab varCounters idTable constTable  = 
             -- Le sumamos uno porque el de antes va a ser el goto en falso
-            let (varCounters2, quadsInnerStatements, lastQuadNum2) = generateCodeFromStatements innerSts (quadNum + 1) symTab classSymTab varCounters idTable constTable
+            let ((intC,decC,strC,boolC), quadsExp, lastQuadNum1) = processStart (-1000000000) symTab classSymTab constTable idTable varCounters quadNum (reduceExpression expression) 
+            in let (varCounters2, quadsInnerStatements, lastQuadNum2) = generateCodeFromStatements innerSts (lastQuadNum1 + 1) symTab classSymTab (intC,decC,strC,boolC) idTable constTable
             in let (varCounters3, quadsStatements, lastQuadNum3) = generateCodeFromStatements sts lastQuadNum2 symTab classSymTab varCounters2 idTable constTable
-            in let gotoFQuad = buildQuadForConditions quadNum (GOTO_IF_FALSE) (0) (getQuadNum $ head $ quadsStatements) -- MARK TODO: Cambiar 0 por lo que de expresion
-            in (varCounters3, ([gotoFQuad] ++ quadsInnerStatements ++ quadsStatements), lastQuadNum3)
+            in let gotoFQuad = buildQuadForConditions lastQuadNum1 (GOTO_IF_FALSE) (boolC - 1) (getQuadNum $ head $ quadsStatements) -- MARK TODO: Cambiar 0 por lo que de expresion
+            in (varCounters3, (quadsExp ++ [gotoFQuad] ++ quadsInnerStatements ++ quadsStatements), lastQuadNum3)
 generateCodeFromStatements ((ConditionStatement (IfElse expression (Block trueStatements) (Block elseStatements))) : sts) quadNum symTab classSymTab varCounters idTable constTable  = 
             -- Le sumamos uno porque el de antes va a ser el goto en falso
             let (varCounters2, trueQuadStatements, lastQuadNum2) = generateCodeFromStatements trueStatements (quadNum + 1) symTab classSymTab varCounters idTable constTable
