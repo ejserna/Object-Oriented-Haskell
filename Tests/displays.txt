@@ -1,11 +1,13 @@
 main{
     Int i;
     Money m,j,k;
+        m = 999 * k * i + 1;
+
     String s;
     Bool b,b1,b2,b3;
     b = b1 || b2 || b3;
-    j = 2.0 ^ k + j + 2.0 * j;
-    i = 999;
+    i = i % 2;
+    j = i ^ 2.0 + j + 2.0 * j;
     read(i);
     display("Hello ", "World",i,j,m,999);
     read(i);
@@ -36,4 +38,5 @@ main{
 
     
 }
+
 
