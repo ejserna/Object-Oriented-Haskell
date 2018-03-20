@@ -67,7 +67,9 @@ expCodeGen symTab constMap idMap varCounters quadNum (ExpressionNeg exp1) = let 
                                                                                                         Just PrimitiveInt ->  ((intLitCUpdate + 1, decLitCUpdate, strLitCUpdate, boolLitCUpdate), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (intLitCUpdate - 1, (intLitCUpdate)))], quadNum1 + 1)
                                                                                                         Just PrimitiveInteger -> ((intLitCUpdate + 1, decLitCUpdate, strLitCUpdate, boolLitCUpdate), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (intLitCUpdate - 1, (intLitCUpdate)))], quadNum1 + 1)
 expCodeGen symTab constMap idMap varCounters quadNum (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) = expCodeGen symTab constMap idMap varCounters quadNum exp1 
-
+expCodeGen symTab constMap idMap varCounters quadNum (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : (ArrayAccessExpression exp2) :[])) = let    ((intLitCUpdate, decLitCUpdate, strLitCUpdate, boolLitCUpdate),quad1, quadNum1) = expCodeGen symTab constMap idMap varCounters quadNum exp1
+                                                                                                                                                                ((intLitCUpdate2, decLitCUpdate2, strLitCUpdate2, boolLitCUpdate2),quad2, quadNum2) = expCodeGen symTab constMap idMap (intLitCUpdate, decLitCUpdate, strLitCUpdate, boolLitCUpdate) quadNum1 exp2
+                                                                                                                                                                in ((intLitCUpdate2, decLitCUpdate2, strLitCUpdate2, boolLitCUpdate2),quad1 ++ quad2, quadNum2)
 
 genQuadrupleArithmetic :: SymbolTable -> ConstantAddressMap -> IdentifierAddressMap -> VariableCounters -> QuadNum -> Expression -> Expression -> Operation -> (VariableCounters,[Quadruple],QuadNum)
 genQuadrupleArithmetic symTab constMap idMap varCounters quadNum exp1 exp2 op = let typeExp1 = (expressionProcess (-100000000000000) exp1 symTab (Map.empty))
