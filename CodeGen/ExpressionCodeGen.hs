@@ -65,7 +65,8 @@ expCodeGen symTab constMap idMap varCounters quadNum (ExpressionNeg exp1) = let 
                                                                                                         Just PrimitiveDouble -> ((intLitCUpdate, decLitCUpdate + 1, strLitCUpdate, boolLitCUpdate), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (decLitCUpdate - 1, (decLitCUpdate)))], quadNum1 + 1)
                                                                                                         Just PrimitiveMoney -> ((intLitCUpdate, decLitCUpdate + 1, strLitCUpdate, boolLitCUpdate), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (decLitCUpdate - 1, (decLitCUpdate)))], quadNum1 + 1)
                                                                                                         Just PrimitiveInt ->  ((intLitCUpdate + 1, decLitCUpdate, strLitCUpdate, boolLitCUpdate), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (intLitCUpdate - 1, (intLitCUpdate)))], quadNum1 + 1)
-                                                                                                        Just PrimitiveInteger -> ((intLitCUpdate + 1, decLitCUpdate, strLitCUpdate, boolLitCUpdate), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (intLitCUpdate - 1, (intLitCUpdate)))], quadNum1 + 1) 
+                                                                                                        Just PrimitiveInteger -> ((intLitCUpdate + 1, decLitCUpdate, strLitCUpdate, boolLitCUpdate), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (intLitCUpdate - 1, (intLitCUpdate)))], quadNum1 + 1)
+expCodeGen symTab constMap idMap varCounters quadNum (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) = expCodeGen symTab constMap idMap varCounters quadNum exp1 
 
 
 genQuadrupleArithmetic :: SymbolTable -> ConstantAddressMap -> IdentifierAddressMap -> VariableCounters -> QuadNum -> Expression -> Expression -> Operation -> (VariableCounters,[Quadruple],QuadNum)
