@@ -66,7 +66,10 @@ expCodeGen symTab constMap idMap varCounters quadNum (ExpressionNeg exp1) = let 
                                                                                                         Just PrimitiveMoney -> ((intGC, decGC + 1, strGC, boolGC,objGC), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (decGC - 1, (decGC)))], quadNum1 + 1)
                                                                                                         Just PrimitiveInt ->  ((intGC + 1, decGC, strGC, boolGC,objGC), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (intGC - 1, (intGC)))], quadNum1 + 1)
                                                                                                         Just PrimitiveInteger -> ((intGC + 1, decGC, strGC, boolGC,objGC), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (intGC - 1, (intGC)))], quadNum1 + 1) 
-
+expCodeGen symTab constMap idMap varCounters quadNum (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) = expCodeGen symTab constMap idMap varCounters quadNum exp1 
+expCodeGen symTab constMap idMap varCounters quadNum (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : (ArrayAccessExpression exp2) :[])) = let    ((intGC, decGC, strGC, boolGC,objGC),quad1, quadNum1) = expCodeGen symTab constMap idMap varCounters quadNum exp1
+                                                                                                                                                                ((intGC2, decGC2, strGC2, boolGC2,objGC2),quad2, quadNum2) = expCodeGen symTab constMap idMap (intGC, decGC, strGC, boolGC,objGC) quadNum1 exp2
+                                                                                                                                                                in ((intGC2, decGC2, strGC2, boolGC2,objGC2),quad1 ++ quad2, quadNum2)
 
 genQuadrupleArithmetic :: SymbolTable -> ConstantAddressMap -> IdentifierAddressMap -> VariableCounters -> QuadNum -> Expression -> Expression -> Operation -> (VariableCounters,[Quadruple],QuadNum)
 genQuadrupleArithmetic symTab constMap idMap varCounters quadNum exp1 exp2 op = let typeExp1 = (expressionProcess (-100000000000000) exp1 symTab (Map.empty))
