@@ -13,78 +13,48 @@ import Data.Ord (comparing)
 import Data.Function (on)
 
 
-startIntGlobalMemory :: Address
 startIntGlobalMemory = 1
-
-endIntGlobalMemory :: Address
 endIntGlobalMemory = 4000
 
-startDecimalGlobalMemory :: Address
 startDecimalGlobalMemory = 4001
-
-endDecimalGlobalMemory :: Address
 endDecimalGlobalMemory = 8000
 
-startStringGlobalMemory :: Address
 startStringGlobalMemory = 8001
-
-endStringGlobalMemory :: Address
 endStringGlobalMemory = 12000
 
-startBoolGlobalMemory :: Address
 startBoolGlobalMemory = 12001
-
-endBoolGlobalMemory :: Address
 endBoolGlobalMemory = 16000
 
-startIntLocalMemory :: Address
 startIntLocalMemory = 16001
-
-endIntLocalMemory :: Address
 endIntLocalMemory = 20000
 
-startDecimalLocalMemory :: Address
 startDecimalLocalMemory = 20001
-
-endDecimaLocalMemory :: Address
 endDecimaLocalMemory = 24000
 
-startStringLocalMemory :: Address
 startStringLocalMemory = 24001
-
-endStringLocalMemory :: Address
 endStringLocalMemory = 26000
 
-startBoolLocalMemory :: Address
 startBoolLocalMemory = 26001
-
-endBoolLocalMemory :: Address
 endBoolLocalMemory = 30000
 
-startIntLiteralMemory :: Address
 startIntLiteralMemory = 64001
-
-endIntLiteralMemory :: Address
 endIntLiteralMemory = 68000
 
-startDecimalLiteralMemory :: Address
 startDecimalLiteralMemory = 68001
-
-endDecimalLiteralMemory :: Address
 endDecimalLiteralMemory = 72000
 
-startStringLiteralMemory :: Address
 startStringLiteralMemory = 76001
-
-endStringLiteralMemory :: Address
 endStringLiteralMemory = 80000
 
-startBoolLiteralMemory :: Address
 startBoolLiteralMemory = 80001
-
-endBoolLiteralMemory :: Address
 endBoolLiteralMemory = 84000
 
+
+startObjectGlobalMemory = 100001
+endObjectGlobalMemory = 104000
+
+startObjectLocalMemory = 104001
+endObjectLocalMemory = 108000
 
 
 startMemoryAllocation :: Program -> SymbolTable -> ClassSymbolTable -> IO()
@@ -95,10 +65,11 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
             in let (newLiteralCounters3,constantAddressMap3) = fillFromExpression newLiteralCounters2 constantAddressMap2 (ExpressionLitVar (IntegerLiteral 0))
             in let (newLiteralCounters4,constantAddressMap4) = fillFromExpression newLiteralCounters3 constantAddressMap3 (ExpressionLitVar (StringLiteral ""))
             in let (newLiteralCounters5,constantAddressMap5) = fillFromExpression newLiteralCounters4 constantAddressMap4 (ExpressionLitVar (BoolLiteral True))
-            in let (varCounters,newIdMap) = (prepareAddressMapsFromSymbolTable symTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory)
-                                                                (Map.empty))
+            in let (varCounters,newIdMap,objectAddressMap) = (prepareAddressMapsFromSymbolTable symTab classSymTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory)
+                                                                (Map.empty) (Map.empty))
             in do putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList newIdMap) )
                   putStrLn $ ppShow $ (sortBy (compare `on` snd) ( Map.toList constantAddressMap5 ) )
+                  putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList objectAddressMap) )
                   startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters newIdMap constantAddressMap5
 
 prepareConstantAddressMap :: [Statement] -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
@@ -144,9 +115,6 @@ fillFromAssignment  (AssignmentArrayExpression _ ((ArrayAccessExpression innerEx
                                                                                                                 let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap innerExpRow
                                                                                                                     in let (newLiteralCounters2,newConsAddressMap2) = fillFromExpression newLiteralCounters newConsAddressMap innerExpCol
                                                                                                                         in fillFromExpression newLiteralCounters2 newConsAddressMap2 expression
-
-
-
 
 fillFromAssignment _ literalCounters constantAddressMap  = (literalCounters,constantAddressMap)
 
@@ -216,111 +184,115 @@ fillFromCallParams literalCounters constantAddressMap ((ParamsExpression exp) : 
         let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap exp
             in fillFromCallParams newLiteralCounters newConsAddressMap params
                 
-prepareAddressMapsFromSymbolTable :: SymbolTable -> VariableCounters -> IdentifierAddressMap -> (VariableCounters,IdentifierAddressMap)
-prepareAddressMapsFromSymbolTable symTab counters identifierAddressMap = 
+prepareAddressMapsFromSymbolTable :: SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ObjectAddressMap -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap)
+prepareAddressMapsFromSymbolTable symTab classSymTab counters identifierAddressMap objAddressMap = 
                             let symTabList = (Map.toList symTab)
-                            in fillIdentifierAddressMap symTabList identifierAddressMap counters  
+                            in fillIdentifierAddressMap symTabList classSymTab identifierAddressMap objAddressMap counters  
 
-fillIdentifierAddressMap :: [(Identifier,Symbol)] -> IdentifierAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap) 
-fillIdentifierAddressMap [] identifierAddressMap varCounters = (varCounters,identifierAddressMap)
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) : rest ) identifierAddressMap
-                                                                    (intGC,decGC,strGC,boolGC)  |
+fillIdentifierAddressMap :: [(Identifier,Symbol)] -> ClassSymbolTable -> IdentifierAddressMap -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap) 
+fillIdentifierAddressMap [] classSymTab identifierAddressMap objAddressMap varCounters = (varCounters,identifierAddressMap,objAddressMap)
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) : rest ) classSymTab identifierAddressMap objAddressMap
+                                                                    (intGC,decGC,strGC,boolGC,objGC)  |
                                                                     intGC <= endIntGlobalMemory
                                                                     && decGC <= endDecimalGlobalMemory
                                                                     && strGC <= endStringGlobalMemory 
                                                                     && boolGC <= endBoolGlobalMemory =
                             case prim of
                                 PrimitiveBool -> let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
-                                                    in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC,decGC,strGC,boolGC + 1))
+                                                    in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap  
+                                                            (intGC,decGC,strGC,boolGC + 1,objGC))
                                 PrimitiveInt -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                    in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC + 1,decGC,strGC,boolGC))
+                                                    in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC + 1,decGC,strGC,boolGC,objGC))
 
                                 PrimitiveInteger -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC + 1,decGC,strGC,boolGC)) 
+                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC + 1,decGC,strGC,boolGC,objGC)) 
                                 PrimitiveString -> let newIdMap = (Map.insert identifier strGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC,decGC,strGC + 1,boolGC)) 
+                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC,decGC,strGC + 1,boolGC,objGC)) 
                                 PrimitiveMoney -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC,decGC + 1,strGC,boolGC))
+                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC,decGC + 1,strGC,boolGC,objGC))
                                 PrimitiveDouble -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC,decGC + 1,strGC,boolGC))
-
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) _ _)) : rest ) identifierAddressMap
-                                                                    (intGC,decGC,strGC,boolGC)  |
+                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC,decGC + 1,strGC,boolGC,objGC))
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) _ _)) : rest ) classSymTab identifierAddressMap objAddressMap
+                                                                    (intGC,decGC,strGC,boolGC,objGC)  |
+                                                                    intGC <= endIntGlobalMemory
+                                                                    && decGC <= endDecimalGlobalMemory
+                                                                    && strGC <= endStringGlobalMemory 
+                                                                    && boolGC <= endBoolGlobalMemory
+                                                                    && objGC <= endObjectGlobalMemory =
+                                let ((intGC1,decGC1,strGC1,boolGC1,objGC1), idMapFromObject, newObjAddressMap) = insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) classSymTab objAddressMap (intGC,decGC,strGC,boolGC,objGC)    
+                                in case (arrayAccess) of 
+                                    [] -> let newIdMap = (Map.insert identifier objGC1 identifierAddressMap) 
+                                              newObjMap = (Map.insert objGC1 idMapFromObject newObjAddressMap)
+                                              in (fillIdentifierAddressMap rest classSymTab newIdMap newObjMap 
+                                                            (intGC1,decGC1,strGC1,boolGC1,objGC1 + 1))
+                                    (("[",size,"]") : []) -> 
+                                         let newIdMap = (Map.insert identifier objGC1 identifierAddressMap) 
+                                             newObjMap = (Map.insert objGC1 idMapFromObject newObjAddressMap)
+                                             in (fillIdentifierAddressMap rest classSymTab newIdMap newObjMap 
+                                                                (intGC1,decGC1,strGC1,boolGC1,objGC1 + size))
+                                    (("[",rows,"]") : ("[",cols,"]")  : [] ) -> 
+                                          let newIdMap = (Map.insert identifier objGC1 identifierAddressMap) 
+                                              newObjMap = (Map.insert objGC1 idMapFromObject newObjAddressMap)
+                                              in (fillIdentifierAddressMap rest classSymTab newIdMap newObjMap 
+                                                            (intGC1,decGC1,strGC1,boolGC1,objGC1 + rows * cols))
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) _ _)) : rest ) classSymTab identifierAddressMap objAddressMap
+                                                                    (intGC,decGC,strGC,boolGC,objGC)  |
                                                                     intGC <= endIntGlobalMemory
                                                                     && decGC <= endDecimalGlobalMemory
                                                                     && strGC <= endStringGlobalMemory 
                                                                     && boolGC <= endBoolGlobalMemory =
                             case prim of
                                 PrimitiveBool -> let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
-                                                    in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC,decGC,strGC,boolGC + size))
+                                                    in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC,decGC,strGC,boolGC + size,objGC))
                                 PrimitiveInt -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                    in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC + size,decGC,strGC,boolGC))
+                                                    in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC + size,decGC,strGC,boolGC,objGC))
 
                                 PrimitiveInteger -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC + size,decGC,strGC,boolGC)) 
+                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC + size,decGC,strGC,boolGC,objGC)) 
                                 PrimitiveString -> let newIdMap = (Map.insert identifier strGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC,decGC,strGC + size,boolGC)) 
+                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC,decGC,strGC + size,boolGC,objGC)) 
                                 PrimitiveMoney -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC,decGC + size,strGC,boolGC))
+                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC,decGC + size,strGC,boolGC,objGC))
                                 PrimitiveDouble -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC,decGC + size,strGC,boolGC))
+                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC,decGC + size,strGC,boolGC,objGC))
 
-                                -- PrimitiveBool -> (Map.union (Map.insert identifier boolGC identifierAddressMap)
-                                --                             (fillIdentifierAddressMap rest identifierAddressMap
-                                --                             (intGC,decGC,strGC,boolGC + size)))
-                                -- PrimitiveInt -> (Map.union (Map.insert identifier intGC identifierAddressMap)
-                                --                             (fillIdentifierAddressMap rest identifierAddressMap
-                                --                             (intGC + size,decGC,strGC,boolGC)))
-                                -- PrimitiveInteger -> (Map.union (Map.insert identifier intGC identifierAddressMap)
-                                --                             (fillIdentifierAddressMap rest identifierAddressMap
-                                --                             (intGC + size,decGC,strGC,boolGC)))
-                                -- PrimitiveString -> (Map.union (Map.insert identifier strGC identifierAddressMap)
-                                --                             (fillIdentifierAddressMap rest identifierAddressMap
-                                --                             (intGC,decGC,strGC + size,boolGC)))
-                                -- PrimitiveMoney -> (Map.union (Map.insert identifier decGC identifierAddressMap)
-                                --                             (fillIdentifierAddressMap rest identifierAddressMap
-                                --                             (intGC,decGC + size,strGC,boolGC)))
-                                -- PrimitiveDouble -> (Map.union (Map.insert identifier decGC identifierAddressMap)
-                                --                             (fillIdentifierAddressMap rest identifierAddressMap
-                                --                             (intGC,decGC + size,strGC,boolGC)))
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) _ _)) : rest ) identifierAddressMap
-                                                                    (intGC,decGC,strGC,boolGC)  |
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) _ _)) : rest ) classSymTab identifierAddressMap objAddressMap
+                                                                    (intGC,decGC,strGC,boolGC,objGC)  |
                                                                     intGC <= endIntGlobalMemory
                                                                     && decGC <= endDecimalGlobalMemory
                                                                     && strGC <= endStringGlobalMemory 
                                                                     && boolGC <= endBoolGlobalMemory =
                             case prim of
                                 PrimitiveBool -> let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
-                                                    in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC,decGC,strGC,boolGC + rows * cols))
+                                                    in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC,decGC,strGC,boolGC + rows * cols,objGC))
                                 PrimitiveInt -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                    in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC + rows * cols,decGC,strGC,boolGC))
+                                                    in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC + rows * cols,decGC,strGC,boolGC,objGC))
 
                                 PrimitiveInteger -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC + rows * cols,decGC,strGC,boolGC)) 
+                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC + rows * cols,decGC,strGC,boolGC,objGC)) 
                                 PrimitiveString -> let newIdMap = (Map.insert identifier strGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC,decGC,strGC + rows * cols,boolGC)) 
+                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC,decGC,strGC + rows * cols,boolGC,objGC)) 
                                 PrimitiveMoney -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC,decGC + rows * cols,strGC,boolGC))
+                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC,decGC + rows * cols,strGC,boolGC,objGC))
                                 PrimitiveDouble -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest newIdMap
-                                                            (intGC,decGC + rows * cols,strGC,boolGC))
+                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
+                                                            (intGC,decGC + rows * cols,strGC,boolGC,objGC))
 
                                 -- PrimitiveBool -> (Map.union (Map.insert identifier boolGC identifierAddressMap)
                                 --                             (fillIdentifierAddressMap rest identifierAddressMap
@@ -341,9 +313,15 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows
                                 --                             (fillIdentifierAddressMap rest identifierAddressMap
                                 --                             (intGC,decGC + rows * cols,strGC,boolGC)))
 -- MARK TODO: Objetos, funciones
-fillIdentifierAddressMap (x : xs) identifierAddressMap (intGC,decGC,strGC,boolGC) = 
-            (fillIdentifierAddressMap xs identifierAddressMap
-                                                            (intGC,decGC,strGC,boolGC))
+fillIdentifierAddressMap (x : xs) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC) = 
+            (fillIdentifierAddressMap xs classSymTab identifierAddressMap objAddressMap
+                                                            (intGC,decGC,strGC,boolGC,objGC))
+
+insertObjectInObjectAddressMap ::  Type -> ClassSymbolTable -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap) 
+insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) classSymTab objAddressMap (intGC,decGC,strGC,boolGC,objGC) =
+                                case (Map.lookup classId classSymTab) of
+                                    Just symbolTableOfClass -> 
+                                        prepareAddressMapsFromSymbolTable symbolTableOfClass classSymTab (intGC,decGC,strGC,boolGC,objGC) (Map.empty) objAddressMap 
 
 
                             

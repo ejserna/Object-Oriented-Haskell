@@ -9,7 +9,7 @@ type Address = Integer
 type QuadNum = Integer
 
 -- Los primeros 4 son los contadores de variables de tipo Integers,Decimales,Strings,Bool 
-type VariableCounters = (Address,Address,Address,Address) 
+type VariableCounters = (Address,Address,Address,Address,Address) 
 
 -- Contadores de literales de integers,decimales,strings y booleanos
 type LiteralCounters = (Address,Address,Address,Address) 
@@ -19,6 +19,7 @@ type TypeIdentifier = String -- Integer, Decimal, String, Bool
 -- Estos tipos le sirven a ExpressionCodeGen saber qué Identifiador/Constante están mappeados en memorias con qué dirección
 type IdentifierAddressMap = Map.HashMap Identifier Address
 type ConstantAddressMap = Map.HashMap String Address
+type ObjectAddressMap = Map.HashMap Address IdentifierAddressMap
 
 data Program 
     = Program [Class] [Function] [Variable] Block
