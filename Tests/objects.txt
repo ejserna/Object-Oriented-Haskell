@@ -1,0 +1,41 @@
+class Perro{
+    [+] Int perro1;
+    [+] Int perro2;
+}
+
+class Humano{
+    [+] Int humano1;
+    [+] Int humano2;
+    [+] Perro [1][10] ho;
+}
+
+class Persona : Humano{
+    [-] Humano persona1;
+    [+] Humano humano3;
+
+    :: {
+        Persona p;
+        Humano hoho;
+        persona1 = p;
+        humano3 = hoho;
+    }
+
+    [+] func => Humano  {
+        Humano hoho;
+        return hoho;
+    }
+}
+
+
+main{
+    Int o,l,p,t,r,s,q;
+    Humano hu;
+    Humano [10] h2; 
+    Humano [21][80] h = [[hu]];
+    Humano [10][100] h3;
+    Int e; 
+    Persona pers,pers1;
+    Persona pers2 = Persona();
+}
+
+

@@ -20,6 +20,9 @@ pruebaFibo:
 pruebaDisplays:
 	cat Tests/displays.txt | ./ObjectiveOrientedHaskell
 
+pruebaObjects:
+	cat Tests/objects.txt | ./ObjectiveOrientedHaskell
+
 prueba: 
 	cat Tests/$(ARCH) | ./ObjectiveOrientedHaskell
 
