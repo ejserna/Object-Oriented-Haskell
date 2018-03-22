@@ -124,8 +124,12 @@ checkDataTypesNEG :: Maybe Primitive -> SymbolTable -> Maybe Primitive
 checkDataTypesNEG (Just PrimitiveBool) symTab = Nothing
 checkDataTypesNEG (Just PrimitiveString) symTab = Nothing
 checkDataTypesNEG (Just prim) symTab = (Just prim)
+checkDataTypesNEG Nothing symTab = Nothing
 
 checkDataTypesMult :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive
+checkDataTypesMult Nothing Nothing _ = Nothing -- Todo lo demas, falso
+checkDataTypesMult _ Nothing _ = Nothing -- Todo lo demas, falso
+checkDataTypesMult Nothing _ _ = Nothing -- Todo lo demas, falso
 checkDataTypesMult (Just PrimitiveBool) _ _ = Nothing
 checkDataTypesMult _ (Just PrimitiveBool) _ = Nothing 
 checkDataTypesMult (Just PrimitiveInt) (Just PrimitiveInt) _  = (Just PrimitiveInt)
@@ -143,6 +147,9 @@ checkDataTypesMult _ _ _ = Nothing -- Todo lo demas, falso
 
 
 checkDataTypesRel1 :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive 
+checkDataTypesRel1 Nothing Nothing _ = Nothing -- Todo lo demas, falso
+checkDataTypesRel1 _ Nothing _ = Nothing -- Todo lo demas, falso
+checkDataTypesRel1 Nothing _ _ = Nothing -- Todo lo demas, falso
 checkDataTypesRel1 (Just PrimitiveBool) (Just PrimitiveBool) _ = (Just PrimitiveBool)
 checkDataTypesRel1 (Just PrimitiveString) (Just PrimitiveString) _ = (Just PrimitiveBool)
 checkDataTypesRel1 (Just PrimitiveBool) _ _  = Nothing
@@ -158,6 +165,9 @@ checkDataTypesRel1 (Just PrimitiveInt) (Just PrimitiveDouble) _ = Nothing
 checkDataTypesRel1 _ _ _ = (Just PrimitiveBool)
 
 checkDataTypesRel2 :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive 
+checkDataTypesRel2 Nothing Nothing _ = Nothing -- Todo lo demas, falso
+checkDataTypesRel2 _ Nothing _ = Nothing -- Todo lo demas, falso
+checkDataTypesRel2 Nothing _ _ = Nothing -- Todo lo demas, falso
 checkDataTypesRel2 (Just PrimitiveBool) _ _  = Nothing
 checkDataTypesRel2 _ (Just PrimitiveBool) _ = Nothing
 checkDataTypesRel2 (Just PrimitiveString) _ _ = Nothing
@@ -173,6 +183,9 @@ checkDataTypesRel2 (Just PrimitiveInt) (Just PrimitiveDouble) _ = Nothing
 checkDataTypesRel2 _ _ _ = (Just PrimitiveBool)
 
 checkDataTypesRel3 :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive
+checkDataTypesRel3 Nothing Nothing _ = Nothing -- Todo lo demas, falso
+checkDataTypesRel3 _ Nothing _ = Nothing -- Todo lo demas, falso
+checkDataTypesRel3 Nothing _ _ = Nothing -- Todo lo demas, falso
 checkDataTypesRel3 (Just PrimitiveBool) (Just PrimitiveBool) _ = (Just PrimitiveBool)
 checkDataTypesRel3 _ _ _ = Nothing
 

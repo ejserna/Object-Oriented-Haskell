@@ -16,6 +16,7 @@ main{
     s = "Perro" + " Gato";
     if (m != j/k ) {
         Int l;
+        
         l = 2 ^ 200 + i + (2 * 400);
         read(l);
         display(True,l);
