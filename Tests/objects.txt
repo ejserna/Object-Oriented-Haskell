@@ -36,6 +36,12 @@ main{
     Int e; 
     Persona pers,pers1;
     Persona pers2 = Persona();
+    for counter in (1..2){
+        display(counter);
+        for counter2 in (1..2){
+            display(counter2);
+        }
+    }
 }
 
 

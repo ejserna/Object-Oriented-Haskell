@@ -49,10 +49,10 @@ generateCodeFromStatements ((CycleStatement (CycleFor (For lowerBound upperBound
             case (Map.lookup ("<int>" ++ (show lowerBound)) constTable) of
                 Just addressLB ->
                     case (Map.lookup ("<int>" ++ (show upperBound)) constTable) of 
-                        Just addressUB -> let (varCounters2, quadsInnerStatements, lastQuadNum2) = generateCodeFromStatements innerSts (quadNum + 1) symTab classSymTab varCounters idTable constTable
+                        Just addressUB -> let (varCounters2, quadsLoops, lastQuadNum2) = generateCodeFromLoop innerSts quadNum symTab classSymTab varCounters idTable constTable lowerBound upperBound lowerBound
                                           in let (varCounters3, quadsStatements, lastQuadNum3) = generateCodeFromStatements sts lastQuadNum2 symTab classSymTab varCounters2 idTable constTable
-                                          in let forLoopQuad = buildForLoopQuad quadNum (addressLB,addressUB) (getQuadNum $ head $ quadsStatements)
-                                          in (varCounters3, [forLoopQuad] ++ quadsInnerStatements ++ quadsStatements,lastQuadNum3)
+                                          -- in let forLoopQuad = buildForLoopQuad quadNum (addressLB,addressUB) (getQuadNum $ head $ quadsStatements)
+                                          in (varCounters3, quadsLoops ++ quadsStatements,lastQuadNum3)
 
 generateCodeFromStatements ((CycleStatement (CycleForVar forVarSts ) : sts)) quadNum symTab classSymTab varCounters idTable constTable =
                 let (varCounters2, quadsForVarSts, lastQuadNum2) = generateCodeFromStatements forVarSts quadNum symTab classSymTab varCounters idTable constTable
@@ -62,6 +62,15 @@ generateCodeFromStatements (st : sts) quadNum symTab classSymTab varCounters idT
             let (varCounters1, quads,lastQuadNum) = generateCodeFromStatement st quadNum symTab classSymTab varCounters idTable constTable 
             in let (varCounters2, quadsStatements, lastQuadNum2) = generateCodeFromStatements sts lastQuadNum symTab classSymTab varCounters1 idTable constTable
                 in (varCounters2, (quads ++ quadsStatements), lastQuadNum2)
+
+
+generateCodeFromLoop :: [Statement] -> QuadNum ->SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> Integer -> Integer -> Integer -> (VariableCounters,[Quadruple],QuadNum)
+generateCodeFromLoop sts quadNum symTab classSymTab varCounters idAddressMap consAddressMap lowerBound upperBound currentIteration
+            | currentIteration <= upperBound =
+                        let (varCounters1, quads, quadNum1) = generateCodeFromStatements sts quadNum symTab classSymTab varCounters idAddressMap consAddressMap
+                        in let (varCounters2, quadsLoop, quadNum2) = generateCodeFromLoop sts quadNum1 symTab classSymTab varCounters1 idAddressMap consAddressMap lowerBound upperBound (currentIteration + 1)
+                        in (varCounters2, quads ++ quadsLoop, quadNum2)
+            | otherwise = (varCounters,[],quadNum)
 
 generateCodeFromStatement :: Statement -> QuadNum -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> (VariableCounters,[Quadruple],QuadNum)
 
