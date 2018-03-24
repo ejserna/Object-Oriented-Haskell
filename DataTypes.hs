@@ -21,6 +21,8 @@ type IdentifierAddressMap = Map.HashMap Identifier Address
 type ConstantAddressMap = Map.HashMap String Address
 type ObjectAddressMap = Map.HashMap Address IdentifierAddressMap
 
+
+
 data Program 
     = Program [Class] [Function] [Variable] Block
   deriving (Show, Eq)
@@ -277,3 +279,75 @@ data Return
     = ReturnFunctionCall FunctionCall
     | ReturnExp Expression 
   deriving(Show,Eq)
+
+startIntGlobalMemory = 1
+endIntGlobalMemory = 4000
+
+startDecimalGlobalMemory = 4001
+endDecimalGlobalMemory = 8000
+
+startStringGlobalMemory = 8001
+endStringGlobalMemory = 12000
+
+startBoolGlobalMemory = 12001
+endBoolGlobalMemory = 16000
+
+startIntLocalMemory = 16001
+endIntLocalMemory = 20000
+
+startDecimalLocalMemory = 20001
+endDecimaLocalMemory = 24000
+
+startStringLocalMemory = 24001
+endStringLocalMemory = 26000
+
+startBoolLocalMemory = 26001
+endBoolLocalMemory = 30000
+
+startIntLiteralMemory = 64001
+endIntLiteralMemory = 68000
+
+startDecimalLiteralMemory = 68001
+endDecimalLiteralMemory = 72000
+
+startStringLiteralMemory = 76001
+endStringLiteralMemory = 80000
+
+startBoolLiteralMemory = 80001
+endBoolLiteralMemory = 84000
+
+startObjectLocalMemory = 84001
+endObjectLocalMemory = 88000
+
+startObjectGlobalMemory = 100001
+endObjectGlobalMemory = 104000
+
+intToDecimal :: Integer -> Decimal
+intToDecimal int = let num = show(int)
+                    in (strToDecimal num)
+
+strToDecimal :: String -> Decimal
+strToDecimal str = read str :: Decimal
+
+decToDouble :: (DecimalRaw Integer) -> Double 
+decToDouble dec = let num = show(dec)
+                    in (strToDouble num)
+
+strToDouble :: String -> Double
+strToDouble str = read str :: Double
+
+intToDouble :: Integer -> Double
+intToDouble int = let num = show(int)
+                  in (strToDouble num)
+
+
+doubleToDecimal :: Double -> Decimal
+doubleToDecimal doub = let num = show(doub)
+                        in (strToDecimal num)
+
+decToInt :: Decimal -> Integer
+decToInt dec = let num = show(roundTo 0 dec)
+                  in (strToInt num)
+
+strToInt :: String -> Integer
+strToInt str = read str :: Integer 

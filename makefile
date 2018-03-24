@@ -5,7 +5,7 @@ default:
 	rm -f Scanner.hs
 	alex Analysis/Scanner.x
 	happy Analysis/Parser.y
-	ghc -o ObjectiveOrientedHaskell DataTypes.hs CodeGen/ExpressionOptimizer.hs Analysis/SymbolTable.hs Analysis/Expression.hs Analysis/ClassSymbolTable.hs CodeGen/Quadruple.hs CodeGen/ExpressionCodeGen.hs CodeGen/CodeGen.hs CodeGen/MemoryAllocator.hs Analysis/TypeChecker.hs Analysis/Scanner.hs Analysis/Parser.hs
+	ghc -o ObjectiveOrientedHaskell DataTypes.hs CodeGen/ExpressionOptimizer.hs Analysis/SymbolTable.hs Analysis/Expression.hs Analysis/ClassSymbolTable.hs CodeGen/Quadruple.hs VirtualMachine.hs CodeGen/ExpressionCodeGen.hs CodeGen/CodeGen.hs CodeGen/MemoryAllocator.hs Analysis/TypeChecker.hs Analysis/Scanner.hs Analysis/Parser.hs
 
 
 pruebaClases:
@@ -23,6 +23,9 @@ pruebaDisplays:
 pruebaObjects:
 	cat Tests/objects.txt | ./ObjectiveOrientedHaskell
 
+pruebaEasy:
+	cat Tests/pruebaSencilla.txt | ./ObjectiveOrientedHaskell
+
 prueba: 
 	cat Tests/$(ARCH) | ./ObjectiveOrientedHaskell
 
@@ -32,6 +35,7 @@ install_dependencies:
 	cabal install Decimal
 	cabal install pretty-show
 	cabal install Stack
+	cabal install pretty-terminal
 
 clean:
 	rm -f Parser.hs

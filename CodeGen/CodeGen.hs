@@ -7,15 +7,44 @@ import ExpressionCodeGen
 import ExpressionOptimizer
 import Text.Show.Pretty
 import qualified Data.HashMap.Strict as Map
--- import Data.Stack as Stack
-
+import VirtualMachine
+import Data.Decimal
+import Data.List(isInfixOf)
 -- type JumpsStack = Stack Quadruple
 
 startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> IO()
 startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters idTable constTable =
-            let (_,quads,_) =  generateCodeFromStatements statements 1 symTab classSymTab varCounters idTable constTable
+            let (_,quads,_) =  generateCodeFromStatements statements 0 symTab classSymTab varCounters idTable constTable
                 in 
             do  mapM_ (putStrLn.show) quads
+                putStrLn $ ppShow $ (prepareMemory idTable constTable)
+                startVM quads (prepareMemory idTable constTable) (Map.empty)
+
+prepareMemory :: IdentifierAddressMap -> ConstantAddressMap -> Memory
+prepareMemory idTable constTable = (Map.union 
+                                        (makeMemory (Map.toList idTable) (Map.empty))
+                                        (makeMemory (Map.toList constTable) (Map.empty))
+                                    )
+
+makeMemory :: [(String,Address)] -> Memory -> Memory
+makeMemory [] mem = mem
+makeMemory ((str,address) : addresses ) mem =
+                    if (isInfixOf "<int>" str) then 
+                        let mem1 = (Map.insert address (VMInteger (read (drop 5 str) :: Integer)) mem)
+                        in (makeMemory addresses mem1)
+                    else if (isInfixOf "<dec>" str) then 
+                        let mem1 = (Map.insert address (VMDecimal (read (drop 5 str) :: Decimal)) mem)
+                        in (makeMemory addresses mem1)
+                    else if (isInfixOf "<bool>" str) then 
+                        let mem1 = (Map.insert address (VMBool (read (drop 6 str) :: Bool)) mem)
+                        in (makeMemory addresses mem1)
+                    else if (isInfixOf "<str>" str) then 
+                        let mem1 = (Map.insert address (VMString ((drop 5 str))) mem)
+                        in (makeMemory addresses mem1)
+                    else let mem1 = (Map.insert address VMEmpty mem)
+                        in (makeMemory addresses mem1)
+
+
 
 
 generateCodeFromStatements :: [Statement] -> QuadNum ->SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> (VariableCounters,[Quadruple],QuadNum)

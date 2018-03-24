@@ -1,0 +1,16 @@
+main{
+    Int i = 100;
+    Int j = 2;
+    Int t;
+    for counter in (1..10){
+        for counter2 in (1..100){
+            Int res;
+            res = counter ^ counter2;
+            display(res);
+        }
+    }
+
+    
+}
+
+

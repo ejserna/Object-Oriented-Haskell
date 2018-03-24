@@ -12,51 +12,6 @@ import Data.List (sortBy)
 import Data.Ord (comparing)
 import Data.Function (on)
 
-
-startIntGlobalMemory = 1
-endIntGlobalMemory = 4000
-
-startDecimalGlobalMemory = 4001
-endDecimalGlobalMemory = 8000
-
-startStringGlobalMemory = 8001
-endStringGlobalMemory = 12000
-
-startBoolGlobalMemory = 12001
-endBoolGlobalMemory = 16000
-
-startIntLocalMemory = 16001
-endIntLocalMemory = 20000
-
-startDecimalLocalMemory = 20001
-endDecimaLocalMemory = 24000
-
-startStringLocalMemory = 24001
-endStringLocalMemory = 26000
-
-startBoolLocalMemory = 26001
-endBoolLocalMemory = 30000
-
-startIntLiteralMemory = 64001
-endIntLiteralMemory = 68000
-
-startDecimalLiteralMemory = 68001
-endDecimalLiteralMemory = 72000
-
-startStringLiteralMemory = 76001
-endStringLiteralMemory = 80000
-
-startBoolLiteralMemory = 80001
-endBoolLiteralMemory = 84000
-
-
-startObjectGlobalMemory = 100001
-endObjectGlobalMemory = 104000
-
-startObjectLocalMemory = 104001
-endObjectLocalMemory = 108000
-
-
 startMemoryAllocation :: Program -> SymbolTable -> ClassSymbolTable -> IO()
 startMemoryAllocation (Program classes functions variables (Block statements)) symTab classSymTab =
             let (newLiteralCounters,constantAddressMap) =  (prepareConstantAddressMap statements (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory)
@@ -70,6 +25,7 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
             in do putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList newIdMap) )
                   putStrLn $ ppShow $ (sortBy (compare `on` snd) ( Map.toList constantAddressMap5 ) )
                   putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList objectAddressMap) )
+                  -- MARK TODO: Mandar a code gen la tabla de objetos!!!!!!!!!!!
                   startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters newIdMap constantAddressMap5
 
 prepareConstantAddressMap :: [Statement] -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)

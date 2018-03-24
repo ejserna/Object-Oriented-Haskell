@@ -1,6 +1,7 @@
 module ExpressionOptimizer where 
 import Data.Decimal
 import DataTypes
+import DataTypes
 import Text.Show.Pretty
 import qualified Data.HashMap.Strict as Map
 import Data.List (intercalate, maximumBy)
@@ -123,33 +124,3 @@ functionConcatString _ f  (ExpressionLitVar (StringLiteral str1)) (ExpressionLit
 functionConcatString f _ (ExpressionLitVar litOrVar) exp2 = (f (ExpressionLitVar litOrVar) (optimizeExpression exp2))
 functionConcatString f _ exp1 (ExpressionLitVar litOrVar) = (f (optimizeExpression exp1) (ExpressionLitVar litOrVar) )
 functionConcatString f _ exp1 exp2 = optimizeExpression (f (optimizeExpression exp1) (optimizeExpression exp2))
-
-intToDecimal :: Integer -> Decimal
-intToDecimal int = let num = show(int)
-                    in (strToDecimal num)
-
-strToDecimal :: String -> Decimal
-strToDecimal str = read str :: Decimal
-
-decToDouble :: (DecimalRaw Integer) -> Double 
-decToDouble dec = let num = show(dec)
-                    in (strToDouble num)
-
-strToDouble :: String -> Double
-strToDouble str = read str :: Double
-
-intToDouble :: Integer -> Double
-intToDouble int = let num = show(int)
-                  in (strToDouble num)
-
-
-doubleToDecimal :: Double -> Decimal
-doubleToDecimal doub = let num = show(doub)
-                        in (strToDecimal num)
-
-decToInt :: Decimal -> Integer
-decToInt dec = let num = show(roundTo 0 dec)
-                  in (strToInt num)
-
-strToInt :: String -> Integer
-strToInt str = read str :: Integer 
