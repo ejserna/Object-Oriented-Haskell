@@ -1,7 +1,16 @@
 main{
     Int i = 100;
     Int j = 2;
-    Int t;
+    Bool t;
+    String s;
+    Money m;
+    display("Introduce un booleano");
+    read(t);
+    read(s);
+    read(m);
+    read(i);
+    display(t,s,m,i);
+
     for counter in (1..10){
         for counter2 in (1..100){
             Int res;

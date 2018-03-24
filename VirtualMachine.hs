@@ -1,3 +1,7 @@
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module VirtualMachine where 
 import Control.Monad.RWS
 import Control.Monad.Reader
@@ -6,6 +10,9 @@ import Control.Monad.State
 import Control.Monad.Except
 import Control.Monad.Trans.Except
 import Control.Monad.Identity
+import Control.Monad.Trans
+import Control.Monad
+import Control.Exception
 import Data.Stack as Stack
 import Quadruple
 import DataTypes
@@ -16,6 +23,7 @@ import System.CPUTime
 import Text.Printf
 import  System.Console.Pretty (Color (..), Style (..), bgColor, color,
                                         style, supportsPretty)
+import System.IO
 data CPUState = CPUState
                 {   panic :: Bool, 
                     ip :: Int,
@@ -72,18 +80,22 @@ instance ExpressionOperation VMValue where
 
 type Memory = Map.HashMap Address VMValue
 type Output = String
-type VM =  RWS [Quadruple] [String] CPUState 
+-- type VM =  RWS [Quadruple] [String] CPUState 
 
+-- newtype VM a = VM{
+--     unwrapVM :: RWST [Quadruple] [String] CPUState IO a
+-- } deriving (Functor, Applicative, Monad, MonadIO)
 
 startVM :: [Quadruple] -> Memory -> Memory -> IO ()
 startVM quads globalMemory localMemory = 
-    do start <- getCPUTime
-       mapM_ (putStrLn) $ snd $ evalRWS runVM quads (setInitialCPUState globalMemory localMemory)
+    do 
+       start <- getCPUTime
+       (a,w) <- evalRWST runVM quads (setInitialCPUState globalMemory localMemory)
+       mapM_ (putStrLn) $ w 
        end   <- getCPUTime
        let diff = (fromIntegral (end - start)) / (10^12)
        let msg1 = style Bold $ "Finished" ++ " in " ++ ( show (diff::Decimal) ) ++ " sec"
        putStrLn $ msg1 
-       -- printf $ msg1 ++ " in: %0.9f sec\n" (diff :: Double)
 
 setInitialCPUState :: Memory -> Memory -> CPUState
 setInitialCPUState globalMem localMem = CPUState False 0 globalMem localMem
@@ -91,7 +103,7 @@ setInitialCPUState globalMem localMem = CPUState False 0 globalMem localMem
 getCPUState :: CPUState -> (Bool,Int,Memory,Memory)
 getCPUState (CPUState panic ip globalMemory localMemory) = (panic,ip,globalMemory,localMemory)
 
-runVM :: VM ()
+runVM :: RWST [Quadruple] [String] CPUState IO ()
 runVM = do
         quadruples <- ask
         cpuState <- get
@@ -114,7 +126,7 @@ runVM = do
 
 -- main = print $ evalRWS go [1,2,3,4,5,6,7] (CPUState {panic = False, ip = 1})
 
-runInstruction :: Quadruple -> VM ()
+runInstruction :: Quadruple -> RWST [Quadruple] [String] CPUState IO ()
 -- Si es un NOP, solamente aumentamos a uno el instruction pointer
 runInstruction (QuadrupleEmpty _ _) = do 
                                         cpuState <- get
@@ -128,20 +140,99 @@ runInstruction (QuadrupleThreeAddresses quadNum DIVIDE_ a1 a2 a3) =  do runInstr
 runInstruction (QuadrupleThreeAddresses quadNum MOD_ a1 a2 a3) =  do runInstructionAbstract (|%|) a1 a2 a3 
 runInstruction (QuadrupleThreeAddresses quadNum POWER_ a1 a2 a3) =  do runInstructionAbstract (|^|) a1 a2 a3 
 runInstruction (QuadrupleTwoAddresses quadNum ASSIGNMENT a1 a2) =  do doAssignment a1 a2 
-runInstruction (QuadrupleOneAddress quadNum (DISPLAY) a1) = do 
+runInstruction (QuadrupleOneAddress quadNum READ a1) 
+                                    | a1 >= startIntGlobalMemory && a1 <= endIntGlobalMemory     
+                                      || a1 >= startIntLocalMemory && a1 <= endIntLocalMemory =
+                                                                do 
+                                                                    tty <- lift $ openFile "/dev/tty" ReadMode
+                                                                    lift $ putStrLn $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: Integer" ) ++ (style SlowBlink $ ">")
+                                                                    x  <- lift $ hGetLine tty
+                                                                    -- lift $ catch (seq (read x :: Integer) $ return()) showError
+                                                                    case (checkInt x) of 
+                                                                        Just int -> insertValueInAddress (VMInteger int) a1
+                                                                        Nothing -> do
+                                                                            lift $ putStrLn $ color Red . style Bold $ ("Runtime Recovery: Please enter an Integer number")
+                                                                            return()
+                                                                    lift $ hClose tty
+                                    | a1 >= startDecimalGlobalMemory && a1 <= endDecimalGlobalMemory     
+                                      || a1 >= startDecimalLocalMemory && a1 <= endDecimalLocalMemory =
+                                                                do 
+                                                                    tty <- lift $ openFile "/dev/tty" ReadMode
+                                                                    lift $ putStrLn $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: Decimal" ) ++ (style SlowBlink $ ">")
+                                                                    x  <- lift $ hGetLine tty
+                                                                    -- lift $ catch (seq (read x :: Integer) $ return()) showError
+                                                                    case (checkDecimal x) of 
+                                                                        Just dec -> insertValueInAddress (VMDecimal dec) a1
+                                                                        Nothing -> do
+                                                                            lift $ putStrLn $ color Red . style Bold $ ("Runtime Recovery: Please enter a Decimal number")
+                                                                            return()
+                                                                    lift $ hClose tty
+                                    | a1 >= startStringGlobalMemory && a1 <= endStringGlobalMemory     
+                                      || a1 >= startStringLocalMemory && a1 <= endStringLocalMemory =
+                                                                do 
+                                                                    tty <- lift $ openFile "/dev/tty" ReadMode
+                                                                    lift $ putStrLn $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: String" ) ++ (style SlowBlink $ ">")
+                                                                    x  <- lift $ hGetLine tty
+                                                                    -- lift $ catch (seq (read x :: Integer) $ return()) showError
+                                                                    insertValueInAddress (VMString x) a1
+                                                                    lift $ hClose tty
+                                    | a1 >= startBoolGlobalMemory && a1 <= endBoolGlobalMemory     
+                                      || a1 >= startBoolLocalMemory && a1 <= endBoolLocalMemory =
+                                                                do 
+                                                                    tty <- lift $ openFile "/dev/tty" ReadMode
+                                                                    lift $ putStrLn $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: True | False" ) ++ (style SlowBlink $ ">")
+                                                                    x  <- lift $ hGetLine tty
+                                                                    -- lift $ catch (seq (read x :: Integer) $ return()) showError
+                                                                    case (checkBool x) of 
+                                                                        Just bool -> insertValueInAddress (VMBool bool) a1
+                                                                        Nothing -> do
+                                                                            lift $ putStrLn $ color Red . style Bold $ ("Runtime Recovery: Please enter a Bool")
+                                                                            return()
+                                                                    lift $ hClose tty
+                                    | otherwise = return ()       
+                                            
+                                            
+
+runInstruction (QuadrupleOneAddress quadNum DISPLAY a1) = do 
                                         cpuState <- get
                                         let (_,currentIP,globalMemory,localMemory) = getCPUState cpuState
                                         let memories = (Map.union globalMemory localMemory) 
                                         case (Map.lookup a1 memories) of 
+                                            Just (VMString val) -> do 
+                                                    modify $ \s -> (cpuState { ip = (ip cpuState) + 1 })
+                                                    lift $ putStrLn $ (style Underline $ val) 
                                             Just val -> do 
                                                     modify $ \s -> (cpuState { ip = (ip cpuState) + 1 })
-                                                    tell $ [show val]
+                                                    lift $ putStrLn $ show $ val
+                                                    -- tell $ [show val]
                                             _ -> do 
                                                     modify $ \s -> (cpuState { panic = True })
                                                     tell $ ["Address " ++ show a1  ++  " was not found in any memory"]
                                         return ()
 
 runInstruction _ =  return ()
+
+showError :: SomeException -> IO ()
+showError _ =
+   putStrLn("ERR")
+
+checkInt :: String -> Maybe Integer
+checkInt str =
+  case reads str of
+     [(i, [])] -> Just i
+     _         -> Nothing
+
+checkDecimal :: String -> Maybe Decimal
+checkDecimal str =
+  case reads str of
+     [(i, [])] -> Just i
+     _         -> Nothing
+
+checkBool :: String -> Maybe Bool
+checkBool str =
+  case reads str of
+     [(i, [])] -> Just i
+     _         -> Nothing
 
 --MARK TODO: Los demás operadores
 
@@ -152,7 +243,7 @@ showValue (VMString str) = id str
 showValue (VMBool bool) = id $ show bool
 showValue (VMEmpty) = id "~~~"
 
-doAssignment :: Address -> Address -> VM ()
+doAssignment :: Address -> Address -> RWST [Quadruple] [String] CPUState IO ()
 doAssignment a1 a2 = do 
                         cpuState <- get
                         let (panic,currentIP,globalMemory,localMemory) = getCPUState cpuState
@@ -165,7 +256,7 @@ doAssignment a1 a2 = do
                                     return ()
                                      
 
-runInstructionAbstract :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM ()
+runInstructionAbstract :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> RWST [Quadruple] [String] CPUState IO ()
 runInstructionAbstract f a1 a2 a3 = do 
                                         cpuState <- get
                                         let (_,_,globalMemory,localMemory) = getCPUState cpuState
@@ -179,7 +270,7 @@ doArithmeticOperation f a1 a2 memory = case (Map.lookup a1 memory) of
                                                                 Just vmVal2 -> f vmVal1 vmVal2
                                                                 
 
-insertValueInAddress :: VMValue -> Address -> VM()
+insertValueInAddress :: VMValue -> Address -> RWST [Quadruple] [String] CPUState IO ()
 insertValueInAddress val address = do
                             cpuState <- get
                             let (_,currentIP,globalMemory,localMemory) = getCPUState cpuState 

@@ -16,9 +16,11 @@ startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> VariableCounters -
 startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters idTable constTable =
             let (_,quads,_) =  generateCodeFromStatements statements 0 symTab classSymTab varCounters idTable constTable
                 in 
-            do  mapM_ (putStrLn.show) quads
+            do  
+                mapM_ (putStrLn.show) quads
                 putStrLn $ ppShow $ (prepareMemory idTable constTable)
                 startVM quads (prepareMemory idTable constTable) (Map.empty)
+
 
 prepareMemory :: IdentifierAddressMap -> ConstantAddressMap -> Memory
 prepareMemory idTable constTable = (Map.union 
@@ -43,8 +45,6 @@ makeMemory ((str,address) : addresses ) mem =
                         in (makeMemory addresses mem1)
                     else let mem1 = (Map.insert address VMEmpty mem)
                         in (makeMemory addresses mem1)
-
-
 
 
 generateCodeFromStatements :: [Statement] -> QuadNum ->SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> (VariableCounters,[Quadruple],QuadNum)

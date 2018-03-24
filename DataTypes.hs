@@ -296,7 +296,7 @@ startIntLocalMemory = 16001
 endIntLocalMemory = 20000
 
 startDecimalLocalMemory = 20001
-endDecimaLocalMemory = 24000
+endDecimalLocalMemory = 24000
 
 startStringLocalMemory = 24001
 endStringLocalMemory = 26000
