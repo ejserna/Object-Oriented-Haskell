@@ -110,6 +110,7 @@ getQuadNum (QuadrupleTwoAddressesOneQuad quadNum op address1 address2 quadNumAss
 
 getLastAddress :: Quadruple -> QuadNum
 getLastAddress (QuadrupleThreeAddresses quadNum op address1 address2 address3) = address3
+getLastAddress (QuadrupleTwoAddresses quadNum op address1 address2) = address2
 
 buildGoto :: QuadNum -> QuadNum -> Quadruple
 buildGoto quadNum quadNumAssigned = (QuadrupleOneQuad quadNum (GOTO) quadNumAssigned) 

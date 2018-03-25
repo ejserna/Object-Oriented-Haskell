@@ -29,6 +29,7 @@ import Text.Printf
 import  System.Console.Pretty (Color (..), Style (..), bgColor, color,
                                         style, supportsPretty)
 import System.IO
+
 data CPUState = CPUState
                 {   panic :: Bool, 
                     ip :: Int,
@@ -36,7 +37,6 @@ data CPUState = CPUState
                     localMemory :: Memory
                 }
                 deriving (Show, Eq)
-
 
 data VMValue 
     = VMInteger Integer
@@ -86,10 +86,12 @@ instance ExpressionOperation VMValue where
    (VMInteger int1) |==| (VMInteger int2) = (VMBool (int1 == int2))
    (VMDecimal dec1) |==| (VMDecimal dec2) = (VMBool (dec1 == dec2))
    (VMBool bool1)   |==| (VMBool bool2) = (VMBool (bool1 == bool2))
+   (VMString str1) |==| (VMString str2) = (VMBool (str1 == str2))
 
    (VMInteger int1) |!=| (VMInteger int2) = (VMBool (int1 /= int2))
    (VMDecimal dec1) |!=| (VMDecimal dec2) = (VMBool (dec1 /= dec2))
    (VMBool bool1)   |!=| (VMBool bool2) = (VMBool (bool1 /= bool2))
+   (VMString str1)  |!=| (VMString str2) = (VMBool (str1 /= str2))
 
    (VMBool bool1)   |&&| (VMBool bool2) = (VMBool (bool1 && bool2))
 
@@ -271,9 +273,6 @@ runInstruction (QuadrupleOneAddress quadNum DISPLAY a1) = do
 runInstruction _ =  return ()
 
 
-
-
-
 doAssignment :: Address -> Address -> VM
 doAssignment a1 a2 = do 
                         cpuState <- get
@@ -282,8 +281,9 @@ doAssignment a1 a2 = do
                         case (Map.lookup a1 memories) of
                             Just val -> insertValueInAddress val a2
                             _ -> do 
-                                    modify $ \s -> (cpuState { panic = True })
-                                    tell $ ["Address " ++ show a1  ++  " was not found in any memory"]
+                                    modify $ \s -> (cpuState { ip = currentIP + 1 })
+                                    
+                                    -- tell $ ["Address " ++ show a1  ++  " was not found in any memory"]
                                     return ()
 
                                      
@@ -331,8 +331,6 @@ insertValueInAddress val address = do
                                     tell $ [("Address " ++ show address  ++  " assignment underflow/overflow ")]
                             return ()
 
-
-
 doGotoIfFalse :: Address -> QuadNum -> VM
 doGotoIfFalse a1 quadNum = do 
                             cpuState <- get
@@ -351,7 +349,6 @@ doGotoIfFalse a1 quadNum = do
                                 _ -> do
                                         modify $ \s -> (cpuState { panic = True}) 
                                         tell $ ["Address " ++ show a1  ++  " not found"]
-
 
 doAbstractUnaryOp :: (VMValue -> VMValue) -> Address  -> Address -> VM
 doAbstractUnaryOp f a1 a2 = do 

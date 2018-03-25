@@ -25,8 +25,7 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
             in do putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList newIdMap) )
                   putStrLn $ ppShow $ (sortBy (compare `on` snd) ( Map.toList constantAddressMap5 ) )
                   putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList objectAddressMap) )
-                  -- MARK TODO: Mandar a code gen la tabla de objetos!!!!!!!!!!!
-                  startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters newIdMap constantAddressMap5
+                  startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters newIdMap constantAddressMap5 objectAddressMap
 
 prepareConstantAddressMap :: [Statement] -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
 prepareConstantAddressMap [] literalCounters constantAddressMap = (literalCounters,constantAddressMap)

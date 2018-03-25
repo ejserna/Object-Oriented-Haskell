@@ -440,14 +440,14 @@ analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression innerEx
 
 isAssignmentOk :: Assignment -> Scope -> SymbolTable -> ClassSymbolTable -> Bool
 isAssignmentOk (AssignmentExpression identifier expression) scp symTab classSymTab = case (Map.lookup identifier symTab) of
-                                                                                        Just (SymbolVar (TypePrimitive prim []) varScp _) -> 
+                                                                                        Just (SymbolVar (TypePrimitive prim accessExpression) varScp _) -> 
                                                                                                     -- Si el scope de esta variable es mayor al scope de este assignment, si puedo accederlo
                                                                                                     if (varScp >= scp) 
                                                                                                         then 
                                                                                                             let typeExp = (preProcessExpression scp expression symTab classSymTab)
                                                                                                                 in case typeExp of
-                                                                                                                       Just (TypePrimitive primExp _) ->  
-                                                                                                                            primExp == prim
+                                                                                                                       Just typeUnwrapped ->  
+                                                                                                                            typeUnwrapped == (TypePrimitive prim accessExpression)
                                                                                                                        _ -> False
                                                                                                         else False
                                                                                         Just (SymbolVar (TypeClassId classIdentifier []) varScp _) -> 
@@ -637,9 +637,9 @@ preProcessExpression scp (ExpressionLitVar (VarIdentifier identifier)) symTab _ 
                                         | varScp >= scp ->
                                             Just (TypeClassId classIdentifier [])
                                         | otherwise -> Nothing
-                                    Just (SymbolVar (TypePrimitive prim []) varScp _)  
+                                    Just (SymbolVar (TypePrimitive prim accessExpression) varScp _)  
                                         | varScp >= scp ->
-                                            Just (TypePrimitive prim [])
+                                            Just (TypePrimitive prim accessExpression)
                                         | otherwise -> Nothing
                                     _ -> Nothing
 

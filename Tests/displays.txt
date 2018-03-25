@@ -1,42 +1,46 @@
-main{
-    Int i = 1;
-    Money md = 1.2222;
-    Double dm = 1.2222;
-    Money m,j,k;
-        m = 999 * k * i + 1;
+class Perroww {
+    [+] Int iji;
+    [+] Int jojo;
+    [-] Int[10] l;
+}
 
-    String s = "hola";
-    Bool b,b1,b2,b3;
-    b = b1 || b2 || b3;
-    i = i % 2;
-    j = i ^ 2.0 + j + 2.0 * j;
-    read(i);
-    display("Hello ", "World",i,j,m,999);
-    read(i);
-    s = "Perro" + " Gato";
-    if (m != j/k ) {
-        Int l;
-        
-        l = 2 ^ 200 + i + (2 * 400);
-        read(l);
-        display(True,l);
-        for counter in (1..2){
-            display("for 1", counter);
-            for counter2 in (1..100){
-                display("for 2", counter2);
-                for counter3 in (1..100){
-                    display("for 3", counter3);
-                }
-                display("end for 2");
-            }
-            display("end for 1");
-        }
-    }
-    if (i < (((1)))) {
-        i++;
-        display(i);
-        while (i < 95){
-        }
+class Perrow {
+    [+] Int i222;
+    [+] Int j;
+    [-] String [10] l;
+    [-] Perroww perrowwww;
+}
+
+class Perro {
+    [+] Int i111;
+    [+] Int j1111;
+    [-] String [10] l;
+    [+] Perrow perro1;
+}
+class Humano{
+    [+] Int edad;
+    [+] String nombre;
+    [+] Perro perro;
+}
+
+main{
+    Humano h1,h2;
+
+    Int ilolo;
+    h1.edad = 28229383 + 9999 * 19220;
+    h1.nombre = "Eduardo";
+    h2 = h1;
+    ilolo = h2.edad;
+    display(ilolo);
+
+    Int iEdad1,iEdad2;
+    String sNombre1, sNombre2;
+    iEdad1 = h1.edad;
+    iEdad2 = h2.edad;
+    sNombre1 = h1.nombre;
+    sNombre2 = h2.nombre;
+    if (iEdad1 == iEdad2 && sNombre1 == sNombre2){
+        display("Son el mismo humano");
     }
 
     
