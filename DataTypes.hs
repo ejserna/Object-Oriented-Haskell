@@ -242,7 +242,7 @@ instance ExpressionOperation Expression where
    a |>=| b = (ExpressionGreaterEq a b)
    a |<=| b = (ExpressionLowerEq a b)
    a |%| b = (ExpressionMod a b)
-   (|!|) a   = (ExpressionNeg a)
+   (|!|) a   = (ExpressionNot a)
    
 
 data If

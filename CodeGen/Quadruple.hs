@@ -62,16 +62,6 @@ instance Show Operation where
         NOP -> id "NOP"
         FOR -> id "FOR"
 
--- data Result =
---       ResultRegister Register
---     | ResultQuadruple QuadNum
-
--- instance Show Result where
---     show (ResultRegister reg) = let register = "t" ++ show reg
---                                 in id $ register
---     show (ResultQuadruple quad) = id $ show quad
-
--- 
 data Quadruple = 
     QuadrupleThreeAddresses  QuadNum Operation Address Address Address -- + 1002 1003 1004
   | QuadrupleTwoAddresses QuadNum Operation Address Address -- Assignment 1002 _ 1003
@@ -89,15 +79,6 @@ instance Show Quadruple where
     show (QuadrupleOneAddress quadNum op address) = show quadNum ++ ". "  ++ intercalate "\t" [show op,id "_", id "_" ,show address]
     show (QuadrupleEmpty quadNum op) = show quadNum ++ ". "  ++ intercalate "\t" [show op,id "_", id "_" ,id "_"]
     show (QuadrupleTwoAddressesOneQuad quadNum op address1 address2 quadNumAssigned) = show quadNum ++ ". "  ++ intercalate "\t" [show op,show address1, show address2 ,show quadNumAssigned]
-
--- buildAssignmentQuadruple :: QuadNum -> Result -> Identifier -> Quadruple
--- buildAssignmentQuadruple quadNum resultRegister identifier = (QuadrupleAssignment quadNum (ASSIGNMENT) resultRegister identifier) 
-
--- class QuadOperation a b c  where
---    (|+|) :: a -> b -> b -> c -> d
-
--- instance QuadOperation Quadruple where
---     (|+|) :: a -> b -> b -> c -> d
 
 
 buildQuadrupleThreeAddresses :: QuadNum -> Operation -> (Address,Address,Address)-> Quadruple
@@ -133,11 +114,7 @@ getLastAddress (QuadrupleThreeAddresses quadNum op address1 address2 address3) =
 buildGoto :: QuadNum -> QuadNum -> Quadruple
 buildGoto quadNum quadNumAssigned = (QuadrupleOneQuad quadNum (GOTO) quadNumAssigned) 
 
-buildGotoCondition :: QuadNum -> QuadNum -> Quadruple
-buildGotoCondition quadNum quadNumAssigned = (QuadrupleOneQuad quadNum (GOTO) quadNumAssigned) 
 
--- buildEmptyQuadruple :: QuadNum -> Operation -> Result -> Quadruple
--- buildEmptyQuadruple quadNum op result = (QuadrupleEmpty quadNum op result) 
 
 
 

@@ -1,23 +1,40 @@
 main{
     Int i = 100;
-    Int j = 2;
-    Bool t;
+    Int j = 100;
+    Bool t,t1,t2,t3;
+    t2 = False;
     String s;
-    Money m;
-    display("Introduce un booleano");
-    read(t);
-    read(s);
-    read(m);
-    read(i);
-    display(t,s,m,i);
-
-    for counter in (1..10){
-        for counter2 in (1..100){
-            Int res;
-            res = counter ^ counter2;
-            display(res);
+    Money m1,m2;
+    m1 = 1.222222;
+    m2 = m1;
+    if ( (100 + j ) == j){
+        display("Es cien",i);
+    }
+    else{
+        display("No es cien",i);
+        i ++;
+        if (1 + 100 == i){
+            while (i < 100){
+                display(i);
+                i++;
+            }
+        }
+        else{
+            for counter in (1..100){
+                if (counter == 99){
+                    display("counter es 10 ",counter);
+                    read(i);
+                    display(i);
+                }
+                display("Counter opcillo",counter);
+            }
         }
     }
+    t1 = True;
+    m1 = -m1;
+    m1--;
+    m1--;
+    display("Fin de programa",t1,m1);
 
     
 }

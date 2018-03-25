@@ -83,6 +83,32 @@ instance ExpressionOperation VMValue where
    (VMDecimal dec1) |^| (VMInteger int2) = (VMDecimal (doubleToDecimal ((decToDouble dec1) ** (intToDouble int2))))
    (VMDecimal dec1) |^| (VMDecimal dec2) = (VMDecimal (doubleToDecimal ((decToDouble dec1) ** (decToDouble dec2))))
 
+   (VMInteger int1) |==| (VMInteger int2) = (VMBool (int1 == int2))
+   (VMDecimal dec1) |==| (VMDecimal dec2) = (VMBool (dec1 == dec2))
+   (VMBool bool1)   |==| (VMBool bool2) = (VMBool (bool1 == bool2))
+
+   (VMInteger int1) |!=| (VMInteger int2) = (VMBool (int1 /= int2))
+   (VMDecimal dec1) |!=| (VMDecimal dec2) = (VMBool (dec1 /= dec2))
+   (VMBool bool1)   |!=| (VMBool bool2) = (VMBool (bool1 /= bool2))
+
+   (VMBool bool1)   |&&| (VMBool bool2) = (VMBool (bool1 && bool2))
+
+   (VMBool bool1)   |-||-| (VMBool bool2) = (VMBool (bool1 || bool2))
+
+   (VMInteger int1) |>| (VMInteger int2) = (VMBool (int1 > int2))
+   (VMDecimal dec1) |>| (VMDecimal dec2) = (VMBool (dec1 > dec2))
+
+   (VMInteger int1) |<| (VMInteger int2) = (VMBool (int1 < int2))
+   (VMDecimal dec1) |<| (VMDecimal dec2) = (VMBool (dec1 < dec2))
+
+   (VMInteger int1) |>=| (VMInteger int2) = (VMBool (int1 >= int2))
+   (VMDecimal dec1) |>=| (VMDecimal dec2) = (VMBool (dec1 >= dec2))
+
+   (VMInteger int1) |<=| (VMInteger int2) = (VMBool (int1 <= int2))
+   (VMDecimal dec1) |<=| (VMDecimal dec2) = (VMBool (dec1 <= dec2))
+
+   (|!|)  (VMBool bool)  = (VMBool (not bool))
+
 type Memory = Map.HashMap Address VMValue
 type Output = String
 
@@ -126,7 +152,7 @@ runVM = do
         let (isPanicState,currentInstructionPointer,_,_) = getCPUState cpuState
         if (isPanicState) 
             then do 
-                tell $ [("Ended execution with an error at quad num" ++ (show currentInstructionPointer))]
+                tell $ [("Ended execution with an error at quadruple number " ++ (style Bold (show currentInstructionPointer)) )]
                 return ()
         else do
             if currentInstructionPointer < (length quadruples) then do
@@ -146,13 +172,28 @@ runInstruction (QuadrupleEmpty _ _) = do
                                         let s' = (cpuState { ip = (ip cpuState) + 1 })
                                         put s'
                                         return ()
-runInstruction (QuadrupleThreeAddresses quadNum ADD_ a1 a2 a3) = do runInstructionAbstract (|+|) a1 a2 a3 
-runInstruction (QuadrupleThreeAddresses quadNum SUB_ a1 a2 a3) =  do runInstructionAbstract (|-|) a1 a2 a3 
-runInstruction (QuadrupleThreeAddresses quadNum MULTIPLY_ a1 a2 a3) =  do runInstructionAbstract (|*|) a1 a2 a3 
-runInstruction (QuadrupleThreeAddresses quadNum DIVIDE_ a1 a2 a3) =  do runInstructionAbstract (|/|) a1 a2 a3 
-runInstruction (QuadrupleThreeAddresses quadNum MOD_ a1 a2 a3) =  do runInstructionAbstract (|%|) a1 a2 a3 
-runInstruction (QuadrupleThreeAddresses quadNum POWER_ a1 a2 a3) =  do runInstructionAbstract (|^|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum ADD_ a1 a2 a3) = do doAbstractOperation (|+|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum SUB_ a1 a2 a3) =  do doAbstractOperation (|-|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum MULTIPLY_ a1 a2 a3) =  do doAbstractOperation (|*|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum DIVIDE_ a1 a2 a3) =  do doAbstractOperation (|/|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum MOD_ a1 a2 a3) =  do doAbstractOperation (|%|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum POWER_ a1 a2 a3) =  do doAbstractOperation (|^|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum GT_ a1 a2 a3) =  do doAbstractOperation (|>|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum LT_ a1 a2 a3) =  do doAbstractOperation (|<|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum GTEQ_ a1 a2 a3) =  do doAbstractOperation (|>=|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum LTEQ_ a1 a2 a3) =  do doAbstractOperation (|<=|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum EQ_ a1 a2 a3) =  do doAbstractOperation (|==|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum NOTEQ_ a1 a2 a3) =  do doAbstractOperation (|!=|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum AND_ a1 a2 a3) =  do doAbstractOperation (|&&|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum OR_ a1 a2 a3) =  do doAbstractOperation (|-||-|) a1 a2 a3 
+runInstruction (QuadrupleTwoAddresses quadNum NOT_ a1 a2) =  do doAbstractUnaryOp (|!|) a1 a2 
 runInstruction (QuadrupleTwoAddresses quadNum ASSIGNMENT a1 a2) =  do doAssignment a1 a2 
+runInstruction (QuadrupleOneAddressOneQuad quadNum GOTO_IF_FALSE a1 quadNumToJump) =  do doGotoIfFalse a1 quadNumToJump 
+runInstruction (QuadrupleOneQuad quadNum GOTO quadNumToJump) =  
+                                                                do
+                                                                    cpuState <- get
+                                                                    let (_,currentIP,_,_) = getCPUState cpuState
+                                                                    modify $ \s -> (cpuState { ip = fromIntegral quadNumToJump })
 runInstruction (QuadrupleOneAddress quadNum READ a1) 
                                     | a1 >= startIntGlobalMemory && a1 <= endIntGlobalMemory     
                                       || a1 >= startIntLocalMemory && a1 <= endIntLocalMemory =
@@ -164,7 +205,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                                     case (checkInt x) of 
                                                                         Just int -> insertValueInAddress (VMInteger int) a1
                                                                         Nothing -> do
-                                                                            liftIO $ putStrLn $ color Red . style Bold $ ("Runtime Recovery: Please enter an Integer number")
+                                                                            liftIO $ putStrLn $ color Yellow . style Bold $ ("Runtime Recovery: Please enter an Integer number")
                                                                             return()
                                                                     liftIO $ hClose tty
                                     | a1 >= startDecimalGlobalMemory && a1 <= endDecimalGlobalMemory     
@@ -177,7 +218,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                                     case (checkDecimal x) of 
                                                                         Just dec -> insertValueInAddress (VMDecimal dec) a1
                                                                         Nothing -> do
-                                                                            liftIO $ putStrLn $ color Red . style Bold $ ("Runtime Recovery: Please enter a Decimal number")
+                                                                            liftIO $ putStrLn $ color Yellow . style Bold $ ("Runtime Recovery: Please enter a Decimal number")
                                                                             return()
                                                                     liftIO $ hClose tty
                                     | a1 >= startStringGlobalMemory && a1 <= endStringGlobalMemory     
@@ -199,13 +240,13 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                                     case (checkBool x) of 
                                                                         Just bool -> insertValueInAddress (VMBool bool) a1
                                                                         Nothing -> do
-                                                                            liftIO $ putStrLn $ color Red . style Bold $ ("Runtime Recovery: Please enter a Bool")
+                                                                            liftIO $ putStrLn $ color Yellow . style Bold $ ("Runtime Recovery: Please enter a Bool")
                                                                             return()
                                                                     liftIO $ hClose tty
-                                    | otherwise = return ()       
-                                            
-                                            
-
+                                    | otherwise = do 
+                                                    modify $ \s -> (s { panic = True })
+                                                    tell $ [color Red $ "BAD ADDRESS : " ++ show a1] 
+                                                    return ()       
 runInstruction (QuadrupleOneAddress quadNum DISPLAY a1) = do 
                                         cpuState <- get
                                         let (_,currentIP,globalMemory,localMemory) = getCPUState cpuState
@@ -214,43 +255,24 @@ runInstruction (QuadrupleOneAddress quadNum DISPLAY a1) = do
                                             Just (VMString val) -> do 
                                                     modify $ \s -> (cpuState { ip = (ip cpuState) + 1 })
                                                     liftIO $ putStrLn $ (style Underline $ val) 
+                                            Just (VMEmpty) -> do 
+                                                    modify $ \s -> (cpuState { panic = True })
+                                                    tell $ [color Red $ "ERROR: Displaying a variable that was never initialized is not allowed"]
+                                                    -- tell $ [show val]
                                             Just val -> do 
                                                     modify $ \s -> (cpuState { ip = (ip cpuState) + 1 })
                                                     liftIO $ putStrLn $ show $ val
                                                     -- tell $ [show val]
                                             _ -> do 
                                                     modify $ \s -> (cpuState { panic = True })
-                                                    tell $ ["Address " ++ show a1  ++  " was not found in any memory"]
+                                                    tell $ [color Red $ "ERROR: Address " ++ show a1  ++  " was not found in any memory"]
                                         return ()
 
 runInstruction _ =  return ()
 
-checkInt :: String -> Maybe Integer
-checkInt str =
-  case reads str of
-     [(i, [])] -> Just i
-     _         -> Nothing
 
-checkDecimal :: String -> Maybe Decimal
-checkDecimal str =
-  case reads str of
-     [(i, [])] -> Just i
-     _         -> Nothing
 
-checkBool :: String -> Maybe Bool
-checkBool str =
-  case reads str of
-     [(i, [])] -> Just i
-     _         -> Nothing
 
---MARK TODO: Los demás operadores
-
-showValue :: VMValue -> String
-showValue (VMInteger int)  = id $ show int
-showValue (VMDecimal dec) = id $ show dec
-showValue (VMString str) = id str
-showValue (VMBool bool) = id $ show bool
-showValue (VMEmpty) = id "~~~"
 
 doAssignment :: Address -> Address -> VM
 doAssignment a1 a2 = do 
@@ -266,18 +288,27 @@ doAssignment a1 a2 = do
 
                                      
 
-runInstructionAbstract :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM
-runInstructionAbstract f a1 a2 a3 = do 
+doAbstractOperation :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM
+doAbstractOperation f a1 a2 a3 = do 
                                         cpuState <- get
                                         let (_,_,globalMemory,localMemory) = getCPUState cpuState
                                             memories = (Map.union globalMemory localMemory) 
-                                            valResult = doArithmeticOperation f a1 a2 memories 
-                                        insertValueInAddress valResult a3
+                                            valResult = doOperation f a1 a2 memories
+                                        case valResult of 
+                                            Left err ->  
+                                                    do 
+                                                        modify $ \s -> (cpuState { panic = True })
+                                                        tell $ [color Red $ err]
+                                            Right val -> insertValueInAddress val a3
+                                        
 
-doArithmeticOperation :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Memory -> VMValue
-doArithmeticOperation f a1 a2 memory = case (Map.lookup a1 memory) of
-                                            Just vmVal1 -> case (Map.lookup a2 memory) of
-                                                                Just vmVal2 -> f vmVal1 vmVal2
+doOperation :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Memory -> (Either String VMValue)
+doOperation f a1 a2 memory = case (Map.lookup a1 memory) of
+                                Just VMEmpty -> (Left "ERROR: Variable in expression was never initialized")
+                                Just vmVal1 -> do 
+                                                case (Map.lookup a2 memory) of
+                                                    Just VMEmpty -> (Left "ERROR: Variable in expression was never initialized")
+                                                    Just vmVal2 -> (Right $ f vmVal1 vmVal2)
                                                                 
 
 insertValueInAddress :: VMValue -> Address -> VM
@@ -299,4 +330,59 @@ insertValueInAddress val address = do
                                     modify $ \s -> (cpuState { panic = True})
                                     tell $ [("Address " ++ show address  ++  " assignment underflow/overflow ")]
                             return ()
+
+
+
+doGotoIfFalse :: Address -> QuadNum -> VM
+doGotoIfFalse a1 quadNum = do 
+                            cpuState <- get
+                            let (_,currentIP,globalMemory,localMemory) = getCPUState cpuState
+                            let memories = (Map.union globalMemory localMemory)
+                            case (Map.lookup a1 memories) of 
+                                Just (VMBool bool) -> do
+                                    -- Si es falso, entonces si hago el jump
+                                    if not bool then 
+                                        modify $ \s -> (cpuState { ip = fromIntegral quadNum })
+                                    -- Si no solo sigo al siguiente cuadruplo
+                                    else modify $ \s -> (cpuState { ip = currentIP + 1  })
+                                Just _ -> do
+                                            modify $ \s -> (cpuState { panic = True}) 
+                                            tell $ ["Address " ++ show a1  ++  " was not a boolean"]
+                                _ -> do
+                                        modify $ \s -> (cpuState { panic = True}) 
+                                        tell $ ["Address " ++ show a1  ++  " not found"]
+
+
+doAbstractUnaryOp :: (VMValue -> VMValue) -> Address  -> Address -> VM
+doAbstractUnaryOp f a1 a2 = do 
+                                        cpuState <- get
+                                        let (_,_,globalMemory,localMemory) = getCPUState cpuState
+                                        let memories = (Map.union globalMemory localMemory) 
+                                        case (Map.lookup a1 memories) of 
+                                            Just val -> 
+                                                        do 
+                                                          let valResult = f val
+                                                          insertValueInAddress valResult a2
+                                            _ -> do
+                                                    modify $ \s -> (cpuState { panic = True}) 
+                                                    tell $ ["Address " ++ show a1  ++  " not found"]
+
+
+checkInt :: String -> Maybe Integer
+checkInt str =
+  case reads str of
+     [(i, [])] -> Just i
+     _         -> Nothing
+
+checkDecimal :: String -> Maybe Decimal
+checkDecimal str =
+  case reads str of
+     [(i, [])] -> Just i
+     _         -> Nothing
+
+checkBool :: String -> Maybe Bool
+checkBool str =
+  case reads str of
+     [(i, [])] -> Just i
+     _         -> Nothing
 
