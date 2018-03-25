@@ -26,6 +26,9 @@ pruebaObjects:
 pruebaEasy:
 	cat Tests/pruebaSencilla.txt | ./ObjectiveOrientedHaskell
 
+pruebaFiboLoop:
+	cat Tests/fiboIterativo.txt | ./ObjectiveOrientedHaskell
+
 prueba: 
 	cat Tests/$(ARCH) | ./ObjectiveOrientedHaskell
 
