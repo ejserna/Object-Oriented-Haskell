@@ -118,7 +118,7 @@ generateCodeFromStatement (ReadStatement (Reading identifier)) quadNumInit _ _ v
                                     case (Map.lookup identifier idTable) of
                                         Just address ->
                                             (varCounters,[(buildQuadOneAddress quadNumInit (READ) address)],quadNumInit + 1, objMap)
-generateCodeFromStatement (DisplayStatement displays) quadNumInit _ _ varCounters idTable constTable objMap = 
+generateCodeFromStatement (DisplayStatement displays) quadNumInit symTab _ varCounters idTable constTable objMap = 
                                                         let (quads,lastQuadNum) = (genFromDisplays displays quadNumInit idTable constTable)
                                                          in (varCounters,quads,lastQuadNum, objMap)
                                                                 where 
@@ -131,7 +131,13 @@ generateCodeFromStatement (DisplayStatement displays) quadNumInit _ _ varCounter
                                                                     genFromDisplay :: Display -> QuadNum -> IdentifierAddressMap -> ConstantAddressMap -> ([Quadruple],QuadNum)
                                                                     genFromDisplay (DisplayLiteralOrVariable (VarIdentifier var)) quadNum idTable constTable =
                                                                         case ((Map.lookup var idTable)) of
-                                                                            Just address -> ([(buildQuadOneAddress quadNum (DISPLAY) address)],quadNum + 1)
+                                                                            Just address -> case (Map.lookup var symTab) of 
+                                                                                                Just (SymbolVar (TypePrimitive prim accessExpression) _ _) ->
+                                                                                                    case accessExpression of 
+                                                                                                        [] -> ([(buildQuadOneAddress quadNum (DISPLAY) address)],quadNum + 1)
+                                                                                                        (("[",size,"]") : []) -> genLoopArray address size quadNum
+                                                                                                        -- MARK TODO -- Display matrices
+                                                                            
                                                                     genFromDisplay (DisplayLiteralOrVariable (StringLiteral str)) quadNum idTable constTable =
                                                                         case ((Map.lookup ("<str>" ++ str) constTable)) of
                                                                             Just address -> ([(buildQuadOneAddress quadNum (DISPLAY) address)],quadNum + 1)
@@ -145,6 +151,13 @@ generateCodeFromStatement (DisplayStatement displays) quadNumInit _ _ varCounter
                                                                         case ((Map.lookup ("<bool>" ++ show(bool)) constTable)) of
                                                                             Just address -> ([(buildQuadOneAddress quadNum (DISPLAY) address)],quadNum + 1)
                                                                     genFromDisplay _ quadNum idTable constTable = ([],quadNum)
+
+                                                                    genLoopArray :: Address -> Integer -> QuadNum -> ([Quadruple],QuadNum)
+                                                                    genLoopArray address 0 quadNum = ([],quadNum)
+                                                                    genLoopArray address limit quadNum = 
+                                                                        let newQuadAssignment = ([(buildQuadOneAddress quadNum (DISPLAY) address)])
+                                                                        in let (newQuads2,lastQuadNum2) = genLoopArray (address + 1) (limit - 1) (quadNum + 1)
+                                                                        in (newQuadAssignment ++ newQuads2,lastQuadNum2)
 
                                                                     -- TODO MARK: Hacer cuadruplos de funciones y de acceso a arreglo, y tambien sustituir lo anterior por expresion!
                                                                     -- fillFromDisplay (DisplayFunctionCall funcCall) literalCounters constantAddressMap =
@@ -182,8 +195,15 @@ generateCodeFromAssignment (AssignmentExpression identifier expression) quadNum 
         Just address ->   (varCounters1,(quadsExp ++ [(buildQuadrupleTwoAddresses lastQuadNum1 ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]),lastQuadNum1 + 1, objMap)
 generateCodeFromAssignment (AssignmentObjectMember identifier (ObjectMember objectIdentifier attrIdentifier)) quadNum symTab classSymTab varCounters idTable constTable objMap = 
         case (Map.lookup identifier symTab) of
-            -- Just (SymbolVar (TypeClassId classIdentifier _) _ _) -> 
-            --     generateQuadruplesAssignmentClasses identifier identifier2 quadNum symTab classSymTab varCounters idTable constTable objMap
+            Just (SymbolVar (TypeClassId classIdentifier []) _ _) ->
+                case (Map.lookup objectIdentifier idTable) of 
+                    Just addressObject -> 
+                            case (Map.lookup addressObject objMap) of 
+                                Just idTableObj -> case (Map.lookup attrIdentifier idTableObj) of 
+                                                        Just addressAttribute -> 
+                                                            let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) addressAttribute idTable)
+                                                            in generateCodeFromAssignment (AssignmentExpression identifier (ExpressionLitVar (VarIdentifier (objectIdentifier ++ "." ++ attrIdentifier)))) quadNum symTab classSymTab varCounters tempIdTable constTable objMap 
+                -- generateQuadruplesAssignmentClasses identifier identifier2 quadNum symTab classSymTab varCounters idTable constTable objMap
             Just (SymbolVar (TypePrimitive prim  []) _ _) -> 
                 case (Map.lookup identifier idTable) of 
                             Just address1 ->  
@@ -212,14 +232,24 @@ generateCodeFromAssignment (AssignmentObjectMember identifier (ObjectMember obje
                                                 case (Map.lookup attrIdentifier idTableObject) of
                                                     Just addressAttribute -> assignTwoMatrices address1 addressAttribute rows columns quadNum symTab classSymTab varCounters idTable constTable objMap        
 generateCodeFromAssignment  (AssignmentObjectMemberExpression (ObjectMember objectIdentifier attrIdentifier) expression) quadNum symTab classSymTab varCounters idTable constTable objMap =  
-                                let (varCounters1, quadsExp, lastQuadNum1) = expCodeGen symTab constTable idTable varCounters quadNum (reduceExpression expression) 
-                                in case (Map.lookup objectIdentifier idTable) of 
+                                -- let 
+
+                                --     (varCounters1, quadsExp, lastQuadNum1) = expCodeGen symTab constTable idTable varCounters quadNum (reduceExpression expression) 
+                                -- in 
+                                case (Map.lookup objectIdentifier idTable) of 
                                     Just objectAddress -> 
                                         case (Map.lookup objectAddress objMap) of 
                                             Just objTable -> 
                                                 case (Map.lookup attrIdentifier objTable) of 
-                                                    Just attrAddress -> (varCounters1,(quadsExp ++ [(buildQuadrupleTwoAddresses lastQuadNum1 ASSIGNMENT ((getLastAddress $ last $ quadsExp) , attrAddress ))]),lastQuadNum1 + 1, objMap)
-
+                                                    Just attrAddress -> 
+                                                        let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) attrAddress idTable)
+                                                        in case (Map.lookup objectIdentifier symTab) of 
+                                                                Just (SymbolVar (TypeClassId classIdentifier _) _ _) ->
+                                                                    case (Map.lookup classIdentifier classSymTab) of 
+                                                                        Just symTabOfClass -> case (Map.lookup attrIdentifier symTabOfClass) of 
+                                                                                                Just symbolVarAttr -> 
+                                                                                                    let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
+                                                                                                    in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap 
 
 generateCodeFromAssignment _ quadNum symTab classSymTab varCounters idTable constTable objMap = (varCounters,[],quadNum,objMap)
 

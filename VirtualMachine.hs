@@ -258,16 +258,16 @@ runInstruction (QuadrupleOneAddress quadNum DISPLAY a1) = do
                                                     modify $ \s -> (cpuState { ip = (ip cpuState) + 1 })
                                                     liftIO $ putStrLn $ (style Underline $ val) 
                                             Just (VMEmpty) -> do 
-                                                    modify $ \s -> (cpuState { panic = True })
-                                                    tell $ [color Red $ "ERROR: Displaying a variable that was never initialized is not allowed"]
+                                                    modify $ \s -> (cpuState { ip = (ip cpuState) + 1 })
+                                                    -- tell $ [color Red $ "ERROR: Displaying a variable that was never initialized is not allowed"]
                                                     -- tell $ [show val]
                                             Just val -> do 
                                                     modify $ \s -> (cpuState { ip = (ip cpuState) + 1 })
                                                     liftIO $ putStrLn $ show $ val
                                                     -- tell $ [show val]
                                             _ -> do 
-                                                    modify $ \s -> (cpuState { panic = True })
-                                                    tell $ [color Red $ "ERROR: Address " ++ show a1  ++  " was not found in any memory"]
+                                                    modify $ \s -> (cpuState { ip = (ip cpuState) + 1 })
+                                                    -- tell $ [color Red $ "ERROR: Address " ++ show a1  ++  " was not found in any memory"]
                                         return ()
 
 runInstruction _ =  return ()
