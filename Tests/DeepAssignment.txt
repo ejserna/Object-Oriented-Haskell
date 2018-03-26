@@ -33,7 +33,8 @@ main{
     e.humanos = humanos;
     Perro [10][10] perrera;
     perrera = hu.perros;
-    Google g;
+    Google g,g2;
     g.humanos = humanos;
-    display(g);
+    g2 = g;
+    display(g2);
 }
