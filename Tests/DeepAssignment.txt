@@ -8,12 +8,13 @@ class Humano{
     [+] Perro [10][10] perros;
 }
 
-
-
 class Empresa{
     [+] Humano [10][10] humanos;
 }
 
+class Google : Empresa{
+    
+}
 
 main{
     Humano hu;
@@ -32,6 +33,7 @@ main{
     e.humanos = humanos;
     Perro [10][10] perrera;
     perrera = hu.perros;
-    e2 = e;
-    display(e2);
+    Google g;
+    g.humanos = humanos;
+    display(g);
 }
