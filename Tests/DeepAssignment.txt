@@ -1,0 +1,37 @@
+class Perro{
+    [+] Int perro1;
+    [+] Integer [10][10] perrosOps;
+}
+
+class Humano{
+    [+] Int intChido;
+    [+] Perro [10][10] perros;
+}
+
+
+
+class Empresa{
+    [+] Humano [10][10] humanos;
+}
+
+
+main{
+    Humano hu;
+    Perro p;
+    p.perro1 = 2;
+    Integer [10][10] matrizDePapa = [[1,2,3,4,5,6,7,8,9,10],
+                                    [1,2,3,4,5,6,7,8,9,10]];
+    p.perrosOps = matrizDePapa;
+    Perro [10][10] matrizPerros = [[p,p]];
+    
+    hu.intChido = 1;
+    hu.perros = matrizPerros; 
+    Humano [10][10] humanos = [[hu,hu,hu,hu],
+                               [hu,hu]];
+    Empresa e,e2;
+    e.humanos = humanos;
+    Perro [10][10] perrera;
+    perrera = hu.perros;
+    e2 = e;
+    display(e2);
+}

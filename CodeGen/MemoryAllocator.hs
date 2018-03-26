@@ -22,9 +22,10 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
             in let (newLiteralCounters5,constantAddressMap5) = fillFromExpression newLiteralCounters4 constantAddressMap4 (ExpressionLitVar (BoolLiteral True))
             in let (varCounters,newIdMap,objectAddressMap) = (prepareAddressMapsFromSymbolTable symTab classSymTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory)
                                                                 (Map.empty) (Map.empty))
-            in do putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList newIdMap) )
-                  putStrLn $ ppShow $ (sortBy (compare `on` snd) ( Map.toList constantAddressMap5 ) )
-                  putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList objectAddressMap) )
+            in do 
+                  -- putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList newIdMap) )
+                  -- putStrLn $ ppShow $ (sortBy (compare `on` snd) ( Map.toList constantAddressMap5 ) )
+                  -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList objectAddressMap) )
                   startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters newIdMap constantAddressMap5 objectAddressMap
 
 prepareConstantAddressMap :: [Statement] -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
@@ -172,82 +173,57 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) 
                                 PrimitiveDouble -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
                                                         in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
                                                             (intGC,decGC + 1,strGC,boolGC,objGC))
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) _ _)) : rest ) classSymTab identifierAddressMap objAddressMap
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) : rest ) classSymTab identifierAddressMap objAddressMap
                                                                     (intGC,decGC,strGC,boolGC,objGC)  |
                                                                     intGC <= endIntGlobalMemory
                                                                     && decGC <= endDecimalGlobalMemory
                                                                     && strGC <= endStringGlobalMemory 
                                                                     && boolGC <= endBoolGlobalMemory
                                                                     && objGC <= endObjectGlobalMemory =
-                                let ((intGC1,decGC1,strGC1,boolGC1,objGC1), idMapFromObject, newObjAddressMap) = insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) classSymTab objAddressMap (intGC,decGC,strGC,boolGC,objGC)    
-                                in case (arrayAccess) of 
-                                    [] -> let newIdMap = (Map.insert identifier objGC1 identifierAddressMap) 
-                                              newObjMap = (Map.insert objGC1 idMapFromObject newObjAddressMap)
-                                              in (fillIdentifierAddressMap rest classSymTab newIdMap newObjMap 
-                                                            (intGC1,decGC1,strGC1,boolGC1,objGC1 + 1))
+                                case (arrayAccess) of 
+                                    [] -> 
+                                        let ((intGC1,decGC1,strGC1,boolGC1,objGC1), idMapFromObject, newObjAddressMap) = insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) classSymTab objAddressMap (intGC,decGC,strGC,boolGC,objGC)    
+                                        -- fillArray 1 (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC)
+                                            newIdMap = (Map.insert identifier objGC1 identifierAddressMap) 
+                                            newObjMap = (Map.insert objGC1 idMapFromObject newObjAddressMap)
+                                                  in (fillIdentifierAddressMap rest classSymTab newIdMap newObjMap 
+                                                                (intGC1,decGC1,strGC1,boolGC1,objGC1 + 1))
                                     (("[",size,"]") : []) -> 
-                                         let newIdMap = (Map.insert identifier objGC1 identifierAddressMap) 
-                                             newObjMap = (Map.insert objGC1 idMapFromObject newObjAddressMap)
-                                             in (fillIdentifierAddressMap rest classSymTab newIdMap newObjMap 
-                                                                (intGC1,decGC1,strGC1,boolGC1,objGC1 + size))
-                                    (("[",rows,"]") : ("[",cols,"]")  : [] ) -> 
-                                          let newIdMap = (Map.insert identifier objGC1 identifierAddressMap) 
-                                              newObjMap = (Map.insert objGC1 idMapFromObject newObjAddressMap)
-                                              in (fillIdentifierAddressMap rest classSymTab newIdMap newObjMap 
-                                                            (intGC1,decGC1,strGC1,boolGC1,objGC1 + rows * cols))
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) _ _)) : rest ) classSymTab identifierAddressMap objAddressMap
+                                         let (varCounters,idMap,objMap) = fillArray size size "" (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC)
+                                                in let (varCounters3,idTable3, objMap3) = updateArrayClasses size size "" (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) classSymTab idMap objMap varCounters 
+                                                    in (fillIdentifierAddressMap rest classSymTab idTable3 objMap3 
+                                                            varCounters3) 
+
+                                    (("[",rows,"]") : ("[",cols,"]")  : [] ) ->
+                                          let (varCounters,idMap,objMap) = fillMatrix rows cols rows (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC)  
+                                                in let (varCounters3,idTable3, objMap3) = updateMatrixClasses rows cols rows (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) classSymTab idMap objMap varCounters 
+                                                    in (fillIdentifierAddressMap rest classSymTab idTable3 objMap3 
+                                                            varCounters3) 
+                                          -- let ((intGC1,decGC1,strGC1,boolGC1,objGC1), idMapFromObject, newObjAddressMap) = insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) classSymTab objAddressMap (intGC,decGC,strGC,boolGC,objGC)     
+                                          --     newIdMap = (Map.insert identifier objGC1 identifierAddressMap) 
+                                          --     newObjMap = (Map.insert objGC1 idMapFromObject newObjAddressMap)
+                                          --     in (fillIdentifierAddressMap rest classSymTab newIdMap newObjMap 
+                                                            -- (intGC1,decGC1,strGC1,boolGC1,objGC1 + rows * cols))
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic)) : rest ) classSymTab identifierAddressMap objAddressMap
                                                                     (intGC,decGC,strGC,boolGC,objGC)  |
                                                                     intGC <= endIntGlobalMemory
                                                                     && decGC <= endDecimalGlobalMemory
                                                                     && strGC <= endStringGlobalMemory 
                                                                     && boolGC <= endBoolGlobalMemory =
-                            case prim of
-                                PrimitiveBool -> let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
-                                                    in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC,decGC,strGC,boolGC + size,objGC))
-                                PrimitiveInt -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                    in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC + size,decGC,strGC,boolGC,objGC))
+                                                    let (varCounters,idMap,objMap) = fillArray size size "" (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic)) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC)
+                                                    in (fillIdentifierAddressMap rest classSymTab idMap objMap 
+                                                            varCounters)
+                                                        
 
-                                PrimitiveInteger -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC + size,decGC,strGC,boolGC,objGC)) 
-                                PrimitiveString -> let newIdMap = (Map.insert identifier strGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC,decGC,strGC + size,boolGC,objGC)) 
-                                PrimitiveMoney -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC,decGC + size,strGC,boolGC,objGC))
-                                PrimitiveDouble -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC,decGC + size,strGC,boolGC,objGC))
-
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) _ _)) : rest ) classSymTab identifierAddressMap objAddressMap
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)) : rest ) classSymTab identifierAddressMap objAddressMap
                                                                     (intGC,decGC,strGC,boolGC,objGC)  |
                                                                     intGC <= endIntGlobalMemory
                                                                     && decGC <= endDecimalGlobalMemory
                                                                     && strGC <= endStringGlobalMemory 
                                                                     && boolGC <= endBoolGlobalMemory =
-                            case prim of
-                                PrimitiveBool -> let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
-                                                    in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC,decGC,strGC,boolGC + rows * cols,objGC))
-                                PrimitiveInt -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                    in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC + rows * cols,decGC,strGC,boolGC,objGC))
-
-                                PrimitiveInteger -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC + rows * cols,decGC,strGC,boolGC,objGC)) 
-                                PrimitiveString -> let newIdMap = (Map.insert identifier strGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC,decGC,strGC + rows * cols,boolGC,objGC)) 
-                                PrimitiveMoney -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC,decGC + rows * cols,strGC,boolGC,objGC))
-                                PrimitiveDouble -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC,decGC + rows * cols,strGC,boolGC,objGC))
+                            let (varCounters,idMap,objMap) = fillMatrix rows cols rows (identifier,(SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC)  
+                                            in (fillIdentifierAddressMap rest classSymTab idMap objMap 
+                                                            varCounters)
 
                                 -- PrimitiveBool -> (Map.union (Map.insert identifier boolGC identifierAddressMap)
                                 --                             (fillIdentifierAddressMap rest identifierAddressMap
@@ -267,10 +243,94 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows
                                 -- PrimitiveDouble -> (Map.union (Map.insert identifier decGC identifierAddressMap)
                                 --                             (fillIdentifierAddressMap rest identifierAddressMap
                                 --                             (intGC,decGC + rows * cols,strGC,boolGC)))
--- MARK TODO: Objetos, funciones
-fillIdentifierAddressMap (x : xs) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC) = 
-            (fillIdentifierAddressMap xs classSymTab identifierAddressMap objAddressMap
-                                                            (intGC,decGC,strGC,boolGC,objGC))
+
+-- fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) : rest ) classSymTab identifierAddressMap objAddressMap
+--                                                                     (intGC,decGC,strGC,boolGC,objGC)  |
+--                                                                     intGC <= endIntGlobalMemory
+--                                                                     && decGC <= endDecimalGlobalMemory
+--                                                                     && strGC <= endStringGlobalMemory 
+--                                                                     && boolGC <= endBoolGlobalMemory
+--                                                                     && objGC <= endObjectGlobalMemory =
+--                                 in case (arrayAccess) of 
+--                                     [] -> 
+--                                         let ((intGC1,decGC1,strGC1,boolGC1,objGC1), idMapFromObject, newObjAddressMap) = insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) classSymTab objAddressMap (intGC,decGC,strGC,boolGC,objGC)    
+--                                         -- fillArray 1 (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC)
+--                                         let newIdMap = (Map.insert identifier objGC1 identifierAddressMap) 
+--                                             newObjMap = (Map.insert objGC1 idMapFromObject newObjAddressMap)
+--                                                   in (fillIdentifierAddressMap rest classSymTab newIdMap newObjMap 
+--                                                                 (intGC1,decGC1,strGC1,boolGC1,objGC1 + 1))
+--                                     (("[",size,"]") : []) -> 
+--                                          fillArray size size (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC)
+--                                     (("[",rows,"]") : ("[",cols,"]")  : [] ) -> 
+--                                           let newIdMap = (Map.insert identifier objGC1 identifierAddressMap) 
+--                                               newObjMap = (Map.insert objGC1 idMapFromObject newObjAddressMap)
+--                                               in (fillIdentifierAddressMap rest classSymTab newIdMap newObjMap 
+--                                                             (intGC1,decGC1,strGC1,boolGC1,objGC1 + rows * cols))
+-- MARK TODO: Funciones
+updateArrayClasses  :: Integer -> Integer -> String -> (Identifier,Symbol)  -> ClassSymbolTable -> IdentifierAddressMap -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap) 
+updateArrayClasses 0 size _ _  classSymTab identifierAddressMap objAddressMap varCounters = (varCounters,identifierAddressMap,objAddressMap)
+updateArrayClasses limit size strToAppend ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
+                                                                    varCounters =
+                                case (Map.lookup (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) identifierAddressMap) of
+                                    Just address ->
+                                        let (varCounters2, idMapFromObject, newObjAddressMap) = insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) classSymTab objAddressMap varCounters
+                                            newObjMap = (Map.insert address idMapFromObject newObjAddressMap)
+                                                        in (updateArrayClasses (limit - 1) size strToAppend ((identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) classSymTab identifierAddressMap newObjMap 
+                                                                varCounters2)
+
+updateMatrixClasses  :: Integer -> Integer -> Integer -> (Identifier,Symbol)  -> ClassSymbolTable -> IdentifierAddressMap -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap) 
+updateMatrixClasses  0  _ _ _ classSymTab identifierAddressMap objAddressMap varCounters = (varCounters,identifierAddressMap,objAddressMap)
+updateMatrixClasses rows columns fixedRows idAndSymbol classSymTab identifierAddressMap objAddressMap varCounters =
+        let (varCounters2, newIdMap, newObjAddressMap) = updateArrayClasses columns columns ("[" ++ (show (fixedRows - rows)) ++ "]")  idAndSymbol classSymTab identifierAddressMap objAddressMap varCounters
+        in let (varCounters3, newIdMap2, newObjAddressMap2) = updateMatrixClasses (rows - 1) columns fixedRows idAndSymbol classSymTab newIdMap newObjAddressMap varCounters2
+        in (varCounters3,newIdMap2,newObjAddressMap2)
+
+fillArray  :: Integer -> Integer -> String -> (Identifier,Symbol)  -> ClassSymbolTable -> IdentifierAddressMap -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap) 
+fillArray 0 size _ _ classSymTab identifierAddressMap objAddressMap varCounters = (varCounters,identifierAddressMap,objAddressMap)
+fillArray limit size strToAppend ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
+                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
+                                let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) objGC identifierAddressMap) 
+                                in let newObjMap = (Map.insert objGC (Map.empty) objAddressMap)
+                                in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) classSymTab newIdMap newObjMap 
+                                                                (intGC,decGC,strGC,boolGC,objGC + 1))
+fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveBool arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
+                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
+                                                                        let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) boolGC identifierAddressMap) 
+                                                                            in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveBool arrayAccess) scp isPublic))) classSymTab newIdMap objAddressMap 
+                                                                            (intGC,decGC,strGC,boolGC + 1,objGC))
+fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveString arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
+                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
+                                                                        let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) strGC identifierAddressMap) 
+                                                                            in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveString arrayAccess) scp isPublic))) classSymTab newIdMap objAddressMap 
+                                                                            (intGC,decGC,strGC + 1,boolGC,objGC))
+fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInteger arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
+                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
+                                                                        let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) intGC identifierAddressMap) 
+                                                                            in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInteger arrayAccess) scp isPublic))) classSymTab newIdMap objAddressMap 
+                                                                            (intGC + 1,decGC,strGC,boolGC,objGC))
+fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInt arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
+                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
+                                                                        let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) intGC identifierAddressMap) 
+                                                                            in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInt arrayAccess) scp isPublic))) classSymTab newIdMap objAddressMap 
+                                                                            (intGC + 1,decGC,strGC,boolGC,objGC))
+fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveMoney arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
+                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
+                                                                        let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) decGC identifierAddressMap) 
+                                                                            in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveMoney arrayAccess) scp isPublic))) classSymTab newIdMap objAddressMap 
+                                                                            (intGC,decGC + 1,strGC,boolGC,objGC))
+fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveDouble arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
+                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
+                                                                        let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) decGC identifierAddressMap) 
+                                                                            in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveDouble arrayAccess) scp isPublic))) classSymTab newIdMap objAddressMap 
+                                                                            (intGC,decGC + 1,strGC,boolGC,objGC))
+
+
+fillMatrix :: Integer -> Integer -> Integer -> (Identifier,Symbol)  -> ClassSymbolTable -> IdentifierAddressMap -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap)
+fillMatrix  0 _ _ _ classSymTab identifierAddressMap objAddressMap varCounters = (varCounters,identifierAddressMap,objAddressMap)
+fillMatrix rows columns fixedRows idAndSymbol classSymTab identifierAddressMap objAddressMap varCounters =
+        let (varCounters2, newIdMap, newObjAddressMap) = fillArray columns columns ("[" ++ (show (fixedRows - rows)) ++ "]") idAndSymbol classSymTab identifierAddressMap objAddressMap varCounters
+        in let (varCounters3, newIdMap2, newObjAddressMap2) = fillMatrix (rows - 1) columns fixedRows idAndSymbol classSymTab newIdMap newObjAddressMap varCounters2
+        in (varCounters3,newIdMap2,newObjAddressMap2)
 
 insertObjectInObjectAddressMap ::  Type -> ClassSymbolTable -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap) 
 insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) classSymTab objAddressMap (intGC,decGC,strGC,boolGC,objGC) =

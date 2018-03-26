@@ -20,8 +20,8 @@ pruebaFibo:
 pruebaDisplays:
 	cat Tests/displays.txt | ./ObjectiveOrientedHaskell
 
-pruebaObjects:
-	cat Tests/objects.txt | ./ObjectiveOrientedHaskell
+pruebaMamada:
+	cat Tests/DeepAssignment.txt | ./ObjectiveOrientedHaskell
 
 pruebaEasy:
 	cat Tests/pruebaSencilla.txt | ./ObjectiveOrientedHaskell

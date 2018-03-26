@@ -34,7 +34,8 @@ data CPUState = CPUState
                 {   panic :: Bool, 
                     ip :: Int,
                     globalMemory :: Memory,
-                    localMemory :: Memory
+                    localMemory :: Memory,
+                    objectMemory :: ObjectMemory
                 }
                 deriving (Show, Eq)
 
@@ -112,6 +113,8 @@ instance ExpressionOperation VMValue where
    (|!|)  (VMBool bool)  = (VMBool (not bool))
 
 type Memory = Map.HashMap Address VMValue
+-- La memoria de un objeto puede verse como una relación unos a muchos: un sólo registro está ligado a muchos otros, que son sus atributos
+type ObjectMemory = Map.HashMap Address [Address]
 type Output = String
 
 newtype VirtualMachine a = VirtualMachine{
@@ -130,28 +133,28 @@ instance MonadState CPUState VirtualMachine where
 
 type VM =  VirtualMachine ()
 
-startVM :: [Quadruple] -> Memory -> Memory -> IO ()
-startVM quads globalMemory localMemory = 
+startVM :: [Quadruple] -> Memory -> Memory -> ObjectMemory -> IO ()
+startVM quads globalMemory localMemory objectMemory = 
     do 
        start <- getCPUTime
-       (a,w) <- evalRWST (unwrapVM $ runVM) quads (setInitialCPUState globalMemory localMemory) 
+       (a,w) <- evalRWST (unwrapVM $ runVM) quads (setInitialCPUState globalMemory localMemory objectMemory) 
        end   <- getCPUTime
        mapM_ (putStrLn) $ w 
        let diff = (fromIntegral (end - start)) / (10^12)
        let msg1 = style Bold $ "Finished" ++ " in " ++ ( show (diff::Decimal) ) ++ " sec"
        putStrLn $ msg1 
 
-setInitialCPUState :: Memory -> Memory -> CPUState
-setInitialCPUState globalMem localMem = CPUState False 0 globalMem localMem
+setInitialCPUState :: Memory -> Memory -> ObjectMemory -> CPUState
+setInitialCPUState globalMem localMem objMemory = CPUState False 0 globalMem localMem objMemory
 
-getCPUState :: CPUState -> (Bool,Int,Memory,Memory)
-getCPUState (CPUState panic ip globalMemory localMemory) = (panic,ip,globalMemory,localMemory)
+getCPUState :: CPUState -> (Bool,Int,Memory,Memory,ObjectMemory)
+getCPUState (CPUState panic ip globalMemory localMemory objectMemory) = (panic,ip,globalMemory,localMemory,objectMemory)
 
 runVM :: VM
 runVM = do
         quadruples <-  ask
         cpuState <-  get
-        let (isPanicState,currentInstructionPointer,_,_) = getCPUState cpuState
+        let (isPanicState,currentInstructionPointer,_,_,_) = getCPUState cpuState
         if (isPanicState) 
             then do 
                 tell $ [("Ended execution with an error at quadruple number " ++ (style Bold (show currentInstructionPointer)) )]
@@ -170,7 +173,7 @@ runInstruction :: Quadruple -> VM
 -- Si es un NOP, solamente aumentamos a uno el instruction pointer
 runInstruction (QuadrupleEmpty _ _) = do 
                                         cpuState <- get
-                                        let (_,currentIP,_,_) = getCPUState cpuState
+                                        let (_,currentIP,_,_,_) = getCPUState cpuState
                                         let s' = (cpuState { ip = (ip cpuState) + 1 })
                                         put s'
                                         return ()
@@ -189,12 +192,14 @@ runInstruction (QuadrupleThreeAddresses quadNum NOTEQ_ a1 a2 a3) =  do doAbstrac
 runInstruction (QuadrupleThreeAddresses quadNum AND_ a1 a2 a3) =  do doAbstractOperation (|&&|) a1 a2 a3 
 runInstruction (QuadrupleThreeAddresses quadNum OR_ a1 a2 a3) =  do doAbstractOperation (|-||-|) a1 a2 a3 
 runInstruction (QuadrupleTwoAddresses quadNum NOT_ a1 a2) =  do doAbstractUnaryOp (|!|) a1 a2 
-runInstruction (QuadrupleTwoAddresses quadNum ASSIGNMENT a1 a2) =  do doAssignment a1 a2 
+runInstruction (QuadrupleTwoAddresses quadNum ASSIGNMENT a1 a2) =  do 
+                                                                    doAssignment a1 a2 
+                                                                    modify $ \s -> (s { ip = (ip s) + 1 })
 runInstruction (QuadrupleOneAddressOneQuad quadNum GOTO_IF_FALSE a1 quadNumToJump) =  do doGotoIfFalse a1 quadNumToJump 
 runInstruction (QuadrupleOneQuad quadNum GOTO quadNumToJump) =  
                                                                 do
                                                                     cpuState <- get
-                                                                    let (_,currentIP,_,_) = getCPUState cpuState
+                                                                    let (_,currentIP,_,_,_) = getCPUState cpuState
                                                                     modify $ \s -> (cpuState { ip = fromIntegral quadNumToJump })
 runInstruction (QuadrupleOneAddress quadNum READ a1) 
                                     | a1 >= startIntGlobalMemory && a1 <= endIntGlobalMemory     
@@ -205,7 +210,9 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     case (checkInt x) of 
-                                                                        Just int -> insertValueInAddress (VMInteger int) a1
+                                                                        Just int -> do
+                                                                                        insertValueInAddress (VMInteger int) a1
+                                                                                        modify $ \s -> (s { ip = (ip s) + 1 })
                                                                         Nothing -> do
                                                                             liftIO $ putStrLn $ color Yellow . style Bold $ ("Runtime Recovery: Please enter an Integer number")
                                                                             return()
@@ -218,7 +225,9 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     case (checkDecimal x) of 
-                                                                        Just dec -> insertValueInAddress (VMDecimal dec) a1
+                                                                        Just dec -> do 
+                                                                                        insertValueInAddress (VMDecimal dec) a1
+                                                                                        modify $ \s -> (s { ip = (ip s) + 1 })
                                                                         Nothing -> do
                                                                             liftIO $ putStrLn $ color Yellow . style Bold $ ("Runtime Recovery: Please enter a Decimal number")
                                                                             return()
@@ -231,6 +240,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     insertValueInAddress (VMString x) a1
+                                                                    modify $ \s -> (s { ip = (ip s) + 1 })
                                                                     liftIO $ hClose tty
                                     | a1 >= startBoolGlobalMemory && a1 <= endBoolGlobalMemory     
                                       || a1 >= startBoolLocalMemory && a1 <= endBoolLocalMemory =
@@ -240,7 +250,9 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     case (checkBool x) of 
-                                                                        Just bool -> insertValueInAddress (VMBool bool) a1
+                                                                        Just bool -> do 
+                                                                                        insertValueInAddress (VMBool bool) a1
+                                                                                        modify $ \s -> (s { ip = (ip s) + 1 })
                                                                         Nothing -> do
                                                                             liftIO $ putStrLn $ color Yellow . style Bold $ ("Runtime Recovery: Please enter a Bool")
                                                                             return()
@@ -250,48 +262,87 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                     tell $ [color Red $ "BAD ADDRESS : " ++ show a1] 
                                                     return ()       
 runInstruction (QuadrupleOneAddress quadNum DISPLAY a1) = do 
-                                        cpuState <- get
-                                        let (_,currentIP,globalMemory,localMemory) = getCPUState cpuState
-                                        let memories = (Map.union globalMemory localMemory) 
-                                        case (Map.lookup a1 memories) of 
-                                            Just (VMString val) -> do 
-                                                    modify $ \s -> (cpuState { ip = (ip cpuState) + 1 })
-                                                    liftIO $ putStrLn $ (style Underline $ val) 
-                                            Just (VMEmpty) -> do 
-                                                    modify $ \s -> (cpuState { ip = (ip cpuState) + 1 })
-                                                    -- tell $ [color Red $ "ERROR: Displaying a variable that was never initialized is not allowed"]
-                                                    -- tell $ [show val]
-                                            Just val -> do 
-                                                    modify $ \s -> (cpuState { ip = (ip cpuState) + 1 })
-                                                    liftIO $ putStrLn $ show $ val
-                                                    -- tell $ [show val]
-                                            _ -> do 
-                                                    modify $ \s -> (cpuState { ip = (ip cpuState) + 1 })
-                                                    -- tell $ [color Red $ "ERROR: Address " ++ show a1  ++  " was not found in any memory"]
-                                        return ()
+                                                            doDisplay a1
+                                                            modify $ \s -> (s { ip = (ip s) + 1 })
+                                        
 
 runInstruction _ =  return ()
 
 
-doAssignment :: Address -> Address -> VM
-doAssignment a1 a2 = do 
-                        cpuState <- get
-                        let (panic,currentIP,globalMemory,localMemory) = getCPUState cpuState
-                        let memories = (Map.union globalMemory localMemory)
-                        case (Map.lookup a1 memories) of
-                            Just val -> insertValueInAddress val a2
-                            _ -> do 
-                                    modify $ \s -> (cpuState { ip = currentIP + 1 })
-                                    
-                                    -- tell $ ["Address " ++ show a1  ++  " was not found in any memory"]
-                                    return ()
+doDisplay :: Address -> VM
+doDisplay a1
+        -- Si es un objeto, la asignacion debe hacerse considerando todos sus atributos
+    | a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
+     || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory  = do 
+                                                                            cpuState <- get
+                                                                            let (panic,currentIP,globalMemory,localMemory,objectMemory) = getCPUState cpuState
+                                                                            case (Map.lookup a1 objectMemory) of
+                                                                                Just addressesFromObject -> doDeepDisplay addressesFromObject
+     | otherwise = do 
+                cpuState <- get
+                let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState
+                let memories = (Map.union globalMemory localMemory) 
+                case (Map.lookup a1 memories) of 
+                    Just (VMString val) -> do 
+                            liftIO $ putStrLn $ (style Underline $ val) 
+                    Just VMEmpty -> return ()
+                    Just val -> do 
+                            liftIO $ putStrLn $ show $ val
+                            -- tell $ [show val]
+                    _ -> do 
+                            return ()
+                return ()
 
-                                     
+doAssignment :: Address -> Address -> VM
+doAssignment a1 a2 
+    -- Si es un objeto, la asignacion debe hacerse considerando todos sus atributos
+     | a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
+     || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory = do 
+                                                                        cpuState <- get
+                                                                        let (panic,currentIP,globalMemory,localMemory,objectMemory) = getCPUState cpuState
+                                                                        case (Map.lookup a1 objectMemory) of
+                                                                            Just addressesAttributesGiver ->
+                                                                                do 
+                                                                                    -- liftIO $ putStrLn.show $ a2
+                                                                                    case (Map.lookup a2 objectMemory) of
+                                                                                        Just addressesAttributesReceiver ->
+                                                                                            do 
+                                                                                            -- liftIO $ putStrLn.ppShow $ addressesAttributesGiver
+                                                                                            -- liftIO $ putStrLn.ppShow $ addressesAttributesReceiver
+                                                                                                doDeepAssignment addressesAttributesGiver addressesAttributesReceiver
+                                                                                                                                                           
+    | otherwise = do 
+                    cpuState <- get
+                    let (panic,currentIP,globalMemory,localMemory,_) = getCPUState cpuState
+                    let memories = (Map.union globalMemory localMemory)
+                    case (Map.lookup a1 memories) of
+                        Just val -> do 
+                                        insertValueInAddress val a2
+                                        
+                        _ -> do 
+                                -- tell $ ["Address " ++ show a1  ++  " was not found in any memory"]
+                                return ()
+
+                  
+doDeepAssignment :: [Address] -> [Address] -> VM
+doDeepAssignment [] [] = do return ()
+doDeepAssignment (addrGiver : addressesGiver ) (addrReceiver : addressesReceiver ) = do 
+                                                                                    doAssignment addrGiver addrReceiver
+                                                                                    -- liftIO $ putStrLn $ "Asignando " ++ (show addrGiver) ++ " en" ++ (show addrReceiver)
+                                                                                    doDeepAssignment addressesGiver addressesReceiver
+                                                                                    return ()
+doDeepDisplay :: [Address] -> VM
+doDeepDisplay [] = do return ()
+doDeepDisplay (addr : addresses )  = do 
+                                        doDisplay addr
+                                        -- liftIO $ putStrLn $ "Asignando " ++ (show addrGiver) ++ " en" ++ (show addrReceiver)
+                                        doDeepDisplay addresses
+                                        return ()
 
 doAbstractOperation :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM
 doAbstractOperation f a1 a2 a3 = do 
                                         cpuState <- get
-                                        let (_,_,globalMemory,localMemory) = getCPUState cpuState
+                                        let (_,_,globalMemory,localMemory,_) = getCPUState cpuState
                                             memories = (Map.union globalMemory localMemory) 
                                             valResult = doOperation f a1 a2 memories
                                         case valResult of 
@@ -299,7 +350,9 @@ doAbstractOperation f a1 a2 a3 = do
                                                     do 
                                                         modify $ \s -> (cpuState { panic = True })
                                                         tell $ [color Red $ err]
-                                            Right val -> insertValueInAddress val a3
+                                            Right val -> do 
+                                                        insertValueInAddress val a3
+                                                        modify $ \s -> (s { ip = (ip s) + 1 })
                                         
 
 doOperation :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Memory -> (Either String VMValue)
@@ -314,18 +367,16 @@ doOperation f a1 a2 memory = case (Map.lookup a1 memory) of
 insertValueInAddress :: VMValue -> Address -> VM
 insertValueInAddress val address = do
                             cpuState <- get
-                            let (_,currentIP,globalMemory,localMemory) = getCPUState cpuState 
+                            let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState 
                             if (address >= startIntGlobalMemory && address <= endBoolGlobalMemory) 
                                 then do
                                     let newGlobalMemory = (Map.insert address val globalMemory)
-                                    let s' = (cpuState { globalMemory = newGlobalMemory, ip = currentIP + 1 })
-                                    modify $ \s -> (cpuState { globalMemory = newGlobalMemory, ip = currentIP + 1 })
-                                    -- modify $ \s -> 
+                                    modify $ \s -> (cpuState { globalMemory = newGlobalMemory})
 
                             else do
                                 if (address >= startIntLocalMemory && address <= endBoolLocalMemory) then do
                                     let newLocalMemory = (Map.insert address val localMemory)
-                                    modify $ \s -> (cpuState { localMemory = newLocalMemory, ip = currentIP + 1 })
+                                    modify $ \s -> (cpuState { localMemory = newLocalMemory})
                                 else do
                                     modify $ \s -> (cpuState { panic = True})
                                     tell $ [("Address " ++ show address  ++  " assignment underflow/overflow ")]
@@ -334,7 +385,7 @@ insertValueInAddress val address = do
 doGotoIfFalse :: Address -> QuadNum -> VM
 doGotoIfFalse a1 quadNum = do 
                             cpuState <- get
-                            let (_,currentIP,globalMemory,localMemory) = getCPUState cpuState
+                            let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState
                             let memories = (Map.union globalMemory localMemory)
                             case (Map.lookup a1 memories) of 
                                 Just (VMBool bool) -> do
@@ -353,13 +404,14 @@ doGotoIfFalse a1 quadNum = do
 doAbstractUnaryOp :: (VMValue -> VMValue) -> Address  -> Address -> VM
 doAbstractUnaryOp f a1 a2 = do 
                                         cpuState <- get
-                                        let (_,_,globalMemory,localMemory) = getCPUState cpuState
+                                        let (_,_,globalMemory,localMemory,_) = getCPUState cpuState
                                         let memories = (Map.union globalMemory localMemory) 
                                         case (Map.lookup a1 memories) of 
                                             Just val -> 
                                                         do 
                                                           let valResult = f val
                                                           insertValueInAddress valResult a2
+                                                          modify $ \s -> (s { ip = (ip s) + 1 })
                                             _ -> do
                                                     modify $ \s -> (cpuState { panic = True}) 
                                                     tell $ ["Address " ++ show a1  ++  " not found"]

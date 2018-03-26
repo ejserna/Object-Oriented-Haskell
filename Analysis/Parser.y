@@ -326,13 +326,49 @@ While :
     "while" "(" Expression ")" Block {While $3 $5}
 
 For :
-    "for" "(" integer_literal ".." integer_literal ")" Block {For $3 $5 $7}
+      "for" "(" integer_literal ".." integer_literal ")" Block {For ($3 + 1) ($5 - 1) $7}
+    | "for" "[" integer_literal ".." integer_literal ")" Block {For $3 ($5 - 1) $7}
+    | "for" "(" integer_literal ".." integer_literal "]" Block {For ($3 + 1) $5 $7}
+    | "for" "[" integer_literal ".." integer_literal "]" Block {For $3 $5 $7}
 
 ForVar : 
     "for" var_identifier "in" "(" integer_literal ".." integer_literal ")" Block { 
-    let (Block statements) = $9 in
-    (VariableStatement (VariableAssignmentLiteralOrVariable
-            (TypePrimitive PrimitiveInt []) $2 (IntegerLiteral $5))) : (CycleStatement (CycleFor (For $5 $7 
+      let (Block statements) = $9 in
+      (VariableStatement (VariableAssignmentLiteralOrVariable
+            (TypePrimitive PrimitiveInt []) $2 (IntegerLiteral ($5)))) : (CycleStatement (CycleFor (For ($5 + 1) ($7 - 1) 
+             (Block (statements ++ [( 
+              DPMStatement(AssignmentExpression $2 (ExpressionPlus (ExpressionLitVar (VarIdentifier $2)) (ExpressionLitVar (IntegerLiteral 1)))) 
+                                    )]
+                    ) 
+             ) ))) : []
+
+          }
+    | "for" var_identifier "in" "(" integer_literal ".." integer_literal "]" Block { 
+      let (Block statements) = $9 in
+      (VariableStatement (VariableAssignmentLiteralOrVariable
+            (TypePrimitive PrimitiveInt []) $2 (IntegerLiteral ($5 + 1)))) : (CycleStatement (CycleFor (For ($5 + 1) $7 
+             (Block (statements ++ [( 
+              DPMStatement(AssignmentExpression $2 (ExpressionPlus (ExpressionLitVar (VarIdentifier $2)) (ExpressionLitVar (IntegerLiteral 1)))) 
+                                    )]
+                    ) 
+             ) ))) : []
+
+          }
+    | "for" var_identifier "in" "[" integer_literal ".." integer_literal ")" Block { 
+      let (Block statements) = $9 in
+      (VariableStatement (VariableAssignmentLiteralOrVariable
+            (TypePrimitive PrimitiveInt []) $2 (IntegerLiteral ($5)))) : (CycleStatement (CycleFor (For ($5) ($7 - 1) 
+             (Block (statements ++ [( 
+              DPMStatement(AssignmentExpression $2 (ExpressionPlus (ExpressionLitVar (VarIdentifier $2)) (ExpressionLitVar (IntegerLiteral 1)))) 
+                                    )]
+                    ) 
+             ) ))) : []
+
+          }
+    | "for" var_identifier "in" "[" integer_literal ".." integer_literal "]" Block { 
+      let (Block statements) = $9 in
+      (VariableStatement (VariableAssignmentLiteralOrVariable
+            (TypePrimitive PrimitiveInt []) $2 (IntegerLiteral ($5)))) : (CycleStatement (CycleFor (For ($5) ($7) 
              (Block (statements ++ [( 
               DPMStatement(AssignmentExpression $2 (ExpressionPlus (ExpressionLitVar (VarIdentifier $2)) (ExpressionLitVar (IntegerLiteral 1)))) 
                                     )]

@@ -350,7 +350,7 @@ analyzeStatement (CycleStatement (CycleWhile (While expression (Block statements
                     Just PrimitiveBool -> analyzeStatements statements (scp - 1) symTab classTab
                     _ -> (emptySymbolTable, True) 
 analyzeStatement (CycleStatement (CycleFor (For lowerRange greaterRange (Block statements)))) scp symTab classTab = 
-                                                                            if (greaterRange > lowerRange) 
+                                                                            if (greaterRange >= lowerRange) 
                                                                                 then analyzeStatements statements (scp - 1) symTab classTab
                                                                                 else (emptySymbolTable,True)
 analyzeStatement (CycleStatement (CycleForVar statements)) scp symTab classTab = analyzeStatements statements scp symTab classTab
@@ -450,7 +450,7 @@ isAssignmentOk (AssignmentExpression identifier expression) scp symTab classSymT
                                                                                                                             typeUnwrapped == (TypePrimitive prim accessExpression)
                                                                                                                        _ -> False
                                                                                                         else False
-                                                                                        Just (SymbolVar (TypeClassId classIdentifier []) varScp _) -> 
+                                                                                        Just (SymbolVar (TypeClassId classIdentifier _) varScp _) -> 
                                                                                                     -- Si el scope de esta variable es mayor al scope de este assignment, si puedo accederlo
                                                                                                     if (varScp >= scp) 
                                                                                                         then let typeExp = (preProcessExpression scp expression symTab classSymTab)
@@ -633,9 +633,9 @@ checkLiteralOrVariablesAndDataTypes2D scp dataType (listOfLitVars : rest) symTab
 preProcessExpression :: Scope -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Type
 preProcessExpression scp (ExpressionLitVar (VarIdentifier identifier)) symTab _ =
                          case (Map.lookup identifier symTab) of
-                                    Just (SymbolVar (TypeClassId classIdentifier []) varScp _)  
+                                    Just (SymbolVar (TypeClassId classIdentifier accessExpression) varScp _)  
                                         | varScp >= scp ->
-                                            Just (TypeClassId classIdentifier [])
+                                            Just (TypeClassId classIdentifier accessExpression)
                                         | otherwise -> Nothing
                                     Just (SymbolVar (TypePrimitive prim accessExpression) varScp _)  
                                         | varScp >= scp ->
