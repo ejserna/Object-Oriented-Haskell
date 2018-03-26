@@ -20,6 +20,7 @@ class Persona : Humano{
 
 main{
     Humano h1,h2;
+
     String [10] strings = ["1","2","3","4","5","6","7","8","9","10"];
     for counter1 in [0..10] {
         display(counter1);
@@ -30,7 +31,6 @@ main{
     Perro perrow;
     Cosa cosaChida;
     perrow.l = strings;
-
     cosaChida.coso = "Juguete perrosss";
     perrow.l = strings;
     perrow.cosa = cosaChida;
@@ -77,6 +77,9 @@ main{
     if (iEdad1 == iEdad2 && sNombre1 == sNombre2){
         display("Son el mismo humano",sNombre2);
 
+    }
+    for counter2 in [1..10]{
+        display(counter2);
     }
 
     

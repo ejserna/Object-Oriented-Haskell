@@ -335,7 +335,7 @@ ForVar :
     "for" var_identifier "in" "(" integer_literal ".." integer_literal ")" Block { 
       let (Block statements) = $9 in
       (VariableStatement (VariableAssignmentLiteralOrVariable
-            (TypePrimitive PrimitiveInt []) $2 (IntegerLiteral ($5)))) : (CycleStatement (CycleFor (For ($5 + 1) ($7 - 1) 
+            (TypePrimitive PrimitiveInt []) $2 (IntegerLiteral ($5 + 1)))) : (CycleStatement (CycleFor (For ($5 + 1) ($7 - 1) 
              (Block (statements ++ [( 
               DPMStatement(AssignmentExpression $2 (ExpressionPlus (ExpressionLitVar (VarIdentifier $2)) (ExpressionLitVar (IntegerLiteral 1)))) 
                                     )]
@@ -409,7 +409,6 @@ main = do
   inStr <- getContents
   let parseTree = ooh (alexScanTokens2 inStr)
   -- putStrLn ("SUCCESS " ++ show(parseTree) )
-  putStrLn $ ppShow $ parseTree
 
   startSemanticAnalysis parseTree
 }

@@ -29,7 +29,7 @@ import Text.Printf
 import  System.Console.Pretty (Color (..), Style (..), bgColor, color,
                                         style, supportsPretty)
 import System.IO
-
+import Control.Concurrent
 data CPUState = CPUState
                 {   panic :: Bool, 
                     ip :: Int,
@@ -133,16 +133,21 @@ instance MonadState CPUState VirtualMachine where
 
 type VM =  VirtualMachine ()
 
+printMessage :: String -> IO ()
+printMessage str = putStrLn $ (color Cyan $ style Bold $ "[VM] ") ++ str  
+
 startVM :: [Quadruple] -> Memory -> Memory -> ObjectMemory -> IO ()
 startVM quads globalMemory localMemory objectMemory = 
     do 
+       printMessage $ color White $ style Bold $ "Execution in process..."
        start <- getCPUTime
        (a,w) <- evalRWST (unwrapVM $ runVM) quads (setInitialCPUState globalMemory localMemory objectMemory) 
        end   <- getCPUTime
        mapM_ (putStrLn) $ w 
        let diff = (fromIntegral (end - start)) / (10^12)
        let msg1 = style Bold $ "Finished" ++ " in " ++ ( show (diff::Decimal) ) ++ " sec"
-       putStrLn $ msg1 
+       printMessage msg1
+       -- putStrLn $ msg1 
 
 setInitialCPUState :: Memory -> Memory -> ObjectMemory -> CPUState
 setInitialCPUState globalMem localMem objMemory = CPUState False 0 globalMem localMem objMemory
@@ -166,7 +171,7 @@ runVM = do
                 runVM 
                 return ()
             else do
-                tell $ [color Cyan "Done"]
+                -- tell $ [color Cyan "Done"]
                 return ()
 
 runInstruction :: Quadruple -> VM
@@ -206,7 +211,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                       || a1 >= startIntLocalMemory && a1 <= endIntLocalMemory =
                                                                 do 
                                                                     tty <- liftIO $ openFile "/dev/tty" ReadMode
-                                                                    liftIO $ putStrLn $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: Integer" ) ++ (style SlowBlink $ ">")
+                                                                    liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: Integer" ) ++ (style SlowBlink $ ">")
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     case (checkInt x) of 
@@ -214,7 +219,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                                                         insertValueInAddress (VMInteger int) a1
                                                                                         modify $ \s -> (s { ip = (ip s) + 1 })
                                                                         Nothing -> do
-                                                                            liftIO $ putStrLn $ color Yellow . style Bold $ ("Runtime Recovery: Please enter an Integer number")
+                                                                            liftIO $ printMessage $ color Yellow . style Bold $ ("Runtime Recovery: Please enter an Integer number")
                                                                             return()
                                                                     liftIO $ hClose tty
                                     | a1 >= startDecimalGlobalMemory && a1 <= endDecimalGlobalMemory     
@@ -229,7 +234,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                                                         insertValueInAddress (VMDecimal dec) a1
                                                                                         modify $ \s -> (s { ip = (ip s) + 1 })
                                                                         Nothing -> do
-                                                                            liftIO $ putStrLn $ color Yellow . style Bold $ ("Runtime Recovery: Please enter a Decimal number")
+                                                                            liftIO $ printMessage $ color Yellow . style Bold $ ("Runtime Recovery: Please enter a Decimal number")
                                                                             return()
                                                                     liftIO $ hClose tty
                                     | a1 >= startStringGlobalMemory && a1 <= endStringGlobalMemory     
