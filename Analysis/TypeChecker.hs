@@ -690,7 +690,6 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                                 else Nothing
                                       | otherwise -> Nothing
                                     _ -> Nothing
-                                    
 preProcessExpression scp expression symTab classSymTab = case (expressionProcess scp expression symTab classSymTab) of
                                                 Just prim -> (Just (TypePrimitive prim []) )
                                                 Nothing -> Nothing

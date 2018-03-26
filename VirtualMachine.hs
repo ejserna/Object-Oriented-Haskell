@@ -269,6 +269,30 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
 runInstruction (QuadrupleOneAddress quadNum DISPLAY a1) = do 
                                                             doDisplay a1
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
+runInstruction (QuadrupleOneAddress quadNum DOUBLE a1) = do 
+                                                            cpuState <- get
+                                                            let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState 
+                                                            case (Map.lookup a1 (Map.union globalMemory localMemory)) of
+                                                                Just (VMDecimal dec) -> 
+                                                                    let roundedDec = roundTo' (ceiling) 16 dec
+                                                                    in insertValueInAddress (VMDecimal roundedDec) a1
+                                                            modify $ \s -> (s { ip = (ip s) + 1 })
+runInstruction (QuadrupleOneAddress quadNum INT_64 a1) = do 
+                                                            cpuState <- get
+                                                            let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState 
+                                                            case (Map.lookup a1 (Map.union globalMemory localMemory)) of
+                                                                Just (VMInteger int) -> 
+                                                                    do
+                                                                        let maxInt64 = maxBound :: Int
+                                                                        let minInt64 = minBound :: Int
+                                                                        if (int < (fromIntegral minInt64) || int > (fromIntegral maxInt64))
+                                                                            then do 
+                                                                                modify $ \s -> (s { panic = True })
+                                                                                liftIO $ printMessage $ (color Red . style Bold $ ("Int underflowed/overflowed with value: " )) ++ (color White . style Bold $ (show int))
+                                                                                liftIO $ printMessage $ color Magenta . style Bold $ ("Consider using an Integer instead" )
+                                                                                insertValueInAddress (VMInteger 0) a1
+                                                                            else return ()
+                                                            modify $ \s -> (s { ip = (ip s) + 1 })
                                         
 
 runInstruction _ =  return ()
@@ -308,12 +332,9 @@ doAssignment a1 a2
                                                                         case (Map.lookup a1 objectMemory) of
                                                                             Just addressesAttributesGiver ->
                                                                                 do 
-                                                                                    -- liftIO $ putStrLn.show $ a2
                                                                                     case (Map.lookup a2 objectMemory) of
                                                                                         Just addressesAttributesReceiver ->
                                                                                             do 
-                                                                                            -- liftIO $ putStrLn.ppShow $ addressesAttributesGiver
-                                                                                            -- liftIO $ putStrLn.ppShow $ addressesAttributesReceiver
                                                                                                 doDeepAssignment addressesAttributesGiver addressesAttributesReceiver
                                                                                                                                                            
     | otherwise = do 
@@ -333,14 +354,12 @@ doDeepAssignment :: [Address] -> [Address] -> VM
 doDeepAssignment [] [] = do return ()
 doDeepAssignment (addrGiver : addressesGiver ) (addrReceiver : addressesReceiver ) = do 
                                                                                     doAssignment addrGiver addrReceiver
-                                                                                    -- liftIO $ putStrLn $ "Asignando " ++ (show addrGiver) ++ " en" ++ (show addrReceiver)
                                                                                     doDeepAssignment addressesGiver addressesReceiver
                                                                                     return ()
 doDeepDisplay :: [Address] -> VM
 doDeepDisplay [] = do return ()
 doDeepDisplay (addr : addresses )  = do 
                                         doDisplay addr
-                                        -- liftIO $ putStrLn $ "Asignando " ++ (show addrGiver) ++ " en" ++ (show addrReceiver)
                                         doDeepDisplay addresses
                                         return ()
 

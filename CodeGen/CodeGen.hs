@@ -19,7 +19,7 @@ startCodeGen (Program classes functions variables (Block statements)) symTab cla
             let (_,quads,_,newObjMap) =  generateCodeFromStatements statements 0 symTab classSymTab varCounters idTable constTable objMap
                 in 
             do  
-                -- mapM_ (putStrLn.show) quads
+                mapM_ (putStrLn.show) quads
                 let (objMem,memoryFromAttributes) = prepareMemoryFromObjects (Map.toList objMap) Map.empty Map.empty
                 -- putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList idTable) )
                 -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList objMem) )
@@ -120,10 +120,19 @@ generateCodeFromStatement (DPMStatement assignment) quadNum symTab classSymTab v
 -- generateCodeFromStatement (FunctionCallStatement functionCall) literalCounters constantAddressMap = fillFromFunctionCall functionCall literalCounters constantAddressMap
 -- generateCodeFromStatement (ReturnStatement (ReturnExp expression)) literalCounters constantAddressMap = fillFromExpression literalCounters constantAddressMap expression
 -- generateCodeFromStatement (ReturnStatement (ReturnFunctionCall functionCall)) literalCounters constantAddressMap = fillFromFunctionCall functionCall literalCounters constantAddressMap
-generateCodeFromStatement (ReadStatement (Reading identifier)) quadNumInit _ _ varCounters idTable constTable objMap = 
+generateCodeFromStatement (ReadStatement (Reading identifier)) quadNumInit symTab _ varCounters idTable constTable objMap = 
+    case (Map.lookup identifier idTable) of
+        Just address ->  
                                     case (Map.lookup identifier idTable) of
                                         Just address ->
-                                            (varCounters,[(buildQuadOneAddress quadNumInit (READ) address)],quadNumInit + 1, objMap)
+                                            case (Map.lookup identifier symTab) of
+                                                Just (SymbolVar (TypePrimitive PrimitiveDouble _) _ _) -> 
+                                                    let newQuad = [(buildQuadOneAddress (quadNumInit + 1) (DOUBLE) address)]
+                                                    in (varCounters,([(buildQuadOneAddress (quadNumInit) (READ) address)]) ++ newQuad,quadNumInit + 2, objMap)
+                                                Just (SymbolVar (TypePrimitive PrimitiveInt _) _ _) -> 
+                                                    let newQuad = [(buildQuadOneAddress (quadNumInit + 1) (INT_64) address)]
+                                                    in (varCounters,([(buildQuadOneAddress (quadNumInit) (READ) address)]) ++ newQuad,quadNumInit + 2, objMap)
+                                                _ -> (varCounters,[(buildQuadOneAddress quadNumInit  (READ) address)],quadNumInit, objMap)
 generateCodeFromStatement (DisplayStatement displays) quadNumInit symTab _ varCounters idTable constTable objMap = 
                                                         let (quads,lastQuadNum) = (genFromDisplays displays quadNumInit idTable constTable)
                                                          in (varCounters,quads,lastQuadNum, objMap)
@@ -233,7 +242,15 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionLitVar (V
 generateCodeFromAssignment (AssignmentExpression identifier expression) quadNum symTab classSymTab varCounters idTable constTable objMap = 
     let (varCounters1, quadsExp, lastQuadNum1) = expCodeGen symTab constTable idTable varCounters quadNum (reduceExpression expression) 
     in case (Map.lookup identifier idTable) of
-        Just address ->   (varCounters1,(quadsExp ++ [(buildQuadrupleTwoAddresses lastQuadNum1 ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]),lastQuadNum1 + 1, objMap)
+        Just address ->  
+            case (Map.lookup identifier symTab) of
+                Just (SymbolVar (TypePrimitive PrimitiveDouble _) _ _) -> 
+                    let newQuad = ([(buildQuadOneAddress lastQuadNum1 (DOUBLE) (getLastAddress $ last $ quadsExp))])
+                    in (varCounters1,(quadsExp ++ newQuad ++ [(buildQuadrupleTwoAddresses (lastQuadNum1 + 1) ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]),lastQuadNum1 + 2, objMap)
+                Just (SymbolVar (TypePrimitive PrimitiveInt _) _ _) -> 
+                    let newQuad = ([(buildQuadOneAddress lastQuadNum1 (INT_64) (getLastAddress $ last $ quadsExp))])
+                    in (varCounters1,(quadsExp ++ newQuad ++ [(buildQuadrupleTwoAddresses (lastQuadNum1 + 1) ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]),lastQuadNum1 + 2, objMap)
+                _ -> (varCounters1,(quadsExp ++ [(buildQuadrupleTwoAddresses lastQuadNum1 ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]),lastQuadNum1 + 1, objMap)
 generateCodeFromAssignment (AssignmentObjectMember identifier (ObjectMember objectIdentifier attrIdentifier)) quadNum symTab classSymTab varCounters idTable constTable objMap = 
         case (Map.lookup identifier symTab) of
             Just (SymbolVar (TypeClassId classIdentifier []) _ _) ->

@@ -34,6 +34,8 @@ data Operation =
         | READ
         | NOP
         | FOR
+        | INT_64
+        | DOUBLE
 
 instance Show Operation where
     show op = case op of
@@ -61,6 +63,8 @@ instance Show Operation where
         READ -> id "READ"
         NOP -> id "NOP"
         FOR -> id "FOR"
+        INT_64 -> id "INT_64"
+        DOUBLE -> id "DOUBLE"
 
 data Quadruple = 
     QuadrupleThreeAddresses  QuadNum Operation Address Address Address -- + 1002 1003 1004
