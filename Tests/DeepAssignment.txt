@@ -1,11 +1,9 @@
-class Perro{
-    [+] Int perro1;
-    [+] Integer [10][10] perrosOps;
+class Cuenta{
+    [+] Integer [10][10] numeros;
 }
 
 class Humano{
-    [+] Int intChido;
-    [+] Perro [10][10] perros;
+    [+] Cuenta [10][10] cuentas;
 }
 
 class Empresa{
@@ -17,24 +15,22 @@ class Google : Empresa{
 }
 
 main{
-    Humano hu;
-    Perro p;
-    p.perro1 = 2;
-    Integer [10][10] matrizDePapa = [[1,2,3,4,5,6,7,8,9,10],
-                                    [1,2,3,4,5,6,7,8,9,10]];
-    p.perrosOps = matrizDePapa;
-    Perro [10][10] matrizPerros = [[p,p]];
+    Humano humano;
+    Cuenta cuenta;
+    Integer [10][10] numeros = [[1,2,3,4,5,6,7,8,9,10],
+                                [3,4,5,6,7,8,9,100]];
+    cuenta.numeros = numeros;
+    Cuenta [10][10] matrizCuentas = [[cuenta,cuenta,cuenta]];
     
-    hu.intChido = 1;
-    hu.perros = matrizPerros; 
-    Humano [10][10] humanos = [[hu,hu,hu,hu],
-                               [hu,hu]];
+    humano.cuentas = matrizCuentas; 
+    Humano [10][10] humanos = [[humano,humano,humano,humano],
+                               [humano,humano]];
     Empresa e,e2;
     e.humanos = humanos;
-    Perro [10][10] perrera;
-    perrera = hu.perros;
+    Cuenta [10][10] cuentas;
+    cuentas = humano.cuentas;
     Google g,g2;
     g.humanos = humanos;
     g2 = g;
-    display(g2);
+    display(g2.humanos);
 }
