@@ -13,6 +13,9 @@ data Quadruple =
   | QuadrupleTwoAddressesOneQuad QuadNum Operation Address Address QuadNum -- FOR 6002 6003 SALTO
 
 instance Show Quadruple where
+    show (QuadrupleTwoAddresses quadNum ACCESS_INDEX address1 address2) = show quadNum ++ ". "  ++ intercalate "\t" [show ACCESS_INDEX,"[" ++ (show address1) ++ "]", id "_" ,show address2]
+    show (QuadrupleTwoAddresses quadNum PUT_INDEX address1 address2) = show quadNum ++ ". "  ++ intercalate "\t" [show PUT_INDEX,show address1, id "_" ,"[" ++ (show address2) ++ "]"]
+    show (QuadrupleThreeAddresses quadNum ADD_INDEX address1 address2 address3) = show quadNum ++ ". " ++ intercalate "\t" [show ADD_INDEX, "[" ++ (show address1) ++ "]", show address2, show address3]
     show (QuadrupleThreeAddresses quadNum op address1 address2 address3) = show quadNum ++ ". " ++ intercalate "\t" [show op,show address1, show address2, show address3]
     show (QuadrupleTwoAddresses quadNum op address1 address2) = show quadNum ++ ". "  ++ intercalate "\t" [show op,show address1, id "_" ,show address2]
     show (QuadrupleOneAddressOneQuad quadNum op address1 quadNumAssigned) = show quadNum ++ ". "  ++ intercalate "\t" [show op,show address1, id "_" ,show quadNumAssigned]
@@ -20,6 +23,7 @@ instance Show Quadruple where
     show (QuadrupleOneAddress quadNum op address) = show quadNum ++ ". "  ++ intercalate "\t" [show op,id "_", id "_" ,show address]
     show (QuadrupleEmpty quadNum op) = show quadNum ++ ". "  ++ intercalate "\t" [show op,id "_", id "_" ,id "_"]
     show (QuadrupleTwoAddressesOneQuad quadNum op address1 address2 quadNumAssigned) = show quadNum ++ ". "  ++ intercalate "\t" [show op,show address1, show address2 ,show quadNumAssigned]
+
 
 
 buildQuadrupleThreeAddresses :: QuadNum -> Operation -> (Address,Address,Address)-> Quadruple

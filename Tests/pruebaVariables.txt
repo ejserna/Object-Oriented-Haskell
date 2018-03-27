@@ -1,28 +1,41 @@
+class Escuela{
+  [+] String avenida;
+  [+] Integer numero;
+  [+] Integer [10] califas;
+}
+
 main{
-    Int [3][4] arr = [
-                        [1,2,3,4],
-                        [5,6,7],
-                        [9,10,11,12]
-                       ];
-    String mensaje = "Hogar";
-    mensaje = "Concat " + mensaje + " Op" + " 1";
-    if (mensaje == "Concat Hogar Op 1"){
-      displayLn("muy op");
-      for counter1 in [1..10]{
-        display(counter1);
-        Int counter2;
-        counter2 = counter1 ^ counter1;
-        displayLn(counter2);
+    Escuela [10] es;
+    Int [10] califas = [1,2,3,4,5,6,7];
+    califas[0] = 99999999;
+    Int i,counter1;
+    counter1 = 1;
+    i = califas[counter1];
+    displayLn(i);
+    Escuela escu, escuuu;
+    escu.avenida = "Gonzalitos";
+    escu.numero = 123;
+    escu.califas = califas;
+
+    for counter3 in [0..9]{
+      escu.avenida = "Gonzalitos";
+      escu.numero = 123;
+      escu.califas = califas;
+      es[counter3] =  escu;
+      if (counter3 == 5){
+        escu.numero = 1234559549494949494;
+        Int [10] califos;
+        califos = escu.califas;
+        escu.avenida = "Los Gatos,California";
+        califos[8] = 200 ^ (califas[2] + califas[1]);
+        califos[9] = -1000000;
+        escu.califas = califos;
+        es[counter3] = escu;
       }
-      displayLn();
     }
-    else{
-      displayLn("sepa la bola");
+    
+    for counter4 in [0..9]{
+      escuuu = es[counter4];
+      displayLn(escuuu);
     }
-    display("Bienvenido","a","mi",mensaje);
-    displayLn();
-    displayLn();
-    displayLn(arr);
-
-
 }

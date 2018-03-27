@@ -396,18 +396,22 @@ analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression express
                                     Just (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) varScp _ ) -> 
                                         if (varScp >= scp) then
                                          let typeIndexExp = (preProcessExpression scp expressionIndex symTab classTab)
-                                                        in case typeIndexExp of
-                                                               Just (TypePrimitive primExp _) ->  
-                                                                    primExp == prim
-                                                               _ -> False
+                                            in case typeIndexExp of
+                                                    Just (TypePrimitive PrimitiveInteger _) ->  
+                                                        True
+                                                    Just (TypePrimitive PrimitiveInt _) ->  
+                                                        True
+                                                    _ -> False
                                          else False
                                     Just (SymbolVar (TypeClassId classIdentifier (("[",size,"]") : [])) varScp _ ) -> 
                                         if (varScp >= scp) then
                                          let typeIndexExp = (preProcessExpression scp expressionIndex symTab classTab)
                                                         in case typeIndexExp of
-                                                               Just (TypeClassId classId _) ->  
-                                                                    classIdentifier == classId
-                                                               _ -> False
+                                                                Just (TypePrimitive PrimitiveInteger _) ->  
+                                                                    True
+                                                                Just (TypePrimitive PrimitiveInt _) ->  
+                                                                    True
+                                                                _ -> False
                                          else False 
                                     _ -> False                            
 analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression innerExpRow) : (ArrayAccessExpression innerExpCol)  : []) _ ) scp symTab classTab =

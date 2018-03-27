@@ -66,7 +66,64 @@ expCodeGen symTab constMap idMap varCounters quadNum (ExpressionNeg exp1) = let 
                                                                                                         Just PrimitiveMoney -> ((intGC, decGC + 1, strGC, boolGC,objGC), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (decGC - 1, (decGC)))], quadNum1 + 1)
                                                                                                         Just PrimitiveInt ->  ((intGC + 1, decGC, strGC, boolGC,objGC), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (intGC - 1, (intGC)))], quadNum1 + 1)
                                                                                                         Just PrimitiveInteger -> ((intGC + 1, decGC, strGC, boolGC,objGC), quad1 ++ [(buildQuadrupleTwoAddresses quadNum1 NEG_ (intGC - 1, (intGC)))], quadNum1 + 1) 
-expCodeGen symTab constMap idMap varCounters quadNum (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) = expCodeGen symTab constMap idMap varCounters quadNum exp1 
+expCodeGen symTab constTable idTable varCounters quadNum (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) = 
+                                                                                                let ((intGC, decGC, strGC, boolGC,objGC),quadsExp, quadNum1) = expCodeGen symTab constTable idTable varCounters quadNum exp1 
+                                                                                                in case (Map.lookup identifier symTab) of
+                                                                                                    Just (SymbolVar (TypePrimitive PrimitiveString (("[",size,"]") : [] )) _ _) ->
+                                                                                                        case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
+                                                                                                            Just address ->
+                                                                                                                case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                                    Just addressBase -> 
+                                                                                                                                        let boundQuad = ([(buildQuadrupleTwoAddresses quadNum1 BOUNDS ((getLastAddress $ last $ quadsExp), address ))])
+                                                                                                                                            in let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum1 + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quadsExp), intGC))]
+                                                                                                                                            in let quadAssignment = ([(buildQuadrupleTwoAddresses (quadNum1 + 2) ACCESS_INDEX (intGC,strGC))])
+                                                                                                                                            in ((intGC + 1,decGC,strGC + 1,boolGC,objGC), (quadsExp ++ boundQuad ++ baseAddQuad ++ quadAssignment), (quadNum1 + 3))
+                                                                                                    Just (SymbolVar (TypePrimitive PrimitiveMoney (("[",size,"]") : [] )) _ _) ->
+                                                                                                        case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
+                                                                                                            Just address ->
+                                                                                                                case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                                    Just addressBase -> 
+                                                                                                                                                let boundQuad = ([(buildQuadrupleTwoAddresses quadNum1 BOUNDS ((getLastAddress $ last $ quadsExp), address ))])
+                                                                                                                                                    in let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum1 + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quadsExp), intGC))]
+                                                                                                                                                    in let quadAssignment = ([(buildQuadrupleTwoAddresses (quadNum1 + 2) ACCESS_INDEX (intGC,decGC))])
+                                                                                                                                                    in ((intGC + 1,decGC + 1,strGC,boolGC,objGC), (quadsExp ++ boundQuad ++ baseAddQuad ++ quadAssignment), (quadNum1 + 3))
+                                                                                                    Just (SymbolVar (TypePrimitive PrimitiveDouble (("[",size,"]") : [] )) _ _) ->
+                                                                                                        case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
+                                                                                                            Just address ->
+                                                                                                                case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                                    Just addressBase -> 
+                                                                                                                                                let boundQuad = ([(buildQuadrupleTwoAddresses quadNum1 BOUNDS ((getLastAddress $ last $ quadsExp), address ))])
+                                                                                                                                                    in let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum1 + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quadsExp), intGC))]
+                                                                                                                                                    in let quadAssignment = ([(buildQuadrupleTwoAddresses (quadNum1 + 2) ACCESS_INDEX (intGC,decGC))])
+                                                                                                                                                    in ((intGC + 1,decGC + 1,strGC,boolGC,objGC), (quadsExp ++ boundQuad ++ baseAddQuad ++ quadAssignment), (quadNum1 + 3))
+                                                                                                    Just (SymbolVar (TypePrimitive PrimitiveInteger (("[",size,"]") : [] )) _ _) ->
+                                                                                                        case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
+                                                                                                            Just address ->
+                                                                                                                case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                                    Just addressBase -> 
+                                                                                                                                                let boundQuad = ([(buildQuadrupleTwoAddresses quadNum1 BOUNDS ((getLastAddress $ last $ quadsExp), address ))])
+                                                                                                                                                    in let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum1 + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quadsExp), intGC))]
+                                                                                                                                                    in let quadAssignment = ([(buildQuadrupleTwoAddresses (quadNum1 + 2) ACCESS_INDEX (intGC,intGC + 1))])
+                                                                                                                                                    in ((intGC + 2,decGC,strGC,boolGC,objGC), (quadsExp ++ boundQuad ++ baseAddQuad ++ quadAssignment), (quadNum1 + 3))
+                                                                                                    Just (SymbolVar (TypePrimitive PrimitiveInt (("[",size,"]") : [] )) _ _) ->
+                                                                                                        case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
+                                                                                                            Just address ->
+                                                                                                                case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                                    Just addressBase -> 
+                                                                                                                                                let boundQuad = ([(buildQuadrupleTwoAddresses quadNum1 BOUNDS ((getLastAddress $ last $ quadsExp), address ))])
+                                                                                                                                                    in let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum1 + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quadsExp), intGC))]
+                                                                                                                                                    in let quadAssignment = ([(buildQuadrupleTwoAddresses (quadNum1 + 2) ACCESS_INDEX (intGC,intGC + 1))])
+                                                                                                                                                    in ((intGC + 2,decGC,strGC,boolGC,objGC), (quadsExp ++ boundQuad ++ baseAddQuad ++ quadAssignment), (quadNum1 + 3))
+                                                                                                    Just (SymbolVar (TypePrimitive PrimitiveBool (("[",size,"]") : [] )) _ _) ->
+                                                                                                        case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
+                                                                                                            Just address ->
+                                                                                                                case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                                    Just addressBase -> 
+                                                                                                                                                let boundQuad = ([(buildQuadrupleTwoAddresses quadNum1 BOUNDS ((getLastAddress $ last $ quadsExp), address ))])
+                                                                                                                                                    in let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum1 + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quadsExp), intGC))]
+                                                                                                                                                    in let quadAssignment = ([(buildQuadrupleTwoAddresses (quadNum1 + 2) ACCESS_INDEX (intGC,boolGC))])
+                                                                                                                                                    in ((intGC + 1,decGC,strGC,boolGC + 1,objGC), (quadsExp ++ boundQuad ++ baseAddQuad ++ quadAssignment), (quadNum1 + 3))
+
 expCodeGen symTab constMap idMap varCounters quadNum (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : (ArrayAccessExpression exp2) :[])) = let    ((intGC, decGC, strGC, boolGC,objGC),quad1, quadNum1) = expCodeGen symTab constMap idMap varCounters quadNum exp1
                                                                                                                                                                 ((intGC2, decGC2, strGC2, boolGC2,objGC2),quad2, quadNum2) = expCodeGen symTab constMap idMap (intGC, decGC, strGC, boolGC,objGC) quadNum1 exp2
                                                                                                                                                                 in ((intGC2, decGC2, strGC2, boolGC2,objGC2),quad1 ++ quad2, quadNum2)
@@ -108,3 +165,19 @@ genQuadrupleRelational symTab constMap idMap varCounters quadNum exp1 exp2 op = 
                                                                                         Just PrimitiveString -> ((intGC2, decGC2, strGC2, boolGC2 + 1,objGC2), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (strGC - 1, strGC2 - 1, boolGC2))], quadNum2 + 1)
                                                                                         Just PrimitiveBool -> ((intGC2, decGC2, strGC2, boolGC2 + 1,objGC2), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (boolGC - 1, boolGC2 - 1, boolGC2))], quadNum2 + 1)
                                                                                     else ((intGC2, decGC2, strGC2, boolGC2,objGC2), quad2, quadNum2)
+
+-- generate1DAccessIndex :: QuadNum -> Expression -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> (VariableCounters,[Quadruple],QuadNum)
+-- generate1DAccessIndex quadNum (ExpressionLitVar (VarIdentifier id)) symTab classSymTab varCounters idMap constTable objMap = 
+--                 case (Map.lookup id symTab) of 
+--                     Just (SymbolVar (TypePrimitive _ []) _ _) ->
+--                         let (varCounters2,quadsExp,)
+
+
+
+
+
+
+
+
+
+

@@ -12,7 +12,7 @@ pruebaClases:
 	cat Tests/pruebaClases.txt | ./ObjectiveOrientedHaskell
 
 pruebaVariables:
-	cat Tests/pruebaVariables.txt | ./ObjectiveOrientedHaskell
+	cat Tests/pruebaVariables.txt | ./ObjectiveOrientedHaskell 
 
 pruebaFibo:
 	cat Tests/fibonacciRecursivo.txt | ./ObjectiveOrientedHaskell

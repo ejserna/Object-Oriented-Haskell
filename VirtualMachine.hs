@@ -267,10 +267,10 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                     tell $ [color Red $ "BAD ADDRESS : " ++ show a1] 
                                                     return ()       
 runInstruction (QuadrupleOneAddress quadNum DISPLAY a1) = do 
-                                                            doDisplay a1 False
+                                                            doDisplay a1 
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
 runInstruction (QuadrupleOneAddress quadNum DISPLAY_LINE a1) = do 
-                                                            doDisplay a1 True
+                                                            doDisplay a1
                                                             liftIO $ putStrLn $ ""
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
                                                             
@@ -298,20 +298,61 @@ runInstruction (QuadrupleOneAddress quadNum INT_64 a1) = do
                                                                                 insertValueInAddress (VMInteger 0) a1
                                                                             else return ()
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
+runInstruction (QuadrupleThreeAddresses quadNum ADD_INDEX index value a3) = do 
+                                                            cpuState <- get
+                                                            let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState
+                                                            case (Map.lookup value (Map.union globalMemory localMemory)) of
+                                                              Just (VMInteger int) -> do 
+                                                                                        -- liftIO $ putStrLn $ (show (index + int))  ++ " " ++ (show a3) 
+                                                                                        insertValueInAddress (VMInteger (index + int)) a3 
+                                                            
+                                                            modify $ \s -> (s { ip = (ip s) + 1 })
+runInstruction (QuadrupleTwoAddresses quadNum ACCESS_INDEX addressThatHasIndex a2) = do 
+                                                            cpuState <- get
+                                                            let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState
+                                                            case (Map.lookup addressThatHasIndex (Map.union globalMemory localMemory)) of
+                                                              Just (VMInteger addressFromArray) -> do 
+                                                                                                      -- liftIO $ putStrLn $ (show addressFromArray)  ++ " " ++ (show a2)
+                                                                                                      -- liftIO $ putStrLn.ppShow $ globalMemory
+                                                                                                      doAssignment addressFromArray a2
+                                                            modify $ \s -> (s { ip = (ip s) + 1 })
+runInstruction (QuadrupleTwoAddresses quadNum PUT_INDEX a1 addressThatHasIndex) = do 
+                                                            cpuState <- get
+                                                            let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState
+                                                            case (Map.lookup addressThatHasIndex (Map.union globalMemory localMemory)) of
+                                                              Just (VMInteger addressFromArray) -> doAssignment a1 addressFromArray
+                                                            modify $ \s -> (s { ip = (ip s) + 1 })
+runInstruction (QuadrupleTwoAddresses quadNum BOUNDS a1 a2) = do 
+                                                            cpuState <- get
+                                                            let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState
+                                                            case (Map.lookup a1 (Map.union globalMemory localMemory)) of
+                                                              Just (VMInteger val) -> 
+                                                                         do 
+                                                                          case (Map.lookup a2 (Map.union globalMemory localMemory)) of 
+                                                                            Just (VMInteger upperBound) -> 
+                                                                                    if (val >= upperBound || val < 0) then 
+                                                                                      do
+                                                                                        modify $ \s -> (s { panic = True })
+                                                                                        liftIO $ printMessage $ (color Red . style Bold $ ("Index out of bounds with value: " )) ++ (color White . style Bold $ (show val))
+                                                                                    else do 
+                                                                                        modify $ \s -> (s { ip = (ip s) + 1 })
+
+                                                            
+
                                         
 
 runInstruction _ =  return ()
 
 
-doDisplay :: Address -> Bool -> VM
-doDisplay a1 shouldPrintLine
+doDisplay :: Address -> VM
+doDisplay a1 
         -- Si es un objeto, la asignacion debe hacerse considerando todos sus atributos
      | a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
         || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory  = do 
                                                                             cpuState <- get
                                                                             let (panic,currentIP,globalMemory,localMemory,objectMemory) = getCPUState cpuState
                                                                             case (Map.lookup a1 objectMemory) of
-                                                                                Just addressesFromObject -> doDeepDisplay addressesFromObject shouldPrintLine
+                                                                                Just addressesFromObject -> doDeepDisplay addressesFromObject
      | otherwise = do 
                 cpuState <- get
                 let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState
@@ -334,6 +375,7 @@ doAssignment a1 a2
      || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory = do 
                                                                         cpuState <- get
                                                                         let (panic,currentIP,globalMemory,localMemory,objectMemory) = getCPUState cpuState
+                                                                        -- liftIO $ putStrLn $ (show a1)  ++ " " ++ (show a2) 
                                                                         case (Map.lookup a1 objectMemory) of
                                                                             Just addressesAttributesGiver ->
                                                                                 do 
@@ -349,7 +391,6 @@ doAssignment a1 a2
                     case (Map.lookup a1 memories) of
                         Just val -> do 
                                         insertValueInAddress val a2
-                                        
                         _ -> do 
                                 -- tell $ ["Address " ++ show a1  ++  " was not found in any memory"]
                                 return ()
@@ -361,11 +402,11 @@ doDeepAssignment (addrGiver : addressesGiver ) (addrReceiver : addressesReceiver
                                                                                     doAssignment addrGiver addrReceiver
                                                                                     doDeepAssignment addressesGiver addressesReceiver
                                                                                     return ()
-doDeepDisplay :: [Address] -> Bool -> VM
-doDeepDisplay [] _ = do return ()
-doDeepDisplay (addr : addresses ) shouldPrintLine  = do 
-                                        doDisplay addr shouldPrintLine
-                                        doDeepDisplay addresses shouldPrintLine
+doDeepDisplay :: [Address] -> VM
+doDeepDisplay [] = do return ()
+doDeepDisplay (addr : addresses )  = do 
+                                        doDisplay addr
+                                        doDeepDisplay addresses
                                         return ()
 
 doAbstractOperation :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM

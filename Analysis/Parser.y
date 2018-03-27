@@ -416,6 +416,6 @@ main = do
   inStr <- getContents
   let parseTree = ooh (alexScanTokens2 inStr)
   -- putStrLn ("SUCCESS " ++ show(parseTree) )
-
+  -- putStrLn . ppShow $ parseTree
   startSemanticAnalysis parseTree
 }

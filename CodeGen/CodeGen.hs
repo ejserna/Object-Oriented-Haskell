@@ -31,6 +31,7 @@ startCodeGen (Program classes functions variables (Block statements)) symTab cla
                 let (objMem,memoryFromAttributes) = prepareMemoryFromObjects (Map.toList objMap) Map.empty Map.empty
                 -- putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList idTable) )
                 -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList objMem) )
+                -- putStrLn $ ppShow $ (Map.union  memoryFromAttributes (prepareMemory idTable constTable))
                 startVM quads (Map.union  memoryFromAttributes (prepareMemory idTable constTable)) (Map.empty) objMem
 
 
@@ -197,6 +198,25 @@ generateCodeFromStatement (DisplayStatement displays) quadNumInit symTab classSy
                                                                                                                                                         Just objTable -> 
                                                                                                                                                             case (Map.lookup (attribute ++ "[0][0]") objTable) of
                                                                                                                                                                 Just addressAttr -> genLoopMatrix addressAttr rows cols 1 quadNum op
+                                                                                            Just (SymbolVar (TypePrimitive prim accessExpression) _ _) ->
+                                                                                                case accessExpression of 
+                                                                                                    [] -> case ((Map.lookup object idTable)) of
+                                                                                                            Just addressObj -> 
+                                                                                                                case (Map.lookup addressObj objMap) of
+                                                                                                                    Just objTable -> case (Map.lookup attribute objTable) of
+                                                                                                                                        Just addressAttr -> ([(buildQuadOneAddress quadNum (op) addressAttr)],quadNum + 1)
+                                                                                                    (("[",size,"]") : []) -> case ((Map.lookup object idTable)) of
+                                                                                                                                Just addressObj -> 
+                                                                                                                                    case (Map.lookup addressObj objMap) of
+                                                                                                                                        Just objTable -> 
+                                                                                                                                            case (Map.lookup (attribute ++ "[0]") objTable) of
+                                                                                                                                                Just addressAttr -> genLoopArray addressAttr size quadNum op
+                                                                                                    (("[",rows,"]") : ("[",cols,"]") : []) -> case ((Map.lookup object idTable)) of
+                                                                                                                                                Just addressObj -> 
+                                                                                                                                                    case (Map.lookup addressObj objMap) of
+                                                                                                                                                        Just objTable -> 
+                                                                                                                                                            case (Map.lookup (attribute ++ "[0][0]") objTable) of
+                                                                                                                                                                Just addressAttr -> genLoopMatrix addressAttr rows cols 1 quadNum op
 
                                                                             
                                                                     genFromDisplay (DisplayLiteralOrVariable (StringLiteral str) op) quadNum idTable constTable =
@@ -274,7 +294,27 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionLitVar (V
                 let (varCounters1, quadsExp, lastQuadNum1) = expCodeGen symTab constTable idTable varCounters quadNum (reduceExpression (ExpressionLitVar (VarIdentifier identifier2))) 
                 in case (Map.lookup identifier idTable) of
                     Just address -> (varCounters1,(quadsExp ++ [(buildQuadrupleTwoAddresses lastQuadNum1 ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]),lastQuadNum1 + 1, objMap)
+generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray identifierArray ((ArrayAccessExpression arrayIndexExp) : []))) quadNum symTab classSymTab varCounters idTable constTable objMap = 
+                case (Map.lookup identifierArray symTab) of 
+                    Just (SymbolVar (TypeClassId _ (("[",size,"]") : [] )) _ _) ->
+                                                                                case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
+                                                                                    Just address ->
+                                                                                        case (Map.lookup (identifierArray ++ "[0]") idTable) of
+                                                                                            Just addressBase -> case (Map.lookup identifier idTable) of
+                                                                                                                    Just addressIdentifier -> 
+                                                                                                                        let ((intGC,decGC,strGC,boolGC,objGC),quadsIndexAccess,lastQuadNum2) = expCodeGen symTab constTable idTable varCounters quadNum (reduceExpression arrayIndexExp)
+                                                                                                                        in let boundQuad = ([(buildQuadrupleTwoAddresses lastQuadNum2 BOUNDS ((getLastAddress $ last $ quadsIndexAccess), address ))])
+                                                                                                                        in let baseAddQuad = [(buildQuadrupleThreeAddresses (lastQuadNum2 + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quadsIndexAccess), intGC))]
+                                                                                                                        in let quadAssignment = ([(buildQuadrupleTwoAddresses (lastQuadNum2 + 2) ACCESS_INDEX (intGC,addressIdentifier))])
+                                                                                                                        in ((intGC + 1,decGC,strGC,boolGC,objGC), (quadsIndexAccess ++ boundQuad ++ baseAddQuad ++ quadAssignment), (lastQuadNum2 + 3), objMap)
+                    _ -> let (varCounters2,quadsIndex,lastQuadNum) = expCodeGen symTab constTable idTable varCounters quadNum (reduceExpression (ExpressionVarArray identifierArray ((ArrayAccessExpression arrayIndexExp) : [])))
+                        in  case (Map.lookup identifier idTable) of
+                                Just addressIdentifier -> 
+                                    let quadAssignment = ([(buildQuadrupleTwoAddresses lastQuadNum ASSIGNMENT ((getLastAddress $ last $ quadsIndex),addressIdentifier))])
+                                    in (varCounters2, (quadsIndex ++ quadAssignment), (lastQuadNum + 1), objMap) 
+
 generateCodeFromAssignment (AssignmentExpression identifier expression) quadNum symTab classSymTab varCounters idTable constTable objMap = 
+    -- Todo mark, a;adir que a un identificador de clase se le pueda asignar una direccion de algun arreglo o matriz
     let (varCounters1, quadsExp, lastQuadNum1) = expCodeGen symTab constTable idTable varCounters quadNum (reduceExpression expression) 
     in case (Map.lookup identifier idTable) of
         Just address ->  
@@ -285,7 +325,7 @@ generateCodeFromAssignment (AssignmentExpression identifier expression) quadNum 
                 Just (SymbolVar (TypePrimitive PrimitiveInt _) _ _) -> 
                     let newQuad = ([(buildQuadOneAddress lastQuadNum1 (INT_64) (getLastAddress $ last $ quadsExp))])
                     in (varCounters1,(quadsExp ++ newQuad ++ [(buildQuadrupleTwoAddresses (lastQuadNum1 + 1) ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]),lastQuadNum1 + 2, objMap)
-                _ -> (varCounters1,(quadsExp ++ [(buildQuadrupleTwoAddresses lastQuadNum1 ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]),lastQuadNum1 + 1, objMap)
+                _ -> (varCounters1,(quadsExp ++ [(buildQuadrupleTwoAddresses (lastQuadNum1) ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]),lastQuadNum1 + 1, objMap)
 generateCodeFromAssignment (AssignmentObjectMember identifier (ObjectMember objectIdentifier attrIdentifier)) quadNum symTab classSymTab varCounters idTable constTable objMap = 
         case (Map.lookup identifier symTab) of
             Just (SymbolVar (TypeClassId classIdentifier []) _ _) ->
@@ -344,62 +384,93 @@ generateCodeFromAssignment (AssignmentObjectMember identifier (ObjectMember obje
                                                 case (Map.lookup (attrIdentifier ++ "[0][0]") idTableObject) of
                                                     Just addressAttribute -> assignTwoMatrices address1 addressAttribute rows columns quadNum symTab classSymTab varCounters idTable constTable objMap       
 generateCodeFromAssignment  (AssignmentObjectMemberExpression (ObjectMember objectIdentifier attrIdentifier) expression) quadNum symTab classSymTab varCounters idTable constTable objMap =  
-                                -- let 
-
-                                --     (varCounters1, quadsExp, lastQuadNum1) = expCodeGen symTab constTable idTable varCounters quadNum (reduceExpression expression) 
-                                -- in 
                                 case (Map.lookup objectIdentifier idTable) of 
                                     Just objectAddress -> 
                                         case (Map.lookup objectAddress objMap) of 
                                             Just objTable -> 
                                                 case (Map.lookup objectIdentifier symTab) of 
-                                                                Just (SymbolVar (TypeClassId classIdentifier []) _ _) ->
-                                                                    case (Map.lookup classIdentifier classSymTab) of 
-                                                                          Just symTabOfClass -> case (Map.lookup attrIdentifier symTabOfClass) of 
-                                                                                                    Just (SymbolVar (TypePrimitive prim []) scp isPublic) ->
-                                                                                                         case (Map.lookup attrIdentifier objTable) of 
-                                                                                                               Just attrAddress -> 
-                                                                                                                   let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) attrAddress idTable)
-                                                                                                                   in let symbolVarAttr = (SymbolVar (TypePrimitive prim []) scp isPublic)
-                                                                                                                   in let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
-                                                                                                                   in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap
-                                                                                                    Just (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic) ->
-                                                                                                         case (Map.lookup (attrIdentifier ++ "[0]")  objTable) of 
-                                                                                                               Just attrAddress -> 
-                                                                                                                   let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0]") attrAddress idTable)
-                                                                                                                   in let symbolVarAttr = (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic)
-                                                                                                                   in let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
-                                                                                                                   in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap
-                                                                                                    Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic) ->
-                                                                                                         case (Map.lookup (attrIdentifier ++ "[0][0]")  objTable) of 
-                                                                                                               Just attrAddress -> 
-                                                                                                                   let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0][0]") attrAddress idTable)
-                                                                                                                   in let symbolVarAttr = (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)
-                                                                                                                   in let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
-                                                                                                                   in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap
-                                                                                                    Just (SymbolVar (TypeClassId c []) scp isPublic) ->
-                                                                                                         case (Map.lookup attrIdentifier objTable) of 
-                                                                                                               Just attrAddress -> 
-                                                                                                                   let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) attrAddress idTable)
-                                                                                                                   in let symbolVarAttr = (SymbolVar (TypeClassId c []) scp isPublic)
-                                                                                                                   in let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
-                                                                                                                   in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap
-                                                                                                    Just (SymbolVar (TypeClassId c (("[",size,"]") : [])) scp isPublic) ->
-                                                                                                         case (Map.lookup (attrIdentifier ++ "[0]")  objTable) of 
-                                                                                                               Just attrAddress -> 
-                                                                                                                   let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0]") attrAddress idTable)
-                                                                                                                   in let symbolVarAttr = (SymbolVar (TypeClassId c (("[",size,"]") : [])) scp isPublic)
-                                                                                                                   in let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
-                                                                                                                   in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap
-                                                                                                    Just (SymbolVar (TypeClassId c (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic) ->
-                                                                                                         case (Map.lookup (attrIdentifier ++ "[0][0]")  objTable) of 
-                                                                                                               Just attrAddress -> 
-                                                                                                                   let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0][0]") attrAddress idTable)
-                                                                                                                   in let symbolVarAttr = (SymbolVar (TypeClassId c (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)
-                                                                                                                   in let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
-                                                                                                                   in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap
+                                                    Just (SymbolVar (TypeClassId classIdentifier []) _ _) ->
+                                                        case (Map.lookup classIdentifier classSymTab) of 
+                                                              Just symTabOfClass -> case (Map.lookup attrIdentifier symTabOfClass) of 
+                                                                                        Just (SymbolVar (TypePrimitive prim []) scp isPublic) ->
+                                                                                             case (Map.lookup attrIdentifier objTable) of 
+                                                                                                   Just attrAddress -> 
+                                                                                                       let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) attrAddress idTable)
+                                                                                                       in let symbolVarAttr = (SymbolVar (TypePrimitive prim []) scp isPublic)
+                                                                                                       in let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
+                                                                                                       in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap
+                                                                                        Just (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic) ->
+                                                                                             case (Map.lookup (attrIdentifier ++ "[0]")  objTable) of 
+                                                                                                   Just attrAddress -> 
+                                                                                                       let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0]") attrAddress idTable)
+                                                                                                       in let symbolVarAttr = (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic)
+                                                                                                       in let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
+                                                                                                       in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap
+                                                                                        Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic) ->
+                                                                                             case (Map.lookup (attrIdentifier ++ "[0][0]")  objTable) of 
+                                                                                                   Just attrAddress -> 
+                                                                                                       let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0][0]") attrAddress idTable)
+                                                                                                       in let symbolVarAttr = (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)
+                                                                                                       in let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
+                                                                                                       in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap
+                                                                                        Just (SymbolVar (TypeClassId c []) scp isPublic) ->
+                                                                                             case (Map.lookup attrIdentifier objTable) of 
+                                                                                                   Just attrAddress -> 
+                                                                                                       let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) attrAddress idTable)
+                                                                                                       in let symbolVarAttr = (SymbolVar (TypeClassId c []) scp isPublic)
+                                                                                                       in let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
+                                                                                                       in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap
+                                                                                        Just (SymbolVar (TypeClassId c (("[",size,"]") : [])) scp isPublic) ->
+                                                                                             case (Map.lookup (attrIdentifier ++ "[0]")  objTable) of 
+                                                                                                   Just attrAddress -> 
+                                                                                                       let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0]") attrAddress idTable)
+                                                                                                       in let symbolVarAttr = (SymbolVar (TypeClassId c (("[",size,"]") : [])) scp isPublic)
+                                                                                                       in let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
+                                                                                                       in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap
+                                                                                        Just (SymbolVar (TypeClassId c (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic) ->
+                                                                                             case (Map.lookup (attrIdentifier ++ "[0][0]")  objTable) of 
+                                                                                                   Just attrAddress -> 
+                                                                                                       let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0][0]") attrAddress idTable)
+                                                                                                       in let symbolVarAttr = (SymbolVar (TypeClassId c (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)
+                                                                                                       in let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
+                                                                                                       in generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression)  quadNum newSymTab classSymTab varCounters tempIdTable constTable objMap
                                                         
-                                                                                                    
+generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessExpression arrayIndexExp) : []) (ExpressionLitVar (VarIdentifier id))) quadNum symTab classSymTab varCounters idTable constTable objMap =  
+                                                    let ((intGC,decGC,strGC,boolGC,objGC),quadsIndexAccess,lastQuadNum2) = expCodeGen symTab constTable idTable varCounters quadNum (reduceExpression arrayIndexExp)
+                                                    in case (Map.lookup identifier symTab) of
+                                                        Just (SymbolVar (TypeClassId _ (("[",size,"]") : [] )) _ _) ->
+                                                            case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
+                                                                Just address ->
+                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                        Just addressBase -> case (Map.lookup id idTable) of
+                                                                                                Just addressObject -> 
+                                                                                                    let boundQuad = ([(buildQuadrupleTwoAddresses lastQuadNum2 BOUNDS ((getLastAddress $ last $ quadsIndexAccess), address ))])
+                                                                                                    in let baseAddQuad = [(buildQuadrupleThreeAddresses (lastQuadNum2 + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quadsIndexAccess), intGC))]
+                                                                                                    in let quadAssignment = ([(buildQuadrupleTwoAddresses (lastQuadNum2 + 2) PUT_INDEX (addressObject,intGC))])
+                                                                                                    in (((intGC + 1),decGC,strGC,boolGC,objGC), (quadsIndexAccess ++ boundQuad ++ baseAddQuad ++ quadAssignment), (lastQuadNum2 + 3), objMap)
+                                                        Just (SymbolVar (TypePrimitive _ (("[",size,"]") : [] )) _ _) ->
+                                                            case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
+                                                                Just address ->
+                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                        Just addressBase -> case (Map.lookup id idTable) of
+                                                                                                Just addressIdentifier -> 
+                                                                                                    let boundQuad = ([(buildQuadrupleTwoAddresses lastQuadNum2 BOUNDS ((getLastAddress $ last $ quadsIndexAccess), address ))])
+                                                                                                    in let baseAddQuad = [(buildQuadrupleThreeAddresses (lastQuadNum2 + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quadsIndexAccess), intGC))]
+                                                                                                    in let quadAssignment = ([(buildQuadrupleTwoAddresses (lastQuadNum2 + 2) PUT_INDEX (addressIdentifier,intGC))])
+                                                                                                    in (((intGC + 1),decGC,strGC,boolGC,objGC), (quadsIndexAccess ++ boundQuad ++ baseAddQuad ++ quadAssignment), (lastQuadNum2 + 3), objMap)
+generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessExpression arrayIndexExp) : []) expression) quadNum symTab classSymTab varCounters idTable constTable objMap =  
+                                                    let ((intGC,decGC,strGC,boolGC,objGC),quadsIndexAccess,lastQuadNum2) = expCodeGen symTab constTable idTable varCounters quadNum (reduceExpression arrayIndexExp)
+                                                    in case (Map.lookup identifier symTab) of
+                                                        Just (SymbolVar (TypePrimitive _ (("[",size,"]") : [] )) _ _) ->
+                                                            case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
+                                                                Just address ->
+                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                        Just addressBase -> 
+                                                                                            let boundQuad = ([(buildQuadrupleTwoAddresses lastQuadNum2 BOUNDS ((getLastAddress $ last $ quadsIndexAccess), address ))])
+                                                                                            in let baseAddQuad = [(buildQuadrupleThreeAddresses (lastQuadNum2 + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quadsIndexAccess), intGC))]
+                                                                                            in let ((intGC2,decGC2,strGC2,boolGC2,objGC2),quadsExpRight,lastQuadNum3) = expCodeGen symTab constTable idTable (intGC + 1,decGC,strGC,boolGC,objGC) (lastQuadNum2 + 2) (reduceExpression expression)
+                                                                                            in let quadAssignment = ([(buildQuadrupleTwoAddresses (lastQuadNum3) PUT_INDEX ((getLastAddress $ last $ quadsExpRight),intGC))])
+                                                                                            in ((intGC2,decGC2,strGC2,boolGC2,objGC2), (quadsIndexAccess ++ boundQuad ++ baseAddQuad ++quadsExpRight ++ quadAssignment), (lastQuadNum3 + 1), objMap)      
                                                 
 
 generateCodeFromAssignment _ quadNum symTab classSymTab varCounters idTable constTable objMap = (varCounters,[],quadNum,objMap)
