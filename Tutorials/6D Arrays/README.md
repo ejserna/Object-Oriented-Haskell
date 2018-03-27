@@ -49,9 +49,9 @@ Analizando detalladamente el código, podemos concluir lo siguiente:
 
 1 empresa tiene muchos **humanos**
 1 humano tiene muchas **cuentas**
-1 perro tiene muchos **numeros**
+1 cuenta tiene muchos **numeros**
 
-Es decir, hay varias relaciones unos a muchos. Empezando desde perro, el tamaño en memoria de su matriz de **numeros** equivale a 10 x 10 = 10^2, o bien, 100 enteros. Sin embargo, la historia no acaba ahí, pues Humano tiene una matriz de **cuentas** del mismo tamaño, sólo que cada espacio de **cuentas** apunta a un objeto **Perro**, donde cada uno tiene una matriz de 10^2. Por lo tanto, se puede concluir que la matriz de **cuentas** equivale a 10^2 x 10^2, o bien, 10^4 (10,000 espacios contigüos). De la misma manera se puede llegar a la conclusión que la matriz de **humanos** de empresa equivale en memoria a 10^6 de enteros, lo que equivale a **1,000,000**! (1 millónde enteros). 
+Es decir, hay varias relaciones unos a muchos. Empezando desde cuenta, el tamaño en memoria de su matriz de **numeros** equivale a 10 x 10 = 10^2, o bien, 100 enteros. Sin embargo, la historia no acaba ahí, pues Humano tiene una matriz de **cuentas** del mismo tamaño, sólo que cada espacio de **cuentas** apunta a un objeto **Cuenta**, donde cada uno tiene una matriz de 10^2. Por lo tanto, se puede concluir que la matriz de **cuentas** equivale a 10^2 x 10^2, o bien, 10^4 (10,000 espacios contigüos). De la misma manera se puede llegar a la conclusión que la matriz de **humanos** de empresa equivale en memoria a 10^6 de enteros, lo que equivale a **1,000,000**! (1 millónde enteros). 
 
 El componente encargado de realizar las asignaciones en memoria virtual arroja que para este programa, se reservaron 5,030,219 millones de enteros.
 
