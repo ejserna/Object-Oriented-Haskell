@@ -1,13 +1,13 @@
 main{
-    Int f1,f2,fn,n,fiboIterativo1,fiboIterativo2;
+    Integer f1,f2,fn,n,fiboIterativo1,fiboIterativo2;
     f1 = 0;
     f2 = 1;
-    for i in (1..100){
+    for i in [1..1000]{
         fn = f1 + f2;
         f1 = f2;
         f2 = fn;
     }
-    display("Resultado de fibonacci iterativo hasta 100",f1);
+    displayLn("Resultado de fibonacci iterativo hasta 1000",f1);
     fiboIterativo1 = f1;
     read(n);
     i = 0;
@@ -22,8 +22,8 @@ main{
     fiboIterativo2 = f1;
     Bool areEqual;
     areEqual = fiboIterativo1 == fiboIterativo2;
-    display("Resultado de fibonacci iterativo hasta ",n,f1);
-    display(areEqual);
+    displayLn("Resultado de fibonacci iterativo hasta ",n,f1);
+    displayLn(areEqual);
 }
 
 

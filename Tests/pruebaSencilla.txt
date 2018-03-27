@@ -8,23 +8,23 @@ main{
     m1 = 1.222222;
     m2 = m1;
     if ( (100 + j ) == j){
-        display("Es cien",i);
+        displayLn("Es cien",i);
     }
     else{
-        display("No es cien",i);
+        displayLn("No es cien",i);
         i ++;
         if (1 + 100 == i){
             while (i < 100){
-                display(i);
+                displayLn(i);
                 i++;
             }
         }
         else{
             for counter in (1..100){
                 if (counter == 99){
-                    display("counter es 10 ",counter);
+                    displayLn("counter es 10 ",counter);
                     read(i);
-                    display(i);
+                    displayLn(i);
                 }
                 display("Counter opcillo",counter);
             }
@@ -34,7 +34,7 @@ main{
     m1 = -m1;
     m1--;
     m1--;
-    display("Fin de programa",t1,m1);
+    displayLn("Fin de programa",t1,m1);
 
     
 }

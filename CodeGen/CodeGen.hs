@@ -140,7 +140,7 @@ generateCodeFromStatement (ReadStatement (Reading identifier)) quadNumInit symTa
                                                 Just (SymbolVar (TypePrimitive PrimitiveInt _) _ _) -> 
                                                     let newQuad = [(buildQuadOneAddress (quadNumInit + 1) (INT_64) address)]
                                                     in (varCounters,([(buildQuadOneAddress (quadNumInit) (READ) address)]) ++ newQuad,quadNumInit + 2, objMap)
-                                                _ -> (varCounters,[(buildQuadOneAddress quadNumInit  (READ) address)],quadNumInit, objMap)
+                                                _ -> (varCounters,[(buildQuadOneAddress quadNumInit  (READ) address)],quadNumInit + 1, objMap)
 generateCodeFromStatement (DisplayStatement displays) quadNumInit symTab classSymTab varCounters idTable constTable objMap = 
                                                         let (quads,lastQuadNum) = (genFromDisplays displays quadNumInit idTable constTable)
                                                          in (varCounters,quads,lastQuadNum, objMap)
