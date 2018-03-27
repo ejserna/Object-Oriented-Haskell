@@ -3,69 +3,6 @@ module Quadruple where
 import DataTypes
 import Data.List (intercalate)
 
-
--- Operation dice la operacion que hará el cuádruplo
-data Operation = 
-        -- Expression Operators
-          GT_
-        | LT_
-        | GTEQ_
-        | LTEQ_
-        | EQ_
-        | NOTEQ_
-        | AND_
-        | OR_      
-        | ADD_
-        | SUB_ 
-        | MULTIPLY_
-        | DIVIDE_
-        | NEG_
-        | NOT_
-        | MOD_
-        | POWER_
-        -- Assignment Operators
-        | ASSIGNMENT
-        -- Flow Control Operators
-        | GOTO
-        | GOTO_IF_FALSE
-        | GOTO_IF_TRUE
-        | GOTO_NORMAL
-        | DISPLAY
-        | READ
-        | NOP
-        | FOR
-        | INT_64
-        | DOUBLE
-
-instance Show Operation where
-    show op = case op of
-        GT_  -> id ">"
-        LT_  -> id "<"
-        GTEQ_  -> id ">="
-        LTEQ_  -> id "<=" 
-        EQ_  -> id "=="
-        NOTEQ_  -> id "!="
-        AND_  -> id "&&"
-        OR_  -> id "||"
-        ADD_  -> id "+" 
-        SUB_  -> id "-"
-        MULTIPLY_  -> id "*"
-        DIVIDE_  -> id "/"
-        NEG_  -> id "NEG"
-        NOT_  -> id "!" 
-        MOD_  -> id "%"
-        POWER_  -> id "POW"
-        GOTO  -> id "GOTO"
-        GOTO_IF_FALSE  -> id "GOTO_F"
-        GOTO_IF_TRUE  -> id  "GOTO_T" 
-        ASSIGNMENT  -> id  "="
-        DISPLAY -> id "PRINT"
-        READ -> id "READ"
-        NOP -> id "NOP"
-        FOR -> id "FOR"
-        INT_64 -> id "INT_64"
-        DOUBLE -> id "DOUBLE"
-
 data Quadruple = 
     QuadrupleThreeAddresses  QuadNum Operation Address Address Address -- + 1002 1003 1004
   | QuadrupleTwoAddresses QuadNum Operation Address Address -- Assignment 1002 _ 1003

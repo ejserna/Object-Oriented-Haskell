@@ -31,6 +31,7 @@ tokens :-
   "while"                           { \p s -> TWhile p }
   "read"                            { \p s -> TRead p }
   "display"                         { \p s -> TDisplay p }
+  "displayLn"                         { \p s -> TDisplayLn p }
   "+"                               { \p s -> TPlus p }
   "-"                               { \p s -> TMinus p }
   "*"                               { \p s -> TMultiply p }
@@ -99,6 +100,7 @@ data Token =
       TWhile AlexPosn               |
       TRead AlexPosn                |
       TDisplay AlexPosn             |
+      TDisplayLn AlexPosn           |
       TPlus AlexPosn                |
       TMinus AlexPosn               |
       TMultiply AlexPosn            |
@@ -164,6 +166,7 @@ tokenPosn (TFor p) = p
 tokenPosn (TWhile p) = p
 tokenPosn (TRead p) = p
 tokenPosn (TDisplay p) = p
+tokenPosn (TDisplayLn p) = p
 tokenPosn (TPlus p) = p
 tokenPosn (TMinus p) = p
 tokenPosn (TMultiply p) = p

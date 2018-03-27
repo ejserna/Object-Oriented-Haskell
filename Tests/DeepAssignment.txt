@@ -18,9 +18,21 @@ main{
     Humano humano;
     Cuenta cuenta;
     Integer [10][10] numeros = [[1,2,3,4,5,6,7,8,9,10],
-                                [3,4,5,6,7,8,9,100]];
+                                [3,4,5,6,7,8,9,100],
+                                [3,4,5,6,7,8,9,101],
+                                [3,4,5,6,7,8,9,102],
+                                [3,4,5,6,7,8,9,103],
+                                [3,4,5,6,7,8,9,104],
+                                [3,4,5,6,7,8,9,105],
+                                [3,4,5,6,7,8,9,106],
+                                [3,4,5,6,7,8,9,107],
+                                [3,4,5,6,7,8,9,108]];
     cuenta.numeros = numeros;
-    Cuenta [10][10] matrizCuentas = [[cuenta,cuenta,cuenta]];
+    Cuenta [10][10] matrizCuentas = [[cuenta,cuenta,cuenta],
+                                    [cuenta,cuenta,cuenta],
+                                    [cuenta,cuenta,cuenta],
+                                    [cuenta,cuenta,cuenta],
+                                    [cuenta,cuenta,cuenta]];
     
     humano.cuentas = matrizCuentas; 
     Humano [10][10] humanos = [[humano,humano,humano,humano],

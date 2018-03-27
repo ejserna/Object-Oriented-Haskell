@@ -364,7 +364,7 @@ analyzeStatement (ReturnStatement (ReturnExp expression)) scp symTab classTab =
                 Nothing -> (emptySymbolTable, True)
 
 analyzeDisplay :: Display -> Scope -> SymbolTable -> ClassSymbolTable -> Bool
-analyzeDisplay (DisplayLiteralOrVariable (VarIdentifier identifier)) scp symTab classTab = 
+analyzeDisplay (DisplayLiteralOrVariable (VarIdentifier identifier) _) scp symTab classTab = 
                             case (Map.lookup identifier symTab) of 
                                 Just (SymbolVar (TypePrimitive prim _) varScp _) ->
                                     varScp >= scp
@@ -373,8 +373,8 @@ analyzeDisplay (DisplayLiteralOrVariable (VarIdentifier identifier)) scp symTab 
                                 _ -> False
 
 -- Podemos desplegar primitivos sin problemas
-analyzeDisplay (DisplayLiteralOrVariable _) scp symTab classTab = True
-analyzeDisplay (DisplayObjMem (ObjectMember objectIdentifier attrIdentifier)) scp symTab classTab =
+analyzeDisplay (DisplayLiteralOrVariable _ _) scp symTab classTab = True
+analyzeDisplay (DisplayObjMem (ObjectMember objectIdentifier attrIdentifier) _) scp symTab classTab =
                             case (Map.lookup objectIdentifier symTab) of
                                     Just (SymbolVar (TypeClassId classIdentifier _) objScp _) -> 
                                         if (objScp >= scp) 
@@ -389,9 +389,9 @@ analyzeDisplay (DisplayObjMem (ObjectMember objectIdentifier attrIdentifier)) sc
                                                 _ -> False
                                         else False
                                     _ -> False
-analyzeDisplay (DisplayFunctionCall functionCall) scp symTab classTab =
+analyzeDisplay (DisplayFunctionCall functionCall _) scp symTab classTab =
                             analyzeFunctionCall functionCall scp symTab classTab
-analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression expressionIndex) : []) ) scp symTab classTab =
+analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression expressionIndex) : []) _ ) scp symTab classTab =
                             case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) varScp _ ) -> 
                                         if (varScp >= scp) then
@@ -410,7 +410,7 @@ analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression express
                                                                _ -> False
                                          else False 
                                     _ -> False                            
-analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression innerExpRow) : (ArrayAccessExpression innerExpCol)  : []) ) scp symTab classTab =
+analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression innerExpRow) : (ArrayAccessExpression innerExpCol)  : []) _ ) scp symTab classTab =
                             case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",columns,"]") : [])) varScp _ ) -> 
                                         if (varScp >= scp) 

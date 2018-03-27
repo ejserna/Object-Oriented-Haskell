@@ -177,10 +177,10 @@ data Reading
   deriving(Show,Eq)
 
 data Display
-    = DisplayLiteralOrVariable LiteralOrVariable 
-    | DisplayObjMem ObjectMember 
-    | DisplayFunctionCall FunctionCall 
-    | DisplayVarArrayAccess Identifier [ArrayAccess] 
+    = DisplayLiteralOrVariable LiteralOrVariable Operation 
+    | DisplayObjMem ObjectMember Operation
+    | DisplayFunctionCall FunctionCall Operation
+    | DisplayVarArrayAccess Identifier [ArrayAccess] Operation
    deriving(Show,Eq) 
 
 data Expression
@@ -364,6 +364,72 @@ endObjectGlobalMemory = 1400000000000000000000000000000000000000000000000000
 -- startObjectGlobalMemory = 100001
 -- endObjectGlobalMemory = 104000
 
+
+-- Operation dice la operacion que hará el cuádruplo
+data Operation = 
+        -- Expression Operators
+          GT_
+        | LT_
+        | GTEQ_
+        | LTEQ_
+        | EQ_
+        | NOTEQ_
+        | AND_
+        | OR_      
+        | ADD_
+        | SUB_ 
+        | MULTIPLY_
+        | DIVIDE_
+        | NEG_
+        | NOT_
+        | MOD_
+        | POWER_
+        -- Assignment Operators
+        | ASSIGNMENT
+        -- Flow Control Operators
+        | GOTO
+        | GOTO_IF_FALSE
+        | GOTO_IF_TRUE
+        | GOTO_NORMAL
+        | DISPLAY
+        | DISPLAY_LINE
+        | READ
+        | NOP
+        | FOR
+        | INT_64
+        | DOUBLE
+      deriving(Eq)
+
+instance Show Operation where
+    show op = case op of
+        GT_  -> id ">"
+        LT_  -> id "<"
+        GTEQ_  -> id ">="
+        LTEQ_  -> id "<=" 
+        EQ_  -> id "=="
+        NOTEQ_  -> id "!="
+        AND_  -> id "&&"
+        OR_  -> id "||"
+        ADD_  -> id "+" 
+        SUB_  -> id "-"
+        MULTIPLY_  -> id "*"
+        DIVIDE_  -> id "/"
+        NEG_  -> id "NEG"
+        NOT_  -> id "!" 
+        MOD_  -> id "%"
+        POWER_  -> id "POW"
+        GOTO  -> id "GOTO"
+        GOTO_IF_FALSE  -> id "GOTO_F"
+        GOTO_IF_TRUE  -> id  "GOTO_T" 
+        ASSIGNMENT  -> id  "="
+        DISPLAY -> id "PRINT"
+        DISPLAY_LINE -> id "PRINTLN"
+        READ -> id "READ"
+        NOP -> id "NOP"
+        FOR -> id "FOR"
+        INT_64 -> id "INT_64"
+        DOUBLE -> id "DOUBLE"
+
 intToDecimal :: Integer -> Decimal
 intToDecimal int = let num = show(int)
                     in (strToDecimal num)
@@ -393,3 +459,5 @@ decToInt dec = let num = show(roundTo 0 dec)
 
 strToInt :: String -> Integer
 strToInt str = read str :: Integer 
+
+

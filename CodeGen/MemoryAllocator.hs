@@ -116,11 +116,11 @@ fillFromStatement (DisplayStatement displays) literalCounters constantAddressMap
                                                                             in fillFromDisplays disps newLiteralCounters2 newConsAddressMap
 
                                                                     fillFromDisplay :: Display -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters,ConstantAddressMap)
-                                                                    fillFromDisplay (DisplayLiteralOrVariable litOrVar) literalCounters constantAddressMap =
+                                                                    fillFromDisplay (DisplayLiteralOrVariable litOrVar _) literalCounters constantAddressMap =
                                                                         fillFromExpression literalCounters constantAddressMap (ExpressionLitVar litOrVar) 
-                                                                    fillFromDisplay (DisplayFunctionCall funcCall) literalCounters constantAddressMap =
+                                                                    fillFromDisplay (DisplayFunctionCall funcCall _) literalCounters constantAddressMap =
                                                                         fillFromExpression literalCounters constantAddressMap (ExpressionFuncCall funcCall)
-                                                                    fillFromDisplay (DisplayVarArrayAccess identifier arrayAccess) literalCounters constantAddressMap =
+                                                                    fillFromDisplay (DisplayVarArrayAccess identifier arrayAccess _) literalCounters constantAddressMap =
                                                                         fillFromExpression literalCounters constantAddressMap (ExpressionVarArray identifier arrayAccess)  
                                                                     fillFromDisplay _ literalCounters constantAddressMap =
                                                                         (literalCounters,constantAddressMap)  

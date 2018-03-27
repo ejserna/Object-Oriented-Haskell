@@ -31,6 +31,7 @@ import TypeChecker
   "while"             { TWhile _ }
   "read"              { TRead _ }
   "display"           { TDisplay _ }
+  "displayLn"         { TDisplayLn _ }
   "+"                 { TPlus _ }
   "-"                 { TMinus _ }
   "*"                 { TMultiply _ }
@@ -259,17 +260,23 @@ Reading :
       "read" "(" var_identifier ")" {Reading $3}
 
 Display :
-        "display" "(" LiteralOrVariable DisplayArguments ")" {  ((DisplayLiteralOrVariable $3) : $4) }
-      | "display" "(" ObjectMember DisplayArguments")"    {  ((DisplayObjMem $3) : $4) }
-      | "display" "(" FunctionCall DisplayArguments ")"    {  ((DisplayFunctionCall $3) : $4) }
-      | "display" "(" var_identifier ArrayIndexesExpression DisplayArguments ")" {  ((DisplayVarArrayAccess $3 $4) : $5) }
+        "display" "(" LiteralOrVariable DisplayArguments ")" {  ((DisplayLiteralOrVariable $3 (DISPLAY)) : $4) }
+      | "display" "(" ObjectMember DisplayArguments")"    {  ((DisplayObjMem $3 (DISPLAY)) : $4) }
+      | "display" "(" FunctionCall DisplayArguments ")"    {  ((DisplayFunctionCall $3 (DISPLAY)) : $4) }
+      | "display" "(" var_identifier ArrayIndexesExpression DisplayArguments ")" {  ((DisplayVarArrayAccess $3 $4 (DISPLAY)) : $5) }
+      | "display" "(" ")" { [(DisplayLiteralOrVariable ((StringLiteral "")) (DISPLAY))] }
+      | "displayLn" "(" LiteralOrVariable DisplayArguments ")" {  ((DisplayLiteralOrVariable $3 (DISPLAY)) : $4) ++ [(DisplayLiteralOrVariable ((StringLiteral "")) (DISPLAY_LINE))] }
+      | "displayLn" "(" ObjectMember DisplayArguments")"    {  ((DisplayObjMem $3 (DISPLAY)) : $4) ++ [(DisplayLiteralOrVariable ((StringLiteral "")) (DISPLAY_LINE))] }
+      | "displayLn" "(" FunctionCall DisplayArguments ")"    {  ((DisplayFunctionCall $3 (DISPLAY)) : $4) ++ [(DisplayLiteralOrVariable ((StringLiteral "")) (DISPLAY_LINE))] }
+      | "displayLn" "(" var_identifier ArrayIndexesExpression DisplayArguments ")" {  ((DisplayVarArrayAccess $3 $4 (DISPLAY)) : $5) ++ [(DisplayLiteralOrVariable ((StringLiteral "")) (DISPLAY_LINE))] }
+      | "displayLn" "(" ")" { [(DisplayLiteralOrVariable ((StringLiteral "")) (DISPLAY_LINE))] }
 
 DisplayArguments :
       {- empty -} { [] }
-      | "," LiteralOrVariable DisplayArguments { ((DisplayLiteralOrVariable $2) : $3) }
-      | "," ObjectMember DisplayArguments { ((DisplayObjMem $2) : $3) }
-      | "," FunctionCall DisplayArguments { ((DisplayFunctionCall $2) : $3) }
-      | "," var_identifier ArrayIndexesExpression DisplayArguments { ((DisplayVarArrayAccess $2 $3) : $4) }
+      | "," LiteralOrVariable DisplayArguments { ((DisplayLiteralOrVariable $2 (DISPLAY)) : $3) }
+      | "," ObjectMember DisplayArguments { ((DisplayObjMem $2 (DISPLAY)) : $3) }
+      | "," FunctionCall DisplayArguments { ((DisplayFunctionCall $2 (DISPLAY)) : $3) }
+      | "," var_identifier ArrayIndexesExpression DisplayArguments { ((DisplayVarArrayAccess $2 $3 (DISPLAY)) : $4) }
 
 Expression :
       Expression ">" Expression { ExpressionGreater $1 $3 }

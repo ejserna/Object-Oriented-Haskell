@@ -267,8 +267,13 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                     tell $ [color Red $ "BAD ADDRESS : " ++ show a1] 
                                                     return ()       
 runInstruction (QuadrupleOneAddress quadNum DISPLAY a1) = do 
-                                                            doDisplay a1
+                                                            doDisplay a1 False
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
+runInstruction (QuadrupleOneAddress quadNum DISPLAY_LINE a1) = do 
+                                                            doDisplay a1 True
+                                                            liftIO $ putStrLn $ ""
+                                                            modify $ \s -> (s { ip = (ip s) + 1 })
+                                                            
 runInstruction (QuadrupleOneAddress quadNum DOUBLE a1) = do 
                                                             cpuState <- get
                                                             let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState 
@@ -298,25 +303,25 @@ runInstruction (QuadrupleOneAddress quadNum INT_64 a1) = do
 runInstruction _ =  return ()
 
 
-doDisplay :: Address -> VM
-doDisplay a1
+doDisplay :: Address -> Bool -> VM
+doDisplay a1 shouldPrintLine
         -- Si es un objeto, la asignacion debe hacerse considerando todos sus atributos
-    | a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
-     || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory  = do 
+     | a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
+        || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory  = do 
                                                                             cpuState <- get
                                                                             let (panic,currentIP,globalMemory,localMemory,objectMemory) = getCPUState cpuState
                                                                             case (Map.lookup a1 objectMemory) of
-                                                                                Just addressesFromObject -> doDeepDisplay addressesFromObject
+                                                                                Just addressesFromObject -> doDeepDisplay addressesFromObject shouldPrintLine
      | otherwise = do 
                 cpuState <- get
                 let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState
                 let memories = (Map.union globalMemory localMemory) 
                 case (Map.lookup a1 memories) of 
                     Just (VMString val) -> do 
-                            liftIO $ putStrLn $ (style Underline $ val) 
+                            liftIO $ putStr $ (style Underline $ val)  ++ " "
                     Just VMEmpty -> return ()
                     Just val -> do 
-                            liftIO $ putStrLn $ show $ val
+                            liftIO $ putStr $ (show $ val) ++ " "
                             -- tell $ [show val]
                     _ -> do 
                             return ()
@@ -356,11 +361,11 @@ doDeepAssignment (addrGiver : addressesGiver ) (addrReceiver : addressesReceiver
                                                                                     doAssignment addrGiver addrReceiver
                                                                                     doDeepAssignment addressesGiver addressesReceiver
                                                                                     return ()
-doDeepDisplay :: [Address] -> VM
-doDeepDisplay [] = do return ()
-doDeepDisplay (addr : addresses )  = do 
-                                        doDisplay addr
-                                        doDeepDisplay addresses
+doDeepDisplay :: [Address] -> Bool -> VM
+doDeepDisplay [] _ = do return ()
+doDeepDisplay (addr : addresses ) shouldPrintLine  = do 
+                                        doDisplay addr shouldPrintLine
+                                        doDeepDisplay addresses shouldPrintLine
                                         return ()
 
 doAbstractOperation :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM

@@ -22,11 +22,11 @@ startCodeGen (Program classes functions variables (Block statements)) symTab cla
                 in 
             do  
                 mapM_ (putStrLn.show) quads
-                putStrLn $ (style Bold $ "# Ints: ") ++ (color Magenta $ show $ int)
-                putStrLn $ (style Bold $ "# Decimals: ") ++ (color Magenta $ show $ (dec - endIntGlobalMemory))
-                putStrLn $ (style Bold $ "# Strings: ") ++ (color Magenta $ show $ (str - endDecimalGlobalMemory))
-                putStrLn $ (style Bold $ "# Booleans: ") ++ (color Magenta $ show $ (bool - endStringGlobalMemory))
-                putStrLn $ (style Bold $ "# Objects: ") ++ (color Magenta $ show $ (obj - endObjectLocalMemory))
+                putStrLn $ (style Bold $ "# Ints: ") ++ (color Magenta $ show $ (int - 1))
+                putStrLn $ (style Bold $ "# Decimals: ") ++ (color Magenta $ show $ (dec - endIntGlobalMemory - 1))
+                putStrLn $ (style Bold $ "# Strings: ") ++ (color Magenta $ show $ (str - endDecimalGlobalMemory - 1))
+                putStrLn $ (style Bold $ "# Booleans: ") ++ (color Magenta $ show $ (bool - endStringGlobalMemory - 1))
+                putStrLn $ (style Bold $ "# Objects: ") ++ (color Magenta $ show $ (obj - endObjectLocalMemory - 1))
                 -- mapM_ (putStrLn.ppShow) $ intercalate " , " [(color White . show $ (int - endIntGlobalMemory)), (color White . show $ (dec - endDecimalGlobalMemory)), (color White . show $ (str - endStringGlobalMemory)), (color White . show $ (obj - endObjectGlobalMemory))]
                 let (objMem,memoryFromAttributes) = prepareMemoryFromObjects (Map.toList objMap) Map.empty Map.empty
                 -- putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList idTable) )
@@ -152,27 +152,27 @@ generateCodeFromStatement (DisplayStatement displays) quadNumInit symTab classSy
                                                                             in let (quads2,lastQuadNum2) = (genFromDisplays disps lastQuadNum idTable constTable)
                                                                                 in ((quads ++ quads2),lastQuadNum2)
                                                                     genFromDisplay :: Display -> QuadNum -> IdentifierAddressMap -> ConstantAddressMap -> ([Quadruple],QuadNum)
-                                                                    genFromDisplay (DisplayLiteralOrVariable (VarIdentifier var)) quadNum idTable constTable =
+                                                                    genFromDisplay (DisplayLiteralOrVariable (VarIdentifier var) op) quadNum idTable constTable =
                                                                         case (Map.lookup var symTab) of 
                                                                             Just (SymbolVar (TypePrimitive prim accessExpression) _ _) ->
                                                                                 case accessExpression of 
                                                                                     [] -> case ((Map.lookup var idTable)) of
-                                                                                            Just address -> ([(buildQuadOneAddress quadNum (DISPLAY) address)],quadNum + 1)
+                                                                                            Just address -> ([(buildQuadOneAddress quadNum op address)],quadNum + 1)
                                                                                     (("[",size,"]") : []) -> case ((Map.lookup (var ++ "[0]") idTable)) of
-                                                                                                                Just address -> genLoopArray address size quadNum
+                                                                                                                Just address -> genLoopArray address size quadNum op
 
                                                                                     (("[",rows,"]") : ("[",cols,"]") : []) -> case ((Map.lookup (var ++ "[0][0]") idTable)) of
-                                                                                                                Just address -> genLoopMatrix address rows cols 1 quadNum
+                                                                                                                Just address -> genLoopMatrix address rows cols 1 quadNum op
                                                                             Just (SymbolVar (TypeClassId prim accessExpression) _ _) ->
                                                                                 case accessExpression of 
                                                                                     [] -> case ((Map.lookup var idTable)) of
-                                                                                            Just address -> ([(buildQuadOneAddress quadNum (DISPLAY) address)],quadNum + 1)
+                                                                                            Just address -> ([(buildQuadOneAddress quadNum (op) address)],quadNum + 1)
                                                                                     (("[",size,"]") : []) -> case ((Map.lookup (var ++ "[0]") idTable)) of
-                                                                                                                Just address -> genLoopArray address size quadNum
+                                                                                                                Just address -> genLoopArray address size quadNum op
 
                                                                                     (("[",rows,"]") : ("[",cols,"]") : []) -> case ((Map.lookup (var ++ "[0][0]") idTable)) of
-                                                                                                                Just address -> genLoopMatrix address rows cols 1 quadNum
-                                                                    genFromDisplay (DisplayObjMem (ObjectMember object attribute)) quadNum idTable constTable =
+                                                                                                                Just address -> genLoopMatrix address rows cols 1 quadNum op
+                                                                    genFromDisplay (DisplayObjMem (ObjectMember object attribute) op) quadNum idTable constTable =
                                                                         case (Map.lookup object symTab) of 
                                                                             Just (SymbolVar (TypeClassId classId _) _ _) ->
                                                                                 case (Map.lookup classId classSymTab) of
@@ -184,49 +184,50 @@ generateCodeFromStatement (DisplayStatement displays) quadNumInit symTab classSy
                                                                                                             Just addressObj -> 
                                                                                                                 case (Map.lookup addressObj objMap) of
                                                                                                                     Just objTable -> case (Map.lookup attribute objTable) of
-                                                                                                                                        Just addressAttr -> ([(buildQuadOneAddress quadNum (DISPLAY) addressAttr)],quadNum + 1)
+                                                                                                                                        Just addressAttr -> ([(buildQuadOneAddress quadNum (op) addressAttr)],quadNum + 1)
                                                                                                     (("[",size,"]") : []) -> case ((Map.lookup object idTable)) of
                                                                                                                                 Just addressObj -> 
                                                                                                                                     case (Map.lookup addressObj objMap) of
                                                                                                                                         Just objTable -> 
                                                                                                                                             case (Map.lookup (attribute ++ "[0]") objTable) of
-                                                                                                                                                Just addressAttr -> genLoopArray addressAttr size quadNum
+                                                                                                                                                Just addressAttr -> genLoopArray addressAttr size quadNum op
                                                                                                     (("[",rows,"]") : ("[",cols,"]") : []) -> case ((Map.lookup object idTable)) of
                                                                                                                                                 Just addressObj -> 
                                                                                                                                                     case (Map.lookup addressObj objMap) of
                                                                                                                                                         Just objTable -> 
                                                                                                                                                             case (Map.lookup (attribute ++ "[0][0]") objTable) of
-                                                                                                                                                                Just addressAttr -> genLoopMatrix addressAttr rows cols 1 quadNum
+                                                                                                                                                                Just addressAttr -> genLoopMatrix addressAttr rows cols 1 quadNum op
 
                                                                             
-                                                                    genFromDisplay (DisplayLiteralOrVariable (StringLiteral str)) quadNum idTable constTable =
+                                                                    genFromDisplay (DisplayLiteralOrVariable (StringLiteral str) op) quadNum idTable constTable =
                                                                         case ((Map.lookup ("<str>" ++ str) constTable)) of
-                                                                            Just address -> ([(buildQuadOneAddress quadNum (DISPLAY) address)],quadNum + 1)
-                                                                    genFromDisplay (DisplayLiteralOrVariable (IntegerLiteral int)) quadNum idTable constTable =
+                                                                            Just address -> ([(buildQuadOneAddress quadNum (op) address)],quadNum + 1)
+                                                                    genFromDisplay (DisplayLiteralOrVariable (IntegerLiteral int) op) quadNum idTable constTable =
                                                                         case ((Map.lookup ("<int>" ++ show(int)) constTable)) of
-                                                                            Just address -> ([(buildQuadOneAddress quadNum (DISPLAY) address)],quadNum + 1)
-                                                                    genFromDisplay (DisplayLiteralOrVariable (DecimalLiteral dec)) quadNum idTable constTable =
+                                                                            Just address -> ([(buildQuadOneAddress quadNum (op) address)],quadNum + 1)
+                                                                    genFromDisplay (DisplayLiteralOrVariable (DecimalLiteral dec) op) quadNum idTable constTable =
                                                                         case ((Map.lookup ("<dec>" ++ show(dec)) constTable)) of
-                                                                            Just address -> ([(buildQuadOneAddress quadNum (DISPLAY) address)],quadNum + 1)
-                                                                    genFromDisplay (DisplayLiteralOrVariable (BoolLiteral bool)) quadNum idTable constTable =
+                                                                            Just address -> ([(buildQuadOneAddress quadNum (op) address)],quadNum + 1)
+                                                                    genFromDisplay (DisplayLiteralOrVariable (BoolLiteral bool) op) quadNum idTable constTable =
                                                                         case ((Map.lookup ("<bool>" ++ show(bool)) constTable)) of
-                                                                            Just address -> ([(buildQuadOneAddress quadNum (DISPLAY) address)],quadNum + 1)
+                                                                            Just address -> ([(buildQuadOneAddress quadNum (op) address)],quadNum + 1)
 
                                                                     genFromDisplay _ quadNum idTable constTable = ([],quadNum)
 
-                                                                    genLoopArray :: Address -> Integer -> QuadNum -> ([Quadruple],QuadNum)
-                                                                    genLoopArray address 0 quadNum = ([],quadNum)
-                                                                    genLoopArray address limit quadNum = 
-                                                                        let newQuadAssignment = ([(buildQuadOneAddress quadNum (DISPLAY) address)])
-                                                                        in let (newQuads2,lastQuadNum2) = genLoopArray (address + 1) (limit - 1) (quadNum + 1)
+                                                                    genLoopArray :: Address -> Integer -> QuadNum -> Operation -> ([Quadruple],QuadNum)
+                                                                    genLoopArray address 0 quadNum _ = ([],quadNum)
+                                                                    genLoopArray address limit quadNum op = 
+                                                                        let newQuadAssignment = ([(buildQuadOneAddress quadNum (op) address)])
+                                                                        in let (newQuads2,lastQuadNum2) = genLoopArray (address + 1) (limit - 1) (quadNum + 1) op
                                                                         in (newQuadAssignment ++ newQuads2,lastQuadNum2)
 
-                                                                    genLoopMatrix :: Address -> Integer -> Integer -> Integer -> QuadNum -> ([Quadruple],QuadNum)
-                                                                    genLoopMatrix address 0 cols _ quadNum = ([],quadNum)
-                                                                    genLoopMatrix address rows cols offset quadNum = 
-                                                                        let (newQuads2,lastQuadNum2) = genLoopArray address cols quadNum
-                                                                        in let (newQuads3,lastQuadNum3) = genLoopMatrix (address + cols) (rows - 1) cols (offset + 1) lastQuadNum2  
-                                                                        in (newQuads2 ++ newQuads3,lastQuadNum3)
+                                                                    genLoopMatrix :: Address -> Integer -> Integer -> Integer -> QuadNum -> Operation -> ([Quadruple],QuadNum)
+                                                                    genLoopMatrix address 0 cols _ quadNum _ = ([],quadNum)
+                                                                    genLoopMatrix address rows cols offset quadNum op = 
+                                                                        let (newQuads2,lastQuadNum2) = genLoopArray address cols quadNum (DISPLAY)
+                                                                        in let newLine = ([(buildQuadOneAddress (lastQuadNum2) (DISPLAY_LINE) (-1))])
+                                                                        in let (newQuads3,lastQuadNum3) = genLoopMatrix (address + cols) (rows - 1) cols (offset + 1) (lastQuadNum2 + 1) op  
+                                                                        in (newQuads2 ++ newLine ++ newQuads3,lastQuadNum3)
 
                                                                     -- TODO MARK: Hacer cuadruplos de funciones y de acceso a arreglo, y tambien sustituir lo anterior por expresion!
                                                                     -- fillFromDisplay (DisplayFunctionCall funcCall) literalCounters constantAddressMap =
