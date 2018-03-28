@@ -23,7 +23,7 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
             in let (varCounters,newIdMap,objectAddressMap) = (prepareAddressMapsFromSymbolTable symTab classSymTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory)
                                                                 (Map.empty) (Map.empty))
             in do 
-                  -- putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList newIdMap) )
+                  putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList newIdMap) )
                   putStrLn $ ppShow $ (sortBy (compare `on` snd) ( Map.toList constantAddressMap5 ) )
                   -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList objectAddressMap) )
                   startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters newIdMap constantAddressMap5 objectAddressMap

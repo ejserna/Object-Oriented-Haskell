@@ -29,7 +29,7 @@ startCodeGen (Program classes functions variables (Block statements)) symTab cla
                 putStrLn $ (style Bold $ "# Objects: ") ++ (color Magenta $ show $ (obj - endObjectLocalMemory - 1))
                 -- mapM_ (putStrLn.ppShow) $ intercalate " , " [(color White . show $ (int - endIntGlobalMemory)), (color White . show $ (dec - endDecimalGlobalMemory)), (color White . show $ (str - endStringGlobalMemory)), (color White . show $ (obj - endObjectGlobalMemory))]
                 let (objMem,memoryFromAttributes) = prepareMemoryFromObjects (Map.toList objMap) Map.empty Map.empty
-                -- putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList idTable) )
+                putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList idTable) )
                 -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList objMem) )
                 -- putStrLn $ ppShow $ (Map.union  memoryFromAttributes (prepareMemory idTable constTable))
                 startVM quads (Map.union  memoryFromAttributes (prepareMemory idTable constTable)) (Map.empty) objMem

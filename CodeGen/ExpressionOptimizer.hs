@@ -96,7 +96,7 @@ arithmeticFunctionExpression f _ exp1 exp2 =  (f (optimizeExpression exp1) (opti
 
 
 powFunction :: (Expression -> Expression -> Expression) -> (Double -> Double -> Double) -> Expression -> Expression -> Expression
-powFunction _ f (ExpressionLitVar (IntegerLiteral int1)) (ExpressionLitVar (IntegerLiteral int2)) = (ExpressionLitVar (IntegerLiteral (round (f (intToDouble int1) (intToDouble int2)))))
+powFunction _ f (ExpressionLitVar (IntegerLiteral int1)) (ExpressionLitVar (IntegerLiteral int2)) = (ExpressionLitVar (IntegerLiteral ((int1 ^ int2))))
 powFunction _ f (ExpressionLitVar (DecimalLiteral dec1)) (ExpressionLitVar (IntegerLiteral int1)) = (ExpressionLitVar (DecimalLiteral (doubleToDecimal (f (decToDouble dec1) (intToDouble int1)))))
 powFunction _ f (ExpressionLitVar (IntegerLiteral int1)) (ExpressionLitVar (DecimalLiteral dec1)) = (ExpressionLitVar (DecimalLiteral (doubleToDecimal (f (intToDouble int1) (decToDouble dec1)))))
 powFunction _ f (ExpressionLitVar (DecimalLiteral dec1)) (ExpressionLitVar (DecimalLiteral dec2)) = (ExpressionLitVar (DecimalLiteral (doubleToDecimal (f (decToDouble dec1) (decToDouble dec2)))))
