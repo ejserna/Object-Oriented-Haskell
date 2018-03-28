@@ -14,6 +14,7 @@ import DataTypes
 import Data.Decimal
 import Text.Show.Pretty
 import TypeChecker
+import System.Environment
 
 }
 %name ooh
@@ -413,10 +414,27 @@ parseError tokenList = let pos = tokenPosn(head(tokenList))
   in 
   error ("Parse error at line " ++ show(getLineNum(pos)) ++ " and column " ++ show(getColumnNum(pos)))
 
+startTypeChecker ::  String -> IO()
+startTypeChecker source = do
+                            let parseTree = ooh (alexScanTokens2 source)
+                            startSemanticAnalysis parseTree
+
 main = do 
-  inStr <- getContents
-  let parseTree = ooh (alexScanTokens2 inStr)
+  args <- getArgs
+  case args of 
+      [file] -> do
+        sourceCode <- readFile file
+        startTypeChecker sourceCode
+      _ -> putStrLn "Wrong number of arguments"
+  if (length args) == 0 then
+    do 
+      sourceCode <- getContents
+      startTypeChecker sourceCode
+  else return () 
+  
   -- putStrLn ("SUCCESS " ++ show(parseTree) )
   -- putStrLn . ppShow $ parseTree
-  startSemanticAnalysis parseTree
+  
 }
+
+

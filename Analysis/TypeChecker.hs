@@ -68,7 +68,7 @@ analyzeMembersOfClassBlock (ClassBlock classMembers (ClassConstructor params blo
                                                     -- hay que verificar que no interfieran con otros identificadores dentro de la
                                                     -- clase
                                                     else if (Map.size (Map.intersection symTabFunc newSymTab1)) == 0
-                                                         then let newSymTab = (Map.insert "_constructor" (SymbolFunction {returnType = (Just (TypeClassId classIdentifier [])), scope = scp, body = block, shouldReturn = False ,isPublic = (Just True), symbolTable = symTabFunc, params = params}) symTab)
+                                                         then let newSymTab = (Map.insert (classIdentifier ++ "_constructor") (SymbolFunction {returnType = (Just (TypeClassId classIdentifier [])), scope = scp, body = block, shouldReturn = False ,isPublic = (Just True), symbolTable = symTabFunc, params = params}) symTab)
                                                                 in analyzeClassMembers classMembers classIdentifier scp newSymTab classSymTab
                                                           else (emptySymbolTable, True)                       
 -- let (newSymTab2,hasErrors) = analyzeClassMember cm scp newSymTab
@@ -289,7 +289,7 @@ checkIfParamsAreCorrect :: Scope -> [Params] -> ClassIdentifier -> SymbolTable -
 checkIfParamsAreCorrect scp sendingParams classIdentifier symTab classTab = 
                                     case (Map.lookup classIdentifier classTab) of
                                         Just symbolTableOfClass -> 
-                                                case (Map.lookup "_constructor" symbolTableOfClass) of
+                                                case (Map.lookup (classIdentifier ++ "_constructor") symbolTableOfClass) of
                                                     Just (symbolFunc) -> (compareListOfTypesWithFuncCall scp (map (\f -> fst f) (params symbolFunc)) sendingParams symTab classTab)
                                                     Nothing -> False 
                                         Nothing -> False 
@@ -335,7 +335,7 @@ analyzeStatement (ConditionStatement (If expression (Block statements))) scp sym
                                                     -- Si la expresión del if regresa booleano, entonces está bien
                                                     Just (PrimitiveBool) -> analyzeStatements statements (scp - 1) symTab classTab
                                                    -- De lo contrario, no se puede tener esa expresión en el if
-                                                    _ -> (emptySymbolTable, True)  
+                                                    _ -> (emptySymbolTable, False)  
 analyzeStatement (ConditionStatement (IfElse expression (Block statements) (Block statements2))) scp symTab classTab = 
                                                 case (expressionProcess scp expression symTab classTab) of
                                                     -- Si la expresión del if regresa booleano, entonces está bien
