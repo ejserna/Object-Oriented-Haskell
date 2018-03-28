@@ -428,7 +428,7 @@ analyzeDisplay (DisplayVarArrayAccess identifier ((ArrayAccessExpression innerEx
                                                             else False
                                             else False
 
-                                    Just (SymbolVar (TypeClassId classIdentifier (("[",size,"]") : [])) varScp _ ) -> 
+                                    Just (SymbolVar (TypeClassId classIdentifier (("[",rows,"]") : ("[",cols,"]")  : [])) varScp _ ) -> 
                                         if (varScp >= scp)
                                             then
                                                 let typeRowExp = (expressionProcess scp innerExpRow symTab classTab)

@@ -267,12 +267,19 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                     tell $ [color Red $ "BAD ADDRESS : " ++ show a1] 
                                                     return ()       
 runInstruction (QuadrupleOneAddress quadNum DISPLAY a1) = do 
-                                                            doDisplay a1 
+                                                            doDisplay a1 0
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
 runInstruction (QuadrupleOneAddress quadNum DISPLAY_LINE a1) = do 
-                                                            doDisplay a1
+                                                            doDisplay a1 0 
                                                             liftIO $ putStrLn $ ""
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
+runInstruction (QuadrupleOneAddress quadNum DISPLAY_VALUE_IN_INDEX a1) = do 
+                                                            cpuState <- get
+                                                            let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState
+                                                            case (Map.lookup a1 (Map.union globalMemory localMemory)) of
+                                                              Just (VMInteger addressFromArray) -> do 
+                                                                                                      doDisplay addressFromArray 0
+                                                                                                      modify $ \s -> (s { ip = (ip s) + 1 })
                                                             
 runInstruction (QuadrupleOneAddress quadNum DOUBLE a1) = do 
                                                             cpuState <- get
@@ -305,8 +312,9 @@ runInstruction (QuadrupleThreeAddresses quadNum ADD_INDEX index value a3) = do
                                                               Just (VMInteger int) -> do 
                                                                                         -- liftIO $ putStrLn $ (show (index + int))  ++ " " ++ (show a3) 
                                                                                         insertValueInAddress (VMInteger (index + int)) a3 
-                                                            
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
+
+
 runInstruction (QuadrupleTwoAddresses quadNum ACCESS_INDEX addressThatHasIndex a2) = do 
                                                             cpuState <- get
                                                             let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState
@@ -344,23 +352,32 @@ runInstruction (QuadrupleTwoAddresses quadNum BOUNDS a1 a2) = do
 runInstruction _ =  return ()
 
 
-doDisplay :: Address -> VM
-doDisplay a1 
+doDisplay :: Address -> Int -> VM
+doDisplay a1 nestFactor
         -- Si es un objeto, la asignacion debe hacerse considerando todos sus atributos
      | a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
         || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory  = do 
                                                                             cpuState <- get
+                                                                            liftIO $ putStr $ take nestFactor $ cycle "\t"
+                                                                            liftIO $ putStrLn $ (color Magenta $ "<object>" ) ++ (color White $ "{")
                                                                             let (panic,currentIP,globalMemory,localMemory,objectMemory) = getCPUState cpuState
                                                                             case (Map.lookup a1 objectMemory) of
-                                                                                Just addressesFromObject -> doDeepDisplay addressesFromObject
+                                                                                Just addressesFromObject -> do 
+                                                                                        doDeepDisplay addressesFromObject (nestFactor + 1)
+                                                                            liftIO $ putStrLn $ ""
+                                                                            liftIO $ putStr $ take nestFactor $ cycle "\t"
+                                                                            liftIO $ putStrLn $ color White $ "}"
      | otherwise = do 
                 cpuState <- get
                 let (_,currentIP,globalMemory,localMemory,_) = getCPUState cpuState
                 let memories = (Map.union globalMemory localMemory) 
+                liftIO $ putStr $ take nestFactor $ cycle "\t"
                 case (Map.lookup a1 memories) of 
                     Just (VMString val) -> do 
                             liftIO $ putStr $ (style Underline $ val)  ++ " "
-                    Just VMEmpty -> return ()
+                    Just VMEmpty ->
+                                do liftIO $ putStr $ " " 
+                                   return ()
                     Just val -> do 
                             liftIO $ putStr $ (show $ val) ++ " "
                             -- tell $ [show val]
@@ -402,11 +419,17 @@ doDeepAssignment (addrGiver : addressesGiver ) (addrReceiver : addressesReceiver
                                                                                     doAssignment addrGiver addrReceiver
                                                                                     doDeepAssignment addressesGiver addressesReceiver
                                                                                     return ()
-doDeepDisplay :: [Address] -> VM
-doDeepDisplay [] = do return ()
-doDeepDisplay (addr : addresses )  = do 
-                                        doDisplay addr
-                                        doDeepDisplay addresses
+doDeepDisplay :: [Address] -> Int -> VM
+doDeepDisplay [] _ = do return ()
+doDeepDisplay (addr : addresses ) nestFactor = do 
+
+                                        liftIO $ putStr $ take (nestFactor)  $ cycle "\t"
+                                        liftIO $ putStrLn $  (color Blue $ "<attribute>" ) ++ (color White $ "{")
+                                        doDisplay addr (nestFactor + 1)
+                                        liftIO $ putStrLn $ ""
+                                        liftIO $ putStr $ take nestFactor $ cycle "\t"
+                                        liftIO $ putStrLn $ color White $ "}"
+                                        doDeepDisplay addresses nestFactor
                                         return ()
 
 doAbstractOperation :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM

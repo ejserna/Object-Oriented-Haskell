@@ -43,10 +43,12 @@ expressionProcess scp (ExpressionVarArray identifier ((ArrayAccessExpression exp
                                                      Just PrimitiveInt -> 
                                                             case (expressionProcess scp expression2 symTab classSymTab) of
                                                               Just PrimitiveInt -> checkArrayID scp identifier symTab 2
+                                                              Just PrimitiveInteger -> checkArrayID scp identifier symTab 2
                                                               _ -> Nothing  
                                                      Just PrimitiveInteger -> 
                                                             case (expressionProcess scp expression2 symTab classSymTab) of
                                                               Just PrimitiveInteger -> checkArrayID scp identifier symTab 2
+                                                              Just PrimitiveInt -> checkArrayID scp identifier symTab 2
                                                               _ -> Nothing
                                                      _ -> Nothing
 expressionProcess scp (ExpressionNeg exp) symTab classSymTab = expressionCheckNEG scp exp symTab classSymTab

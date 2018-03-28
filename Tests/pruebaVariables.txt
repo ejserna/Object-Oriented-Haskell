@@ -1,41 +1,66 @@
+class Woo{
+  [+] String [10][10] nombre;
+}
+
+class Humano{
+  [+] String nombre;
+  [+] Woo [5] wok;
+}
+
 class Escuela{
   [+] String avenida;
   [+] Integer numero;
   [+] Integer [10] califas;
+  [+] Humano humano;
 }
 
 main{
-    Escuela [10] es;
-    Int [10] califas = [1,2,3,4,5,6,7];
-    califas[0] = 99999999;
-    Int i,counter1;
-    counter1 = 1;
-    i = califas[counter1];
-    displayLn(i);
-    Escuela escu, escuuu;
-    escu.avenida = "Gonzalitos";
-    escu.numero = 123;
-    escu.califas = califas;
+    displayLn("Bienvenido a ejemplo OP");
+    Escuela escu;
+    escu.avenida = "Cuahtemoc";
+    escu.numero = 12345;
+    String [10][10] strings;
+    strings [5][5] = "Hola";
+    Woo w;
+    w.nombre = strings;
+    Humano h;
+    Woo [5] woos = [w,w];
+    h.wok = woos;
 
-    for counter3 in [0..9]{
-      escu.avenida = "Gonzalitos";
-      escu.numero = 123;
-      escu.califas = califas;
-      es[counter3] =  escu;
-      if (counter3 == 5){
-        escu.numero = 1234559549494949494;
-        Int [10] califos;
-        califos = escu.califas;
-        escu.avenida = "Los Gatos,California";
-        califos[8] = 200 ^ (califas[2] + califas[1]);
-        califos[9] = -1000000;
-        escu.califas = califos;
-        es[counter3] = escu;
+    Escuela [6][6] escuelas;
+    
+    for row1 in [0..5]{
+      for col1 in [0..5]{
+        if (row1 == 0 && col1 == 5){
+          Escuela cool;
+          cool.avenida = "Moroleon 123";
+          cool.numero = 777;
+          cool.humano = h;
+          escuelas[0][5] = cool;
+
+        }
+        else{
+          escuelas[row1][col1] = escu;
+        }
+        
       }
     }
     
-    for counter4 in [0..9]{
-      escuuu = es[counter4];
-      displayLn(escuuu);
+    Escuela itesm;
+    Humano hoho;
+    Woo [5] wokos;
+    Woo woko;
+    String [10][10] nombres;
+    String [5] names;
+    String [5] koko;
+    itesm = escuelas[0][5];
+    hoho = itesm.humano;
+    wokos = hoho.wok;
+    woko = wokos[0];
+    nombres = woko.nombre;
+    displayLn(nombres[5][5]);
+    if (nombres[5][5] == strings[5][5]){
+      displayLn("Recursion OP");
     }
+
 }

@@ -157,6 +157,7 @@ ListType :
 Variable :
           Type var_identifier VarIdentifiers ";" {VariableNoAssignment $1 ($2:$3) }
         | Type var_identifier "=" LiteralOrVariable ";" {VariableAssignmentLiteralOrVariable $1 $2 $4 }
+        -- | Type var_identifier "=" Expression ";" {VariableExpressionAssignment $1 ($2:$3) }
         | Type var_identifier "=" ArrayAssignment1D ";" {VariableAssignment1D $1 $2 $4 }
         | Type var_identifier "=" ArrayAssignment2D ";" {VariableAssignment2D $1 $2 $4 }
         | Type var_identifier "=" ObjectCreation ";" {VariableAssignmentObject $1 $2 $4 }
