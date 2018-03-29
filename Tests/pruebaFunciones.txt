@@ -1,0 +1,30 @@
+class Point{
+    [+] Double x;
+    [+] Double y;
+
+    [-] callMethod => Nothing{
+        display("Llamada interna");
+    }
+
+    [+] setPoint => Nothing :: Double dX -> Double dY{
+        x = dX;
+        y = dY;
+        callMethod();
+    }
+
+}
+
+fibo => Int :: Int n {
+    return n;
+}
+
+fibo2 => Int [10][10] :: Int n {
+    Int [10][10] i;
+    return i;
+}
+
+main{
+    Point p;
+    p.setPoint(1.0,2.0);
+    displayLn("hola");
+}
