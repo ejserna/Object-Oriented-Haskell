@@ -210,9 +210,13 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                     | a1 >= startIntGlobalMemory && a1 <= endIntGlobalMemory     
                                       || a1 >= startIntLocalMemory && a1 <= endIntLocalMemory =
                                                                 do 
+                                                                    cpuState <- get
+                                                                    quadruples <-  ask
                                                                     tty <- liftIO $ openFile "/dev/tty" ReadMode
                                                                     liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: Integer" ) ++ (style SlowBlink $ ">")
                                                                     x  <- liftIO $ hGetLine tty
+                                                                    let (_,currentIP,globalMemory,localMemory,objectMemory) = getCPUState cpuState
+                                                                    (a,s) <- liftIO $ execRWST (unwrapVM $ runVM) [] (setInitialCPUState globalMemory localMemory objectMemory) 
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     case (checkInt x) of 
                                                                         Just int -> do

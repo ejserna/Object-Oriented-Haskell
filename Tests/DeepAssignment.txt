@@ -18,6 +18,7 @@ main{
     Humano humano;
     Cuenta cuenta;
     Integer [5][5] numeros = [[1,2,3,4,1222222222],
+                              [1,2,3,4,1222222222],
                               [1,2,3,4,1222222222]];
     cuenta.numeros = numeros;
     Cuenta [5][5] matrizCuentas = [[cuenta,cuenta,cuenta],

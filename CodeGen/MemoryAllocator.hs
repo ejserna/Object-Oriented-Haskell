@@ -1,4 +1,18 @@
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module MemoryAllocator where 
+import Control.Monad.RWS
+import Control.Monad.Except
+import Control.Monad.Trans.Except
+import Control.Monad.Identity
+import Control.Monad.Trans
+import Control.Monad
 import Data.Decimal
 import DataTypes
 import Quadruple
@@ -12,389 +26,524 @@ import Data.List (sortBy)
 import Data.Ord (comparing)
 import Data.Function (on)
 
+type FunctionMap = Map.HashMap String FunctionData
+
+data FunctionData = FunctionData
+                {   instructions :: [Quadruple], 
+                    paramsAddresses :: [Address], -- Params tiene una lista de direcciones que corresponden a direcciones locales de la funcion. Es decir
+                                                  -- Nos dicen cómo están representados internamente en la función
+                    returnAddresses :: [Address] -- Esto nos dice las direcciones internas de retorno de la funcion.
+                                                 -- Es decir, nos dicen qué direcciones internas de la función son las que se están regresando
+                                                 -- Esto le ayudará a la VM saber qué direcciones buscar dentro de la memoria local de la función que llamó
+                }
+                deriving (Show)
+
+data SymbolEnvironment = SymbolEnvironment
+                {   symTab :: SymbolTable, 
+                    classTab :: ClassSymbolTable
+                }
+                deriving (Show)
+
+data MemoryState = MemoryState
+                {   idAddressMap :: IdentifierAddressMap, 
+                    constAddressMap :: ConstantAddressMap,
+                    objAddressMap :: ObjectAddressMap,
+                    funcMap :: FunctionMap,
+                    varCounters :: VariableCounters,
+                    literalCounters :: LiteralCounters
+                }
+                deriving (Show)
+
+newtype MemoryAllocator a = MemoryAllocator{
+    runMA :: RWST SymbolEnvironment () MemoryState IO a
+} deriving (Functor, Applicative,Monad,MonadIO,MonadRWS SymbolEnvironment () MemoryState)
+
+instance MonadReader SymbolEnvironment MemoryAllocator where
+    ask = MemoryAllocator ask
+
+instance MonadWriter () MemoryAllocator where
+    tell = MemoryAllocator . tell
+
+instance MonadState MemoryState MemoryAllocator where
+    get = MemoryAllocator get
+    put s = MemoryAllocator . put $ s 
+
+-- type MemoryAllocator =  RWS SymbolEnvironment () MemoryState 
+
+type MA =  MemoryAllocator ()
+
+setMemoryState :: IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> FunctionMap -> VariableCounters -> LiteralCounters -> MemoryState
+setMemoryState idMap consMap objMap funcMap varCounters litCounters = MemoryState  idMap consMap objMap funcMap varCounters litCounters
+
+getCurrentMemoryState :: MemoryState -> (IdentifierAddressMap,ConstantAddressMap,ObjectAddressMap,FunctionMap,VariableCounters,LiteralCounters)
+getCurrentMemoryState (MemoryState i c o f v l) = (i,c,o,f,v,l)
+
+setEnvironment :: SymbolTable -> ClassSymbolTable -> SymbolEnvironment
+setEnvironment symTab classSymTab = SymbolEnvironment symTab classSymTab
+
 startMemoryAllocation :: Program -> SymbolTable -> ClassSymbolTable -> IO()
 startMemoryAllocation (Program classes functions variables (Block statements)) symTab classSymTab =
-            let (newLiteralCounters,constantAddressMap) =  (prepareConstantAddressMap statements (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory)
-                                                                (Map.empty))
-            in let (newLiteralCounters2,constantAddressMap2) = fillFromExpression newLiteralCounters constantAddressMap (ExpressionLitVar (DecimalLiteral 0.0))
-            in let (newLiteralCounters3,constantAddressMap3) = fillFromExpression newLiteralCounters2 constantAddressMap2 (ExpressionLitVar (IntegerLiteral 0))
-            in let (newLiteralCounters4,constantAddressMap4) = fillFromExpression newLiteralCounters3 constantAddressMap3 (ExpressionLitVar (StringLiteral ""))
-            in let (newLiteralCounters5,constantAddressMap5) = fillFromExpression newLiteralCounters4 constantAddressMap4 (ExpressionLitVar (BoolLiteral True))
-            in let (varCounters,newIdMap,objectAddressMap) = (prepareAddressMapsFromSymbolTable symTab classSymTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory)
-                                                                (Map.empty) (Map.empty))
-            in do 
-                  putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList newIdMap) )
-                  putStrLn $ ppShow $ (sortBy (compare `on` snd) ( Map.toList constantAddressMap5 ) )
-                  -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList objectAddressMap) )
-                  startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters newIdMap constantAddressMap5 objectAddressMap
+           do 
+            let env = (setEnvironment symTab classSymTab)
+            let memState = setMemoryState Map.empty Map.empty Map.empty Map.empty (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory) (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory)
+            (stateAfterConstants1,_) <-  execRWST (runMA $ prepareConstantAddressMap statements) env memState
+            (stateAfterConstants2,_) <- execRWST (runMA $ fillFromExpression (ExpressionLitVar $ DecimalLiteral 0.0) ) env stateAfterConstants1 
+            (stateAfterConstants3,_) <- execRWST (runMA $ fillFromExpression (ExpressionLitVar $ IntegerLiteral 0 ) ) env stateAfterConstants2
+            (stateAfterConstants4,_) <- execRWST (runMA $ fillFromExpression (ExpressionLitVar $ StringLiteral "") ) env stateAfterConstants3
+            (stateAfterConstants5,_) <- execRWST (runMA $ fillFromExpression (ExpressionLitVar $ BoolLiteral True) ) env stateAfterConstants4
+            let constantAddressMap = (constAddressMap stateAfterConstants5)
+            (stateAfterVariablesInStatements,_) <- execRWST (runMA $ prepareAddressMapsFromSymbolTable) env stateAfterConstants5
+            let (idMap,constMap, objMap, funcMap, varCounters, litCounters) = getCurrentMemoryState stateAfterVariablesInStatements
+            -- let (varCounters,newIdMap,objectAddressMap) = (prepareAddressMapsFromSymbolTable symTab classSymTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory)
+            --                                                     (Map.empty) (Map.empty))
+        
+            startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters idMap constMap objMap 
 
-prepareConstantAddressMap :: [Statement] -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
-prepareConstantAddressMap [] literalCounters constantAddressMap = (literalCounters,constantAddressMap)
-prepareConstantAddressMap (st : sts) literalCounters constantAddressMap = 
-            let (newLiteralCounters, newConsAddressMap) = fillFromStatement st literalCounters constantAddressMap
-            in let (newLiteralCounters2, newConsAddressMap2) = (prepareConstantAddressMap sts newLiteralCounters newConsAddressMap)
-                in (newLiteralCounters2, newConsAddressMap2)
+prepareConstantAddressMap :: [Statement] -> MA
+prepareConstantAddressMap []  = return ()
+prepareConstantAddressMap (st : sts) = 
+            do 
+                fillFromStatement st
+                prepareConstantAddressMap sts
+                return ()
 
+fillFromStatement :: Statement -> MA
+fillFromStatement (AssignStatement assignment)  = fillFromAssignment assignment
+fillFromStatement (VariableStatement var)  = fillFromVariable var
+fillFromStatement (ConditionStatement (If expression (Block statements))) = do 
+                                                                                fillFromExpression expression
+                                                                                prepareConstantAddressMap statements
+fillFromStatement (ConditionStatement (IfElse expression (Block statements) (Block statements2))) = do 
+                                                                                                        fillFromExpression expression
+                                                                                                        prepareConstantAddressMap statements
+                                                                                                        prepareConstantAddressMap statements2
+fillFromStatement (CycleStatement (CycleWhile (While expression (Block statements)))) = do 
+                                                                                          fillFromExpression expression
+                                                                                          prepareConstantAddressMap statements
+fillFromStatement (CycleStatement (CycleFor (For lowerRange greaterRange (Block statements)))) = do
+                                                                                                    fillFromExpression (ExpressionLitVar $ IntegerLiteral $ lowerRange)
+                                                                                                    fillFromExpression (ExpressionLitVar $ IntegerLiteral $ greaterRange)
+                                                                                                    prepareConstantAddressMap statements
+fillFromStatement (CycleStatement (CycleForVar statements)) = prepareConstantAddressMap statements
+fillFromStatement (DPMStatement assignment) = fillFromStatement (AssignStatement assignment)
+fillFromStatement (FunctionCallStatement functionCall) = fillFromFunctionCall functionCall
+fillFromStatement (ReturnStatement (ReturnExp expression)) = fillFromExpression expression
+fillFromStatement (ReturnStatement (ReturnFunctionCall functionCall))  = fillFromFunctionCall functionCall
+fillFromStatement (DisplayStatement displays) = fillFromDisplays displays
+                                                                where 
+                                                                    fillFromDisplays :: [Display] -> MA
+                                                                    fillFromDisplays [] = return ()
+                                                                    fillFromDisplays (disp : disps)  =
+                                                                        do 
+                                                                            fillFromDisplay disp
+                                                                            fillFromDisplays disps 
 
-fillFromLiteralOrVariables :: [LiteralOrVariable] -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
-fillFromLiteralOrVariables [] literalCounters constantAddressMap = (literalCounters,constantAddressMap)
-fillFromLiteralOrVariables (litVar : litVars) literalCounters constantAddressMap
-            = let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap (ExpressionLitVar litVar)
-                in fillFromLiteralOrVariables litVars newLiteralCounters newConsAddressMap
+                                                                    fillFromDisplay :: Display -> MA
+                                                                    fillFromDisplay (DisplayLiteralOrVariable litOrVar _)  =
+                                                                        fillFromExpression (ExpressionLitVar litOrVar) 
+                                                                    fillFromDisplay (DisplayFunctionCall funcCall _) =
+                                                                        fillFromExpression (ExpressionFuncCall funcCall)
+                                                                    fillFromDisplay (DisplayVarArrayAccess identifier arrayAccess _) =
+                                                                        fillFromExpression (ExpressionVarArray identifier arrayAccess)  
+                                                                    fillFromDisplay _  = return ()
+fillFromStatement _  = return ()
 
-fillFromListOfLiteralOrVariables :: [[LiteralOrVariable]] -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
-fillFromListOfLiteralOrVariables [] literalCounters constantAddressMap = (literalCounters,constantAddressMap)
-fillFromListOfLiteralOrVariables (listLitVars : rest) literalCounters constantAddressMap
-            = let (newLiteralCounters, newConsAddressMap) = fillFromLiteralOrVariables listLitVars literalCounters constantAddressMap
-                in fillFromListOfLiteralOrVariables rest newLiteralCounters newConsAddressMap
-
-fillFromVariable :: Variable -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
-fillFromVariable (VariableAssignmentLiteralOrVariable dataType identifier literalOrVariable) literalCounters constantAddressMap =
+fillFromVariable :: Variable  -> MA
+fillFromVariable (VariableAssignmentLiteralOrVariable dataType identifier literalOrVariable)  =
                                 case dataType of
-                                    (TypePrimitive _ []) ->  fillFromExpression literalCounters constantAddressMap (ExpressionLitVar literalOrVariable) 
+                                    (TypePrimitive _ []) ->  fillFromExpression (ExpressionLitVar literalOrVariable) 
                                     (TypePrimitive _ (("[",size,"]") : []) ) -> 
-                                        let (litCounters2,constMap2) = fillFromExpression literalCounters constantAddressMap (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral size))) : [])) 
-                                        in fillFromExpression litCounters2 constMap2 (ExpressionLitVar literalOrVariable)
+                                            do 
+                                                fillFromExpression (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral size))) : []))
+                                                fillFromExpression (ExpressionLitVar literalOrVariable) 
                                     (TypePrimitive _ (("[",rows,"]") : ("[",cols,"]") : [] ) ) -> 
-                                        let (litCounters2,constMap2) = fillFromExpression literalCounters constantAddressMap (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral rows))) : (ArrayAccessExpression (ExpressionLitVar (IntegerLiteral cols))) : [])) 
-                                        in fillFromExpression litCounters2 constMap2 (ExpressionLitVar literalOrVariable)
-                                    (TypeClassId _ []) ->  fillFromExpression literalCounters constantAddressMap (ExpressionLitVar literalOrVariable) 
+                                            do 
+                                                fillFromExpression (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral rows))) : (ArrayAccessExpression (ExpressionLitVar (IntegerLiteral cols))) : [])) 
+                                                fillFromExpression (ExpressionLitVar literalOrVariable)
+                                    (TypeClassId _ []) ->  
+                                            do fillFromExpression (ExpressionLitVar literalOrVariable) 
                                     (TypeClassId _ (("[",size,"]") : []) ) -> 
-                                        let (litCounters2,constMap2) = fillFromExpression literalCounters constantAddressMap (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral size))) : [])) 
-                                        in fillFromExpression litCounters2 constMap2 (ExpressionLitVar literalOrVariable)
+                                            do 
+                                                fillFromExpression (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral size))) : []))
+                                                fillFromExpression (ExpressionLitVar literalOrVariable) 
                                     (TypeClassId _ (("[",rows,"]") : ("[",cols,"]") : [] ) ) -> 
-                                        let (litCounters2,constMap2) = fillFromExpression literalCounters constantAddressMap (ExpressionVarArray identifier ((ArrayAccessExpression $ ExpressionLitVar $ IntegerLiteral rows) : (ArrayAccessExpression $ ExpressionLitVar $ IntegerLiteral cols) : [])) 
-                                        in fillFromExpression litCounters2 constMap2 (ExpressionLitVar literalOrVariable)
-fillFromVariable (VariableNoAssignment dataType _) literalCounters constantAddressMap =
+                                            do 
+                                                fillFromExpression (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral rows))) : (ArrayAccessExpression (ExpressionLitVar (IntegerLiteral cols))) : [])) 
+                                                fillFromExpression (ExpressionLitVar literalOrVariable)
+fillFromVariable (VariableNoAssignment dataType _)  =
                                 case dataType of
-                                    (TypePrimitive _ []) ->  (literalCounters,constantAddressMap) 
+                                    (TypePrimitive _ []) ->  return ()
                                     (TypePrimitive _ (("[",size,"]") : []) ) -> 
-                                        fillFromExpression literalCounters constantAddressMap (ExpressionVarArray "" ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral size))) : [])) 
+                                        fillFromExpression (ExpressionVarArray "" ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral size))) : [])) 
                                     (TypePrimitive _ (("[",rows,"]") : ("[",cols,"]") : [] ) ) -> 
-                                        fillFromExpression literalCounters constantAddressMap (ExpressionVarArray "" ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral rows))) : (ArrayAccessExpression (ExpressionLitVar (IntegerLiteral cols))) : [])) 
-                                    (TypeClassId _ []) ->  (literalCounters,constantAddressMap) 
+                                        fillFromExpression  (ExpressionVarArray "" ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral rows))) : (ArrayAccessExpression (ExpressionLitVar (IntegerLiteral cols))) : [])) 
+                                    (TypeClassId _ []) ->  return ()
                                     (TypeClassId _ (("[",size,"]") : []) ) -> 
-                                       fillFromExpression literalCounters constantAddressMap (ExpressionVarArray "" ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral size))) : [])) 
+                                       fillFromExpression (ExpressionVarArray "" ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral size))) : [])) 
                                     (TypeClassId _ (("[",rows,"]") : ("[",cols,"]") : [] ) ) -> 
-                                        fillFromExpression literalCounters constantAddressMap (ExpressionVarArray "" ((ArrayAccessExpression $ ExpressionLitVar $ IntegerLiteral rows) : (ArrayAccessExpression $ ExpressionLitVar $ IntegerLiteral cols) : [])) 
-fillFromVariable (VariableAssignment1D dataType identifier literalOrVariables) literalCounters constantAddressMap = 
+                                        fillFromExpression (ExpressionVarArray "" ((ArrayAccessExpression $ ExpressionLitVar $ IntegerLiteral rows) : (ArrayAccessExpression $ ExpressionLitVar $ IntegerLiteral cols) : [])) 
+fillFromVariable (VariableAssignment1D dataType identifier literalOrVariables)  = 
                                  case dataType of
                                     (TypePrimitive _ (("[",size,"]") : []) ) -> 
-                                        let (litCounters2,constMap2) = fillFromExpression literalCounters constantAddressMap (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral size))) : [])) 
-                                        in fillFromLiteralOrVariables literalOrVariables litCounters2 constMap2
+                                        do 
+                                            fillFromExpression (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral size))) : [])) 
+                                            fillFromLiteralOrVariables literalOrVariables
                                     (TypeClassId _ (("[",size,"]") : []) ) -> 
-                                        let (litCounters2,constMap2) = fillFromExpression literalCounters constantAddressMap (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral size))) : [])) 
-                                        in fillFromLiteralOrVariables literalOrVariables litCounters2 constMap2
+                                        do 
+                                            fillFromExpression (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral size))) : [])) 
+                                            fillFromLiteralOrVariables literalOrVariables 
                                     
-
-                                
-fillFromVariable (VariableAssignment2D dt identifier listOfListVars) literalCounters constantAddressMap =
+fillFromVariable (VariableAssignment2D dt identifier listOfListVars) =
                                   case dt of
                                     (TypePrimitive _ (("[",rows,"]") : ("[",cols,"]") : [] ) ) -> 
-                                        let (litCounters2,constMap2) = fillFromExpression literalCounters constantAddressMap (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral rows))) : (ArrayAccessExpression (ExpressionLitVar (IntegerLiteral cols))) : [])) 
-                                        in fillFromListOfLiteralOrVariables listOfListVars litCounters2 constMap2
+                                        do 
+                                            fillFromExpression (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral rows))) : (ArrayAccessExpression (ExpressionLitVar (IntegerLiteral cols))) : []))
+                                            fillFromListOfLiteralOrVariables listOfListVars
                                     (TypeClassId _ (("[",rows,"]") : ("[",cols,"]") : [] ) ) -> 
-                                        let (litCounters2,constMap2) = fillFromExpression literalCounters constantAddressMap (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral rows))) : (ArrayAccessExpression (ExpressionLitVar (IntegerLiteral cols))) : [])) 
-                                        in fillFromListOfLiteralOrVariables listOfListVars litCounters2 constMap2
-fillFromVariable (VariableAssignmentObject _ _ (ObjectCreation _ params)) literalCounters constantAddressMap = 
-                                fillFromCallParams literalCounters constantAddressMap params
-fillFromVariable _ literalCounters constantAddressMap  = (literalCounters,constantAddressMap)
+                                        do 
+                                            fillFromExpression (ExpressionVarArray identifier ((ArrayAccessExpression (ExpressionLitVar (IntegerLiteral rows))) : (ArrayAccessExpression (ExpressionLitVar (IntegerLiteral cols))) : []))
+                                            fillFromListOfLiteralOrVariables listOfListVars
+fillFromVariable (VariableAssignmentObject _ _ (ObjectCreation _ params)) = 
+                                fillFromCallParams params
+fillFromVariable _  = return ()
 
 
-fillFromAssignment :: Assignment -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
-fillFromAssignment (AssignmentExpression identifier expression) literalCounters constantAddressMap = fillFromExpression literalCounters constantAddressMap expression
-fillFromAssignment  (AssignmentObjectMemberExpression (ObjectMember objectIdentifier attrIdentifier) expression) literalCounters constantAddressMap =  fillFromExpression literalCounters constantAddressMap expression
+fillFromLiteralOrVariables :: [LiteralOrVariable] -> MA
+fillFromLiteralOrVariables []  = return ()
+fillFromLiteralOrVariables (litVar : litVars)  = 
+            do 
+                fillFromExpression (ExpressionLitVar litVar)
+                fillFromLiteralOrVariables litVars
 
-fillFromAssignment  (AssignmentArrayExpression _ ((ArrayAccessExpression innerExp) : []) expression) literalCounters constantAddressMap =  
-                                                                                        let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap innerExp
-                                                                                        in fillFromExpression newLiteralCounters newConsAddressMap expression
-fillFromAssignment  (AssignmentArrayExpression _ ((ArrayAccessExpression innerExpRow) : (ArrayAccessExpression innerExpCol)  : []) expression) literalCounters constantAddressMap = 
-                                                                                                                let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap innerExpRow
-                                                                                                                    in let (newLiteralCounters2,newConsAddressMap2) = fillFromExpression newLiteralCounters newConsAddressMap innerExpCol
-                                                                                                                        in fillFromExpression newLiteralCounters2 newConsAddressMap2 expression
-
-fillFromAssignment _ literalCounters constantAddressMap  = (literalCounters,constantAddressMap)
-
-fillFromStatement :: Statement -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters, ConstantAddressMap)
-fillFromStatement (AssignStatement assignment) literalCounters constantAddressMap = fillFromAssignment assignment literalCounters constantAddressMap
-fillFromStatement (VariableStatement var) literalCounters constantAddressMap = fillFromVariable var literalCounters constantAddressMap
-
-fillFromStatement (ConditionStatement (If expression (Block statements))) literalCounters constantAddressMap = 
-                                                let (newLiteralCounters, newConsAddressMap) = fillFromExpression literalCounters constantAddressMap expression
-                                                    in let (newLiteralCounters2, newConsAddressMap2) = prepareConstantAddressMap statements newLiteralCounters newConsAddressMap
-                                                        in (newLiteralCounters2, newConsAddressMap2)  
-fillFromStatement (ConditionStatement (IfElse expression (Block statements) (Block statements2)))literalCounters constantAddressMap = 
-                                                let (newLiteralCounters, newConsAddressMap) = fillFromExpression literalCounters constantAddressMap expression
-                                                    in let (newLiteralCounters2, newConsAddressMap2) = prepareConstantAddressMap statements newLiteralCounters newConsAddressMap
-                                                        in prepareConstantAddressMap statements2 newLiteralCounters2 newConsAddressMap2  
-fillFromStatement (CycleStatement (CycleWhile (While expression (Block statements)))) literalCounters constantAddressMap = 
-                let (newLiteralCounters, newConsAddressMap) = fillFromExpression literalCounters constantAddressMap expression
-                    in let (newLiteralCounters2, newConsAddressMap2) = prepareConstantAddressMap statements newLiteralCounters newConsAddressMap
-                        in (newLiteralCounters2, newConsAddressMap2)
-fillFromStatement (CycleStatement (CycleFor (For lowerRange greaterRange (Block statements)))) (intLitC,decLitC, strLitC, boolLitC) constantAddressMap =
-                                                             case (Map.lookup ("<int>" ++ (show lowerRange)) constantAddressMap) of
-                                                                Just _ -> 
-                                                                        case (Map.lookup ("<int>" ++ (show greaterRange)) constantAddressMap) of
-                                                                            Just _ -> ( prepareConstantAddressMap statements (intLitC, decLitC, strLitC, boolLitC) constantAddressMap)
-                                                                            _ -> let newConsAddressMap2 = (Map.insert ("<int>" ++ (show greaterRange)) intLitC constantAddressMap)
-                                                                                    in ( prepareConstantAddressMap statements (intLitC + 1, decLitC, strLitC, boolLitC) newConsAddressMap2 )
-                                                                _ -> let newConsAddressMap = (Map.insert ("<int>" ++ (show lowerRange)) intLitC constantAddressMap)
-                                                                        in case (Map.lookup ("<int>" ++ (show greaterRange)) constantAddressMap) of
-                                                                            Just _ -> ( prepareConstantAddressMap statements (intLitC + 1, decLitC, strLitC, boolLitC) newConsAddressMap ) 
-                                                                            _ -> let newConsAddressMap2 = (Map.insert ("<int>" ++ (show greaterRange)) (intLitC + 1) newConsAddressMap)
-                                                                                    in ( prepareConstantAddressMap statements (intLitC + 2, decLitC, strLitC, boolLitC) newConsAddressMap2 )
-fillFromStatement (CycleStatement (CycleForVar statements)) literalCounters constantAddressMap = prepareConstantAddressMap statements literalCounters constantAddressMap
-fillFromStatement (DPMStatement assignment) literalCounters constantAddressMap = fillFromStatement (AssignStatement assignment) literalCounters constantAddressMap
-fillFromStatement (FunctionCallStatement functionCall) literalCounters constantAddressMap = fillFromFunctionCall functionCall literalCounters constantAddressMap
-fillFromStatement (ReturnStatement (ReturnExp expression)) literalCounters constantAddressMap = fillFromExpression literalCounters constantAddressMap expression
-fillFromStatement (ReturnStatement (ReturnFunctionCall functionCall)) literalCounters constantAddressMap = fillFromFunctionCall functionCall literalCounters constantAddressMap
-fillFromStatement (DisplayStatement displays) literalCounters constantAddressMap = fillFromDisplays displays literalCounters constantAddressMap
-                                                                where 
-                                                                    fillFromDisplays :: [Display] -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters,ConstantAddressMap)
-                                                                    fillFromDisplays [] literalCounters constantAddressMap = (literalCounters,constantAddressMap)
-                                                                    fillFromDisplays (disp : disps) literalCounters constantAddressMap = 
-                                                                            let (newLiteralCounters2,newConsAddressMap) = fillFromDisplay disp literalCounters constantAddressMap
-                                                                            in fillFromDisplays disps newLiteralCounters2 newConsAddressMap
-
-                                                                    fillFromDisplay :: Display -> LiteralCounters -> ConstantAddressMap -> (LiteralCounters,ConstantAddressMap)
-                                                                    fillFromDisplay (DisplayLiteralOrVariable litOrVar _) literalCounters constantAddressMap =
-                                                                        fillFromExpression literalCounters constantAddressMap (ExpressionLitVar litOrVar) 
-                                                                    fillFromDisplay (DisplayFunctionCall funcCall _) literalCounters constantAddressMap =
-                                                                        fillFromExpression literalCounters constantAddressMap (ExpressionFuncCall funcCall)
-                                                                    fillFromDisplay (DisplayVarArrayAccess identifier arrayAccess _) literalCounters constantAddressMap =
-                                                                        fillFromExpression literalCounters constantAddressMap (ExpressionVarArray identifier arrayAccess)  
-                                                                    fillFromDisplay _ literalCounters constantAddressMap =
-                                                                        (literalCounters,constantAddressMap)  
-fillFromStatement _ literalCounters constantAddressMap = (literalCounters,constantAddressMap)
+fillFromListOfLiteralOrVariables :: [[LiteralOrVariable]] -> MA
+fillFromListOfLiteralOrVariables []  = return ()
+fillFromListOfLiteralOrVariables (listLitVars : rest) = do 
+                                                            fillFromLiteralOrVariables listLitVars
+                                                            fillFromListOfLiteralOrVariables rest
 
 
-fillFromFunctionCall :: FunctionCall -> LiteralCounters  -> ConstantAddressMap -> (LiteralCounters,ConstantAddressMap)
-fillFromFunctionCall (FunctionCallVar _ callParams) literalCounters constantAddressMap = 
-                            fillFromCallParams literalCounters constantAddressMap callParams
-fillFromFunctionCall (FunctionCallObjMem (ObjectMember _ _) callParams) literalCounters constantAddressMap = 
-                            fillFromCallParams literalCounters constantAddressMap callParams
+fillFromAssignment :: Assignment -> MA
+fillFromAssignment (AssignmentExpression identifier expression) = fillFromExpression expression
+fillFromAssignment  (AssignmentObjectMemberExpression (ObjectMember objectIdentifier attrIdentifier) expression) =  fillFromExpression expression
+fillFromAssignment  (AssignmentArrayExpression _ ((ArrayAccessExpression innerExp) : []) expression) =  
+                                                                                                    do
+                                                                                                        fillFromExpression innerExp
+                                                                                                        fillFromExpression expression
+
+fillFromAssignment  (AssignmentArrayExpression _ ((ArrayAccessExpression innerExpRow) : (ArrayAccessExpression innerExpCol)  : []) expression) = 
+                                                                                                    do
+                                                                                                        fillFromExpression innerExpRow
+                                                                                                        fillFromExpression innerExpCol
+                                                                                                        fillFromExpression expression
+fillFromAssignment _  = return ()
 
 
-fillFromCallParams :: LiteralCounters -> ConstantAddressMap -> [Params] -> (LiteralCounters,ConstantAddressMap)
-fillFromCallParams literalCounters constantAddressMap [] = (literalCounters,constantAddressMap)
-fillFromCallParams literalCounters constantAddressMap ((ParamsExpression exp) : params) =
-        let (newLiteralCounters,newConsAddressMap) = fillFromExpression literalCounters constantAddressMap exp
-            in fillFromCallParams newLiteralCounters newConsAddressMap params
+fillFromFunctionCall :: FunctionCall -> MA
+fillFromFunctionCall (FunctionCallVar _ callParams) = 
+                            fillFromCallParams  callParams
+fillFromFunctionCall (FunctionCallObjMem (ObjectMember _ _) callParams) = 
+                            fillFromCallParams callParams
+
+fillFromCallParams :: [Params] -> MA
+fillFromCallParams [] = return ()
+fillFromCallParams ((ParamsExpression exp) : params) = do
+                                                        fillFromExpression exp
+                                                        fillFromCallParams params
+                                                        
+        
                 
-prepareAddressMapsFromSymbolTable :: SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ObjectAddressMap -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap)
-prepareAddressMapsFromSymbolTable symTab classSymTab counters identifierAddressMap objAddressMap = 
-                            let symTabList = (Map.toList symTab)
-                            in fillIdentifierAddressMap symTabList classSymTab identifierAddressMap objAddressMap counters  
+prepareAddressMapsFromSymbolTable :: MA
+prepareAddressMapsFromSymbolTable = 
+                            do 
+                                env <-  ask
+                                let symTabList = (Map.toList (symTab env))
+                                fillIdentifierAddressMap symTabList 
 
-fillIdentifierAddressMap :: [(Identifier,Symbol)] -> ClassSymbolTable -> IdentifierAddressMap -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap) 
-fillIdentifierAddressMap [] classSymTab identifierAddressMap objAddressMap varCounters = (varCounters,identifierAddressMap,objAddressMap)
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) : rest ) classSymTab identifierAddressMap objAddressMap
-                                                                    (intGC,decGC,strGC,boolGC,objGC)  |
-                                                                    intGC <= endIntGlobalMemory
-                                                                    && decGC <= endDecimalGlobalMemory
-                                                                    && strGC <= endStringGlobalMemory 
-                                                                    && boolGC <= endBoolGlobalMemory =
+fillIdentifierAddressMap :: [(Identifier,Symbol)] -> MA
+fillIdentifierAddressMap [] = return ()
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) : rest ) =
+                        do
+                            memState <- get
+                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters memState)
+                            let identifierAddressMap = (idAddressMap memState)
                             case prim of
-                                PrimitiveBool -> let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
-                                                    in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap  
-                                                            (intGC,decGC,strGC,boolGC + 1,objGC))
-                                PrimitiveInt -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                    in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC + 1,decGC,strGC,boolGC,objGC))
+                                PrimitiveBool -> 
+                                                do 
+                                                    let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
+                                                    modify $ \s -> (s { varCounters = (intGC,decGC,strGC,boolGC + 1,objGC) }) 
+                                                    modify $ \s -> (s { idAddressMap = newIdMap })
+                                                    fillIdentifierAddressMap rest
+                                PrimitiveInt ->
+                                                do 
+                                                    let newIdMap = (Map.insert identifier intGC identifierAddressMap)
+                                                    modify $ \s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
+                                                    modify $ \s -> (s { idAddressMap = newIdMap })
+                                                    fillIdentifierAddressMap rest
 
-                                PrimitiveInteger -> let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC + 1,decGC,strGC,boolGC,objGC)) 
-                                PrimitiveString -> let newIdMap = (Map.insert identifier strGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC,decGC,strGC + 1,boolGC,objGC)) 
-                                PrimitiveMoney -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC,decGC + 1,strGC,boolGC,objGC))
-                                PrimitiveDouble -> let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                        in (fillIdentifierAddressMap rest classSymTab newIdMap objAddressMap 
-                                                            (intGC,decGC + 1,strGC,boolGC,objGC))
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) : rest ) classSymTab identifierAddressMap objAddressMap
-                                                                    (intGC,decGC,strGC,boolGC,objGC)  |
-                                                                    intGC <= endIntGlobalMemory
-                                                                    && decGC <= endDecimalGlobalMemory
-                                                                    && strGC <= endStringGlobalMemory 
-                                                                    && boolGC <= endBoolGlobalMemory
-                                                                    && objGC <= endObjectGlobalMemory =
+                                PrimitiveInteger -> do 
+                                                        let newIdMap = (Map.insert identifier intGC identifierAddressMap)
+                                                        modify $ \s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
+                                                        modify $ \s -> (s { idAddressMap = newIdMap })
+                                                        fillIdentifierAddressMap rest 
+                                PrimitiveString -> do 
+                                                    let newIdMap = (Map.insert identifier strGC identifierAddressMap)
+                                                    modify $ \s -> (s { varCounters = (intGC,decGC,strGC + 1,boolGC,objGC) }) 
+                                                    modify $ \s -> (s { idAddressMap = newIdMap })
+                                                    fillIdentifierAddressMap rest
+                                PrimitiveMoney -> do 
+                                                    let newIdMap = (Map.insert identifier decGC identifierAddressMap)
+                                                    modify $ \s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
+                                                    modify $ \s -> (s { idAddressMap = newIdMap })
+                                                    fillIdentifierAddressMap rest
+                                PrimitiveDouble -> do 
+                                                    let newIdMap = (Map.insert identifier decGC identifierAddressMap)
+                                                    modify $ \s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
+                                                    modify $ \s -> (s { idAddressMap = newIdMap })
+                                                    fillIdentifierAddressMap rest
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) : rest ) = 
+                            do
+                                memState <- get
+                                let (intGC,decGC,strGC,boolGC,objGC) = (varCounters memState)
+                                let identifierAddressMap = (idAddressMap memState)
                                 case (arrayAccess) of 
                                     [] -> 
-                                        let ((intGC1,decGC1,strGC1,boolGC1,objGC1), idMapFromObject, newObjAddressMap) = insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) classSymTab objAddressMap (intGC,decGC,strGC,boolGC,objGC)    
-                                        -- fillArray 1 (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC)
-                                            newIdMap = (Map.insert identifier objGC1 identifierAddressMap) 
-                                            newObjMap = (Map.insert objGC1 idMapFromObject newObjAddressMap)
-                                                  in (fillIdentifierAddressMap rest classSymTab newIdMap newObjMap 
-                                                                (intGC1,decGC1,strGC1,boolGC1,objGC1 + 1))
+                                        do 
+                                            env <- ask
+                                            currentMemState <- get
+                                            (idMapFromObject,newMemState, _) <- liftIO $ runRWST (runMA $ insertObjectInObjectAddressMap (TypeClassId classId arrayAccess)) env currentMemState
+                                            modify $ \s -> newMemState 
+                                            let newObjAddressMap = (objAddressMap newMemState)
+                                            let identifierAddressMap = (idAddressMap newMemState)
+                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters newMemState)
+                                            let newIdMap = (Map.insert identifier objGC identifierAddressMap) 
+                                            let newObjMap = (Map.insert objGC idMapFromObject newObjAddressMap)
+                                            modify $ \s -> (s { varCounters = (intGC,decGC,strGC,boolGC,objGC + 1) }) 
+                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                            modify $ \s -> (s { objAddressMap = newObjMap })
+                                            fillIdentifierAddressMap rest 
                                     (("[",size,"]") : []) -> 
-                                         let (varCounters,idMap,objMap) = fillArray size size "" (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC)
-                                                in let (varCounters3,idTable3, objMap3) = updateArrayClasses size size "" (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) classSymTab idMap objMap varCounters 
-                                                    in (fillIdentifierAddressMap rest classSymTab idTable3 objMap3 
-                                                            varCounters3) 
+                                         do 
+                                            fillArray size size "" (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))
+                                            updateArrayClasses size size "" (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))
+                                            fillIdentifierAddressMap rest
 
                                     (("[",rows,"]") : ("[",cols,"]")  : [] ) ->
-                                          let (varCounters,idMap,objMap) = fillMatrix rows cols rows (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC)  
-                                                in let (varCounters3,idTable3, objMap3) = updateMatrixClasses rows cols rows (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) classSymTab idMap objMap varCounters 
-                                                    in (fillIdentifierAddressMap rest classSymTab idTable3 objMap3 
-                                                            varCounters3) 
-                                          -- let ((intGC1,decGC1,strGC1,boolGC1,objGC1), idMapFromObject, newObjAddressMap) = insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) classSymTab objAddressMap (intGC,decGC,strGC,boolGC,objGC)     
-                                          --     newIdMap = (Map.insert identifier objGC1 identifierAddressMap) 
-                                          --     newObjMap = (Map.insert objGC1 idMapFromObject newObjAddressMap)
-                                          --     in (fillIdentifierAddressMap rest classSymTab newIdMap newObjMap 
-                                                            -- (intGC1,decGC1,strGC1,boolGC1,objGC1 + rows * cols))
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic)) : rest ) classSymTab identifierAddressMap objAddressMap
-                                                                    (intGC,decGC,strGC,boolGC,objGC)  |
-                                                                    intGC <= endIntGlobalMemory
-                                                                    && decGC <= endDecimalGlobalMemory
-                                                                    && strGC <= endStringGlobalMemory 
-                                                                    && boolGC <= endBoolGlobalMemory =
-                                                    let (varCounters,idMap,objMap) = fillArray size size "" (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic)) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC)
-                                                    in (fillIdentifierAddressMap rest classSymTab idMap objMap 
-                                                            varCounters)
+                                          do 
+                                            fillMatrix rows cols rows (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))
+                                            updateMatrixClasses rows cols rows (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))
+                                            fillIdentifierAddressMap rest
+
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic)) : rest ) =
+                                                    do 
+                                                        fillArray size size "" (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic))
+                                                        fillIdentifierAddressMap rest
                                                         
 
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)) : rest ) classSymTab identifierAddressMap objAddressMap
-                                                                    (intGC,decGC,strGC,boolGC,objGC)  |
-                                                                    intGC <= endIntGlobalMemory
-                                                                    && decGC <= endDecimalGlobalMemory
-                                                                    && strGC <= endStringGlobalMemory 
-                                                                    && boolGC <= endBoolGlobalMemory =
-                            let (varCounters,idMap,objMap) = fillMatrix rows cols rows (identifier,(SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)) classSymTab identifierAddressMap objAddressMap (intGC,decGC,strGC,boolGC,objGC)  
-                                            in (fillIdentifierAddressMap rest classSymTab idMap objMap 
-                                                            varCounters)
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)) : rest ) =
+                                                    do 
+                                                        let dt = (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : []))
+                                                        fillMatrix rows cols rows (identifier,(SymbolVar dt scp isPublic))
+                                                        fillIdentifierAddressMap rest
 
 -- MARK TODO: Funciones
-updateArrayClasses  :: Integer -> Integer -> String -> (Identifier,Symbol)  -> ClassSymbolTable -> IdentifierAddressMap -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap) 
-updateArrayClasses 0 size _ _  classSymTab identifierAddressMap objAddressMap varCounters = (varCounters,identifierAddressMap,objAddressMap)
-updateArrayClasses limit size strToAppend ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
-                                                                    varCounters =
+updateArrayClasses  :: Integer -> Integer -> String -> (Identifier,Symbol) -> MA
+updateArrayClasses 0 size _ _   = return ()
+updateArrayClasses limit size strToAppend ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) =
+                            do 
+                                memState <- get
+                                let identifierAddressMap = (idAddressMap memState)
                                 case (Map.lookup (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) identifierAddressMap) of
-                                    Just address ->
-                                        let (varCounters2, idMapFromObject, newObjAddressMap) = insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) classSymTab objAddressMap varCounters
-                                            newObjMap = (Map.insert address idMapFromObject newObjAddressMap)
-                                                        in (updateArrayClasses (limit - 1) size strToAppend ((identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) classSymTab identifierAddressMap newObjMap 
-                                                                varCounters2)
+                                    Just address -> 
+                                        do
+                                            env <- ask
+                                            currentMemState <- get
+                                            (idMapFromObject,newMemState, _) <- liftIO $ runRWST (runMA $ insertObjectInObjectAddressMap (TypeClassId classId arrayAccess)) env currentMemState
+                                            modify $ \s -> newMemState 
+                                            let (idMap,constMap, newObjAddressMap, funcMap, varCounters, litCounters) = getCurrentMemoryState newMemState
+                                            let newObjMap = (Map.insert address idMapFromObject newObjAddressMap)
+                                            modify $ \s -> (s { varCounters = varCounters }) 
+                                            modify $ \s -> (s { idAddressMap = idMap })
+                                            modify $ \s -> (s { objAddressMap = newObjMap })
+                                            updateArrayClasses (limit - 1) size strToAppend ((identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)))
+            
 
-updateMatrixClasses  :: Integer -> Integer -> Integer -> (Identifier,Symbol)  -> ClassSymbolTable -> IdentifierAddressMap -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap) 
-updateMatrixClasses  0  _ _ _ classSymTab identifierAddressMap objAddressMap varCounters = (varCounters,identifierAddressMap,objAddressMap)
-updateMatrixClasses rows columns fixedRows idAndSymbol classSymTab identifierAddressMap objAddressMap varCounters =
-        let (varCounters2, newIdMap, newObjAddressMap) = updateArrayClasses columns columns ("[" ++ (show (fixedRows - rows)) ++ "]")  idAndSymbol classSymTab identifierAddressMap objAddressMap varCounters
-        in let (varCounters3, newIdMap2, newObjAddressMap2) = updateMatrixClasses (rows - 1) columns fixedRows idAndSymbol classSymTab newIdMap newObjAddressMap varCounters2
-        in (varCounters3,newIdMap2,newObjAddressMap2)
+updateMatrixClasses  :: Integer -> Integer -> Integer -> (Identifier,Symbol)  -> MA
+updateMatrixClasses  0  _ _ _  = return ()
+updateMatrixClasses rows columns fixedRows idAndSymbol =
+        do 
+            updateArrayClasses columns columns ("[" ++ (show (fixedRows - rows)) ++ "]")  idAndSymbol
+            updateMatrixClasses (rows - 1) columns fixedRows idAndSymbol
 
-fillArray  :: Integer -> Integer -> String -> (Identifier,Symbol)  -> ClassSymbolTable -> IdentifierAddressMap -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap) 
-fillArray 0 size _ _ classSymTab identifierAddressMap objAddressMap varCounters = (varCounters,identifierAddressMap,objAddressMap)
-fillArray limit size strToAppend ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
-                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
-                                let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) objGC identifierAddressMap) 
-                                in let newObjMap = (Map.insert objGC (Map.empty) objAddressMap)
-                                in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) classSymTab newIdMap newObjMap 
-                                                                (intGC,decGC,strGC,boolGC,objGC + 1))
-fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveBool arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
-                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
-                                                                        let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) boolGC identifierAddressMap) 
-                                                                            in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveBool arrayAccess) scp isPublic))) classSymTab newIdMap objAddressMap 
-                                                                            (intGC,decGC,strGC,boolGC + 1,objGC))
-fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveString arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
-                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
-                                                                        let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) strGC identifierAddressMap) 
-                                                                            in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveString arrayAccess) scp isPublic))) classSymTab newIdMap objAddressMap 
-                                                                            (intGC,decGC,strGC + 1,boolGC,objGC))
-fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInteger arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
-                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
-                                                                        let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) intGC identifierAddressMap) 
-                                                                            in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInteger arrayAccess) scp isPublic))) classSymTab newIdMap objAddressMap 
-                                                                            (intGC + 1,decGC,strGC,boolGC,objGC))
-fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInt arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
-                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
-                                                                        let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) intGC identifierAddressMap) 
-                                                                            in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInt arrayAccess) scp isPublic))) classSymTab newIdMap objAddressMap 
-                                                                            (intGC + 1,decGC,strGC,boolGC,objGC))
-fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveMoney arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
-                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
-                                                                        let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) decGC identifierAddressMap) 
-                                                                            in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveMoney arrayAccess) scp isPublic))) classSymTab newIdMap objAddressMap 
-                                                                            (intGC,decGC + 1,strGC,boolGC,objGC))
-fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveDouble arrayAccess) scp isPublic))) classSymTab identifierAddressMap objAddressMap
-                                                                    (intGC,decGC,strGC,boolGC,objGC) = 
-                                                                        let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) decGC identifierAddressMap) 
-                                                                            in (fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveDouble arrayAccess) scp isPublic))) classSymTab newIdMap objAddressMap 
-                                                                            (intGC,decGC + 1,strGC,boolGC,objGC))
+fillArray  :: Integer -> Integer -> String -> (Identifier,Symbol)  -> MA
+fillArray 0 size _ _  = return ()
+fillArray limit size strToAppend ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) = 
+                                do 
+                                    currentMemState <- get
+                                    let currentObjAddressMap = (objAddressMap currentMemState)
+                                    let identifierAddressMap = (idAddressMap currentMemState)
+                                    let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                    let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) objGC identifierAddressMap) 
+                                    -- Como es un arreglo de objetos, es importante asignarle su propio identifier address map a cada
+                                    -- celda, y por el momento, estan vacios. Esto es necesario para asegurar que se guarden de manera contigua.
+                                    let newObjMap = (Map.insert objGC (Map.empty) currentObjAddressMap)
+                                    modify $ \s -> (s { varCounters = (intGC,decGC,strGC,boolGC,objGC + 1) }) 
+                                    modify $ \s -> (s { idAddressMap = newIdMap })
+                                    modify $ \s -> (s { objAddressMap = newObjMap }) 
+                                    fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)))
+
+fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveBool arrayAccess) scp isPublic))) = 
+                                                                        do 
+                                                                            currentMemState <- get
+                                                                            let identifierAddressMap = (idAddressMap currentMemState)
+                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                                                            let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) boolGC identifierAddressMap)
+                                                                            modify $ \s -> (s { varCounters = (intGC,decGC,strGC,boolGC + 1,objGC) }) 
+                                                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                                                            fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveBool arrayAccess) scp isPublic))) 
+
+fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveString arrayAccess) scp isPublic))) =
+                                                                        do 
+                                                                            currentMemState <- get
+                                                                            let identifierAddressMap = (idAddressMap currentMemState)
+                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                                                            let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) strGC identifierAddressMap)
+                                                                            modify $ \s -> (s { varCounters = (intGC,decGC,strGC + 1,boolGC,objGC) }) 
+                                                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                                                            fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveString arrayAccess) scp isPublic))) 
+fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInteger arrayAccess) scp isPublic)))  = 
+                                                                        do 
+                                                                            currentMemState <- get
+                                                                            let identifierAddressMap = (idAddressMap currentMemState)
+                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                                                            let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) intGC identifierAddressMap)
+                                                                            modify $ \s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
+                                                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                                                            fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInteger arrayAccess) scp isPublic))) 
+fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInt arrayAccess) scp isPublic))) =
+                                                                        do 
+                                                                            currentMemState <- get
+                                                                            let identifierAddressMap = (idAddressMap currentMemState)
+                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                                                            let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) intGC identifierAddressMap)
+                                                                            modify $ \s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
+                                                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                                                            fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInt arrayAccess) scp isPublic)))
+
+fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveMoney arrayAccess) scp isPublic))) = 
+                                                                        do 
+                                                                            currentMemState <- get
+                                                                            let identifierAddressMap = (idAddressMap currentMemState)
+                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                                                            let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) decGC identifierAddressMap)
+                                                                            modify $ \s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
+                                                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                                                            fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveMoney arrayAccess) scp isPublic)))
+fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveDouble arrayAccess) scp isPublic))) = 
+                                                                        do 
+                                                                            currentMemState <- get
+                                                                            let identifierAddressMap = (idAddressMap currentMemState)
+                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                                                            let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) decGC identifierAddressMap)
+                                                                            modify $ \s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
+                                                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                                                            fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveDouble arrayAccess) scp isPublic)))
 
 
-fillMatrix :: Integer -> Integer -> Integer -> (Identifier,Symbol)  -> ClassSymbolTable -> IdentifierAddressMap -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap)
-fillMatrix  0 _ _ _ classSymTab identifierAddressMap objAddressMap varCounters = (varCounters,identifierAddressMap,objAddressMap)
-fillMatrix rows columns fixedRows idAndSymbol classSymTab identifierAddressMap objAddressMap varCounters =
-        let (varCounters2, newIdMap, newObjAddressMap) = fillArray columns columns ("[" ++ (show (fixedRows - rows)) ++ "]") idAndSymbol classSymTab identifierAddressMap objAddressMap varCounters
-        in let (varCounters3, newIdMap2, newObjAddressMap2) = fillMatrix (rows - 1) columns fixedRows idAndSymbol classSymTab newIdMap newObjAddressMap varCounters2
-        in (varCounters3,newIdMap2,newObjAddressMap2)
+fillMatrix :: Integer -> Integer -> Integer -> (Identifier,Symbol)  -> MA
+fillMatrix  0 _ _ _  = return ()
+fillMatrix rows columns fixedRows idAndSymbol = 
+                                do 
+                                    fillArray columns columns ("[" ++ (show (fixedRows - rows)) ++ "]") idAndSymbol
+                                    fillMatrix (rows - 1) columns fixedRows idAndSymbol
 
-insertObjectInObjectAddressMap ::  Type -> ClassSymbolTable -> ObjectAddressMap -> VariableCounters -> (VariableCounters,IdentifierAddressMap,ObjectAddressMap) 
-insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) classSymTab objAddressMap (intGC,decGC,strGC,boolGC,objGC) =
-                                case (Map.lookup classId classSymTab) of
-                                    Just symbolTableOfClass -> 
-                                        prepareAddressMapsFromSymbolTable symbolTableOfClass classSymTab (intGC,decGC,strGC,boolGC,objGC) (Map.empty) objAddressMap 
+insertObjectInObjectAddressMap ::  Type -> MemoryAllocator IdentifierAddressMap 
+insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) =
+                                do 
+                                    env <- ask
+                                    let classSymTab = (classTab env)
+                                    case (Map.lookup classId classSymTab) of
+                                        Just symbolTableOfClass -> 
+                                            do 
+                                                currentMemState <- get
+                                                let (idMap,constMap, objMap, funcMap, varCounters, litCounters) = getCurrentMemoryState currentMemState
+                                                -- Cambiamos el estado por el momento para que ahora analice los atributos dentro de la symbol table de la clase
+                                                (stateAfterAttributesInserted,_) <- liftIO $ execRWST (runMA $ prepareAddressMapsFromSymbolTable) 
+                                                                                                      (setEnvironment symbolTableOfClass classSymTab) 
+                                                                                                      -- La mandamos vacia porque lo que obtendremos es una IDMap llena con los
+                                                                                                      -- atributos de esa clase!
+                                                                                                      (setMemoryState (Map.empty) constMap objMap funcMap varCounters litCounters)
+                                                -- Tenemos que obtener el IdentifierAddressMap de los atributos de esta clase
+                                                let (idMapObject,constMap2, objMap2, funcMap2, varCounters2, litCounters2) = getCurrentMemoryState stateAfterAttributesInserted
+                                                let updatedState = (setMemoryState idMap constMap2 objMap2 funcMap2 varCounters2 litCounters2)
+                                                modify $ \s -> updatedState -- Usamos el nuevo estado con los nuevos contadores!!!
+                                                return idMapObject
 
 
                             
-fillFromExpression :: LiteralCounters -> ConstantAddressMap -> Expression -> (LiteralCounters,ConstantAddressMap)
-fillFromExpression literalCounters constantAddressMap expression = fillFromExpressionAdaptee literalCounters constantAddressMap (reduceExpression expression)
+fillFromExpression :: Expression -> MA
+fillFromExpression expression = fillFromExpressionAdaptee (reduceExpression expression)
 
-
-fillFromExpressionAdaptee :: LiteralCounters -> ConstantAddressMap -> Expression -> (LiteralCounters,ConstantAddressMap)
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionMult exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionPlus exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionPow exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionDiv exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionMinus exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionPars exp) = fillFromExpression literalCounters constantAddressMap exp
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionNeg exp) = fillFromExpression literalCounters constantAddressMap exp
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionMod exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionGreater exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionLower exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionGreaterEq exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionLowerEq exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionEqEq exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionNotEq exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionAnd exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionOr exp1 exp2) = fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionNot exp) = fillFromExpression literalCounters constantAddressMap exp
-fillFromExpressionAdaptee (intLitC,decLitC, strLitC, boolLitC) constantAddressMap (ExpressionLitVar litOrVar)
-                    | intLitC <= endIntLiteralMemory
-                     && decLitC <= endDecimalLiteralMemory
-                     && strLitC <= endStringLiteralMemory
-                     && boolLitC <= endBoolLiteralMemory = 
+fillFromExpressionAdaptee :: Expression -> MA
+fillFromExpressionAdaptee (ExpressionMult exp1 exp2) = fillFromTwoExpressions exp1 exp2
+fillFromExpressionAdaptee (ExpressionPlus exp1 exp2) = fillFromTwoExpressions exp1 exp2
+fillFromExpressionAdaptee (ExpressionPow exp1 exp2) = fillFromTwoExpressions exp1 exp2
+fillFromExpressionAdaptee (ExpressionDiv exp1 exp2) = fillFromTwoExpressions exp1 exp2
+fillFromExpressionAdaptee (ExpressionMinus exp1 exp2) = fillFromTwoExpressions exp1 exp2
+fillFromExpressionAdaptee (ExpressionPars exp) = fillFromExpression exp
+fillFromExpressionAdaptee (ExpressionNeg exp) = fillFromExpression  exp
+fillFromExpressionAdaptee (ExpressionMod exp1 exp2) = fillFromTwoExpressions exp1 exp2
+fillFromExpressionAdaptee (ExpressionGreater exp1 exp2) = fillFromTwoExpressions  exp1 exp2
+fillFromExpressionAdaptee (ExpressionLower exp1 exp2) = fillFromTwoExpressions exp1 exp2
+fillFromExpressionAdaptee (ExpressionGreaterEq exp1 exp2) = fillFromTwoExpressions exp1 exp2
+fillFromExpressionAdaptee (ExpressionLowerEq exp1 exp2) = fillFromTwoExpressions  exp1 exp2
+fillFromExpressionAdaptee (ExpressionEqEq exp1 exp2) = fillFromTwoExpressions exp1 exp2
+fillFromExpressionAdaptee (ExpressionNotEq exp1 exp2) = fillFromTwoExpressions  exp1 exp2
+fillFromExpressionAdaptee (ExpressionAnd exp1 exp2) = fillFromTwoExpressions  exp1 exp2
+fillFromExpressionAdaptee (ExpressionOr exp1 exp2) = fillFromTwoExpressions  exp1 exp2
+fillFromExpressionAdaptee (ExpressionNot exp) = fillFromExpression  exp
+fillFromExpressionAdaptee (ExpressionLitVar litOrVar) = 
+                do 
+                    memState <- get
+                    let (intLitC,decLitC,strLitC,boolLitC) = (literalCounters memState)
+                    let constantAddressMap = (constAddressMap memState)
                     case litOrVar of
                          IntegerLiteral int -> case (Map.lookup ("<int>" ++ (show int)) constantAddressMap) of
-                                                    Just _ -> ((intLitC, decLitC, strLitC, boolLitC), constantAddressMap)
-                                                    _ ->  let newConsAddressMap = (Map.insert ("<int>" ++ (show int)) intLitC constantAddressMap)
-                                                                in ((intLitC + 1, decLitC, strLitC, boolLitC), newConsAddressMap)
+                                                    Just _ -> return ()
+                                                    _ ->  do 
+                                                            let newConsAddressMap = (Map.insert ("<int>" ++ (show int)) intLitC constantAddressMap)
+                                                            modify $ \s -> (s { literalCounters = (intLitC + 1, decLitC,strLitC,boolLitC) }) 
+                                                            modify $ \s -> (s { constAddressMap = newConsAddressMap }) 
                          DecimalLiteral dec -> case (Map.lookup ("<dec>" ++ (show dec)) constantAddressMap) of
-                                                    Just _ -> ((intLitC, decLitC, strLitC, boolLitC), constantAddressMap)
-                                                    _ -> let newConsAddressMap = (Map.insert ("<dec>" ++ (show dec)) decLitC constantAddressMap)
-                                                            in ((intLitC, decLitC + 1, strLitC, boolLitC), newConsAddressMap)
+                                                    Just _ -> return ()
+                                                    _ -> do
+                                                            let newConsAddressMap = (Map.insert ("<dec>" ++ (show dec)) decLitC constantAddressMap)
+                                                            modify $ \s -> (s { literalCounters = (intLitC, decLitC + 1,strLitC,boolLitC) }) 
+                                                            modify $ \s -> (s { constAddressMap = newConsAddressMap }) 
                          StringLiteral str -> case (Map.lookup ("<str>" ++ (show str)) constantAddressMap) of
-                                                    Just _ -> ((intLitC, decLitC, strLitC, boolLitC), constantAddressMap)
-                                                    _ -> let newConsAddressMap = (Map.insert ("<str>" ++ str) strLitC constantAddressMap)
-                                                            in ((intLitC, decLitC, strLitC + 1, boolLitC), newConsAddressMap)
+                                                    Just _ -> return ()
+                                                    _ -> do 
+                                                            let newConsAddressMap = (Map.insert ("<str>" ++ str) strLitC constantAddressMap)
+                                                            modify $ \s -> (s { literalCounters = (intLitC, decLitC,strLitC + 1,boolLitC) }) 
+                                                            modify $ \s -> (s { constAddressMap = newConsAddressMap }) 
                          BoolLiteral bool -> case (Map.lookup ("<bool>" ++ (show bool)) constantAddressMap) of
-                                                    Just _ -> ((intLitC, decLitC, strLitC, boolLitC), constantAddressMap)
-                                                    _ -> let newConsAddressMap = (Map.insert ("<bool>" ++ (show bool)) boolLitC constantAddressMap)
-                                                            in ((intLitC, decLitC, strLitC, boolLitC + 1), newConsAddressMap)
-                         _ -> ((intLitC,decLitC, strLitC, boolLitC), constantAddressMap)
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionVarArray _ ((ArrayAccessExpression expression) : []))  = 
-                            fillFromExpression literalCounters constantAddressMap expression
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionVarArray _ ((ArrayAccessExpression expression1) : (ArrayAccessExpression expression2) :[])) =
-                            fillFromTwoExpressions literalCounters constantAddressMap expression1 expression2
-fillFromExpressionAdaptee literalCounters constantAddressMap (ExpressionFuncCall funcCall) =
-                            fillFromFunctionCall funcCall literalCounters constantAddressMap
+                                                    Just _ -> return ()
+                                                    _ -> do 
+                                                         let newConsAddressMap = (Map.insert ("<bool>" ++ (show bool)) boolLitC constantAddressMap)
+                                                         modify $ \s -> (s { literalCounters = (intLitC, decLitC,strLitC,boolLitC + 1) }) 
+                                                         modify $ \s -> (s { constAddressMap = newConsAddressMap }) 
+                         _ -> return ()
+fillFromExpressionAdaptee  (ExpressionVarArray _ ((ArrayAccessExpression expression) : []))  = 
+                            fillFromExpression expression
+fillFromExpressionAdaptee (ExpressionVarArray _ ((ArrayAccessExpression expression1) : (ArrayAccessExpression expression2) :[])) =
+                            fillFromTwoExpressions expression1 expression2
+fillFromExpressionAdaptee (ExpressionFuncCall funcCall) =
+                            fillFromFunctionCall funcCall 
 
-fillFromTwoExpressions :: LiteralCounters -> ConstantAddressMap -> Expression -> Expression -> (LiteralCounters,ConstantAddressMap)
-fillFromTwoExpressions literalCounters constantAddressMap exp1 exp2 = let (newLiteralCounters1,constAddressMap1) =
-                                                                            fillFromExpression literalCounters constantAddressMap exp1
-                                                                      in let (newLiteralCounters2,constAddressMap2) = fillFromExpression newLiteralCounters1 constAddressMap1 exp2
-                                                                            in (newLiteralCounters2,(Map.union constAddressMap1 constAddressMap2))
+fillFromTwoExpressions :: Expression -> Expression -> MA
+fillFromTwoExpressions exp1 exp2 = do
+                                        memState <- get
+                                        fillFromExpression exp1
+                                        fillFromExpression exp2
+                                        return ()
+                                    
 

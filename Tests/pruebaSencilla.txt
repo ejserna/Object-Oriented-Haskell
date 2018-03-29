@@ -1,5 +1,5 @@
 main{
-    Int i = 100;
+    Int i = 1000;
     Int j = 100;
     Bool t,t1,t2,t3;
     t2 = False;
@@ -26,7 +26,7 @@ main{
                     read(i);
                     displayLn(i);
                 }
-                display("Counter opcillo",counter);
+                displayLn("Counter opcillo",counter);
             }
         }
     }
