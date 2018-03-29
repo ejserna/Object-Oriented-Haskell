@@ -13,8 +13,52 @@ import Data.List(isInfixOf)
 import Data.List (sortBy,sort,intercalate)
 import Data.Ord (comparing)
 import Data.Function (on)
+import Control.Monad.RWS
+import Control.Monad.Except
+import Control.Monad.Trans.Except
+import Control.Monad.Identity
+import Control.Monad.Trans
+import Control.Monad
 import  System.Console.Pretty (Color (..), Style (..), bgColor, color,
                                         style, supportsPretty)
+
+
+data CGEnvironment = CGEnvironment
+                {   classTab :: ClassSymbolTable,
+                    objAddressMap :: ObjectAddressMap,
+                    idAddressMap :: IdentifierAddressMap, 
+                    constAddressMap :: ConstantAddressMap,
+                    funcMap :: FunctionMap,
+                    currentModule :: String -- Nos dice cuál es el módulo actual. Main, class Humano, etc...
+                    
+                }
+                deriving (Show)
+
+data CGState = CGState
+                {   symTab :: SymbolTable, 
+                    varCounters :: VariableCounters,
+                    currentQuadNum :: QuadNum
+                }
+                deriving (Show)
+
+
+setCGState :: SymbolTable -> VariableCounters -> QuadNum -> CGState
+setCGState s v q = CGState s v q
+
+setCGEnvironment :: ClassSymbolTable -> ObjectAddressMap -> IdentifierAddressMap -> ConstantAddressMap -> FunctionMap -> String -> CGEnvironment
+setCGEnvironment c om im cm fm m = CGEnvironment c om im cm fm m
+
+getCGState :: CGState -> (SymbolTable,VariableCounters,QuadNum)
+getCGState (CGState s v q) = (s,v,q) 
+
+getCGEnvironment :: CGEnvironment -> (ClassSymbolTable,ObjectAddressMap,IdentifierAddressMap,ConstantAddressMap,FunctionMap,String)
+getCGEnvironment (CGEnvironment c om im cm fm m) = (c,om,im,cm,fm,m)
+
+type CodeGen a =  RWST CGEnvironment [Quadruple] CGState IO a
+
+type CG =  CodeGen ()
+
+ 
 
 startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> IO()
 startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters idTable constTable objMap =

@@ -17,6 +17,7 @@ import Control.Monad.Trans.Except
 import Control.Monad.Identity
 import Control.Monad.Trans
 import Control.Monad
+import Control.Monad.Cont
 import Control.Exception
 import Data.Stack as Stack
 import Quadruple
@@ -117,19 +118,22 @@ type Memory = Map.HashMap Address VMValue
 type ObjectMemory = Map.HashMap Address [Address]
 type Output = String
 
-newtype VirtualMachine a = VirtualMachine{
-    unwrapVM :: RWST [Quadruple] [String] (CPUState) IO a
-} deriving (Functor, Applicative, Monad, MonadIO,MonadRWS [Quadruple] [String] CPUState)
+-- newtype VirtualMachine a = VirtualMachine{
+--     unwrapVM :: RWST [Quadruple] [String] (CPUState) IO a
+-- } deriving (Functor, Applicative, Monad, MonadIO,MonadRWS [Quadruple] [String] CPUState)
 
-instance MonadReader [Quadruple] VirtualMachine where
-    ask = VirtualMachine ask
+-- instance MonadReader [Quadruple] VirtualMachine where
+--     ask = VirtualMachine ask
 
-instance MonadWriter [String] VirtualMachine where
-    tell = VirtualMachine . tell
+-- instance MonadWriter [String] VirtualMachine where
+--     tell = VirtualMachine . tell
+  
 
-instance MonadState CPUState VirtualMachine where
-    get = VirtualMachine get
-    put s = VirtualMachine . put $ s 
+-- instance MonadState CPUState VirtualMachine where
+--     get = VirtualMachine get
+--     put s = VirtualMachine . put $ s 
+
+type VirtualMachine a = RWST [Quadruple] [String] (CPUState) IO a
 
 type VM =  VirtualMachine ()
 
@@ -141,7 +145,7 @@ startVM quads globalMemory localMemory objectMemory =
     do 
        printMessage $ color White $ style Bold $ "Execution in process..."
        start <- getCPUTime
-       (a,w) <- evalRWST (unwrapVM $ runVM) quads (setInitialCPUState globalMemory localMemory objectMemory) 
+       (a,w) <- evalRWST (runVM) quads (setInitialCPUState globalMemory localMemory objectMemory) 
        end   <- getCPUTime
        mapM_ (putStrLn) $ w 
        let diff = (fromIntegral (end - start)) / (10^12)
@@ -216,7 +220,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                                     liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: Integer" ) ++ (style SlowBlink $ ">")
                                                                     x  <- liftIO $ hGetLine tty
                                                                     let (_,currentIP,globalMemory,localMemory,objectMemory) = getCPUState cpuState
-                                                                    (a,s) <- liftIO $ execRWST (unwrapVM $ runVM) [] (setInitialCPUState globalMemory localMemory objectMemory) 
+                                                                    (a,s) <- liftIO $ execRWST (runVM) [] (setInitialCPUState globalMemory localMemory objectMemory) 
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     case (checkInt x) of 
                                                                         Just int -> do

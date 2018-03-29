@@ -26,17 +26,6 @@ import Data.List (sortBy)
 import Data.Ord (comparing)
 import Data.Function (on)
 
-type FunctionMap = Map.HashMap String FunctionData
-
-data FunctionData = FunctionData
-                {   instructions :: [Quadruple], 
-                    paramsAddresses :: [Address], -- Params tiene una lista de direcciones que corresponden a direcciones locales de la funcion. Es decir
-                                                  -- Nos dicen cómo están representados internamente en la función
-                    returnAddresses :: [Address] -- Esto nos dice las direcciones internas de retorno de la funcion.
-                                                 -- Es decir, nos dicen qué direcciones internas de la función son las que se están regresando
-                                                 -- Esto le ayudará a la VM saber qué direcciones buscar dentro de la memoria local de la función que llamó
-                }
-                deriving (Show)
 
 data SymbolEnvironment = SymbolEnvironment
                 {   symTab :: SymbolTable, 
@@ -54,21 +43,8 @@ data MemoryState = MemoryState
                 }
                 deriving (Show)
 
-newtype MemoryAllocator a = MemoryAllocator{
-    runMA :: RWST SymbolEnvironment () MemoryState IO a
-} deriving (Functor, Applicative,Monad,MonadIO,MonadRWS SymbolEnvironment () MemoryState)
 
-instance MonadReader SymbolEnvironment MemoryAllocator where
-    ask = MemoryAllocator ask
-
-instance MonadWriter () MemoryAllocator where
-    tell = MemoryAllocator . tell
-
-instance MonadState MemoryState MemoryAllocator where
-    get = MemoryAllocator get
-    put s = MemoryAllocator . put $ s 
-
--- type MemoryAllocator =  RWS SymbolEnvironment () MemoryState 
+type MemoryAllocator a =  RWST SymbolEnvironment () MemoryState IO a
 
 type MA =  MemoryAllocator ()
 
@@ -86,13 +62,13 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
            do 
             let env = (setEnvironment symTab classSymTab)
             let memState = setMemoryState Map.empty Map.empty Map.empty Map.empty (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory) (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory)
-            (stateAfterConstants1,_) <-  execRWST (runMA $ prepareConstantAddressMap statements) env memState
-            (stateAfterConstants2,_) <- execRWST (runMA $ fillFromExpression (ExpressionLitVar $ DecimalLiteral 0.0) ) env stateAfterConstants1 
-            (stateAfterConstants3,_) <- execRWST (runMA $ fillFromExpression (ExpressionLitVar $ IntegerLiteral 0 ) ) env stateAfterConstants2
-            (stateAfterConstants4,_) <- execRWST (runMA $ fillFromExpression (ExpressionLitVar $ StringLiteral "") ) env stateAfterConstants3
-            (stateAfterConstants5,_) <- execRWST (runMA $ fillFromExpression (ExpressionLitVar $ BoolLiteral True) ) env stateAfterConstants4
+            (stateAfterConstants1,_) <-  execRWST (prepareConstantAddressMap statements) env memState
+            (stateAfterConstants2,_) <- execRWST (fillFromExpression (ExpressionLitVar $ DecimalLiteral 0.0) ) env stateAfterConstants1 
+            (stateAfterConstants3,_) <- execRWST (fillFromExpression (ExpressionLitVar $ IntegerLiteral 0 ) ) env stateAfterConstants2
+            (stateAfterConstants4,_) <- execRWST (fillFromExpression (ExpressionLitVar $ StringLiteral "") ) env stateAfterConstants3
+            (stateAfterConstants5,_) <- execRWST (fillFromExpression (ExpressionLitVar $ BoolLiteral True) ) env stateAfterConstants4
             let constantAddressMap = (constAddressMap stateAfterConstants5)
-            (stateAfterVariablesInStatements,_) <- execRWST (runMA $ prepareAddressMapsFromSymbolTable) env stateAfterConstants5
+            (stateAfterVariablesInStatements,_) <- execRWST (prepareAddressMapsFromSymbolTable) env stateAfterConstants5
             let (idMap,constMap, objMap, funcMap, varCounters, litCounters) = getCurrentMemoryState stateAfterVariablesInStatements
             -- let (varCounters,newIdMap,objectAddressMap) = (prepareAddressMapsFromSymbolTable symTab classSymTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory)
             --                                                     (Map.empty) (Map.empty))
@@ -310,7 +286,7 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAcce
                                         do 
                                             env <- ask
                                             currentMemState <- get
-                                            (idMapFromObject,newMemState, _) <- liftIO $ runRWST (runMA $ insertObjectInObjectAddressMap (TypeClassId classId arrayAccess)) env currentMemState
+                                            (idMapFromObject,newMemState, _) <- liftIO $ runRWST (insertObjectInObjectAddressMap (TypeClassId classId arrayAccess)) env currentMemState
                                             modify $ \s -> newMemState 
                                             let newObjAddressMap = (objAddressMap newMemState)
                                             let identifierAddressMap = (idAddressMap newMemState)
@@ -357,7 +333,7 @@ updateArrayClasses limit size strToAppend ( (identifier,(SymbolVar (TypeClassId 
                                         do
                                             env <- ask
                                             currentMemState <- get
-                                            (idMapFromObject,newMemState, _) <- liftIO $ runRWST (runMA $ insertObjectInObjectAddressMap (TypeClassId classId arrayAccess)) env currentMemState
+                                            (idMapFromObject,newMemState, _) <- liftIO $ runRWST (insertObjectInObjectAddressMap (TypeClassId classId arrayAccess)) env currentMemState
                                             modify $ \s -> newMemState 
                                             let (idMap,constMap, newObjAddressMap, funcMap, varCounters, litCounters) = getCurrentMemoryState newMemState
                                             let newObjMap = (Map.insert address idMapFromObject newObjAddressMap)
@@ -467,7 +443,7 @@ insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) =
                                                 currentMemState <- get
                                                 let (idMap,constMap, objMap, funcMap, varCounters, litCounters) = getCurrentMemoryState currentMemState
                                                 -- Cambiamos el estado por el momento para que ahora analice los atributos dentro de la symbol table de la clase
-                                                (stateAfterAttributesInserted,_) <- liftIO $ execRWST (runMA $ prepareAddressMapsFromSymbolTable) 
+                                                (stateAfterAttributesInserted,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable) 
                                                                                                       (setEnvironment symbolTableOfClass classSymTab) 
                                                                                                       -- La mandamos vacia porque lo que obtendremos es una IDMap llena con los
                                                                                                       -- atributos de esa clase!
