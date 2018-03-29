@@ -32,8 +32,8 @@ data Function
   deriving (Show, Eq)
 
 data TypeFuncReturn 
-    = TypeFuncReturnPrimitive Primitive 
-    | TypeFuncReturnClassId ClassIdentifier
+    = TypeFuncReturnPrimitive Primitive [(String,Integer,String)] 
+    | TypeFuncReturnClassId ClassIdentifier [(String,Integer,String)]
     | TypeFuncReturnNothing
   deriving (Show, Eq)
 

@@ -21,7 +21,7 @@ startSemanticAnalysis (Program classList functionList varsList (Block statements
             if (classErrors) 
                 then putStrLn $ show "[SEMANTIC ANALYSIS 1] ERROR: Semantic Error in Class Checking."
                 else do putStrLn $ ppShow $ "[SEMANTIC ANALYSIS 1]: Semantic Class Analysis Passed."
-                        -- putStrLn $ ppShow $ classSymbolTable
+                        putStrLn $ ppShow $ classSymbolTable
             let (symbolTableWithFuncs,semanticErrorFuncs) = analyzeFunctions functionList globalScope Nothing emptySymbolTable classSymbolTable
             let (symbolTableWithFuncsVars,semanticErrorVars) = analyzeVariables varsList globalScope Nothing symbolTableWithFuncs classSymbolTable
             let returnListInMain = getReturnStatements statements
@@ -29,7 +29,7 @@ startSemanticAnalysis (Program classList functionList varsList (Block statements
             if (semanticErrorFuncs || semanticErrorVars || semanticErrorBlock || (length returnListInMain) > 0) 
                 then putStrLn $ show "[SEMANTIC ANALYSIS 2] ERROR: Semantic Error in Variable Checking."
                 else do putStrLn $ ppShow $ "[SEMANTIC ANALYSIS 2]: Semantic Variable Analysis Passed."
-                        -- putStrLn $ ppShow $  symbolTableStatements
+                        putStrLn $ ppShow $  symbolTableStatements
                         putStrLn $ show "[CODEGEN 1] Starting Memory Allocation for CodeGen"
                         startMemoryAllocation (Program classList functionList varsList (Block statements)) symbolTableStatements classSymbolTable 
 
@@ -194,7 +194,7 @@ analyzeVariable _ _ _ _ _  = (emptySymbolTable, True)
 
 
 analyzeFunction :: Function -> Scope -> Maybe Bool -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
-analyzeFunction (Function identifier (TypeFuncReturnPrimitive primitive) params (Block statements)) scp isPublic symTab classSymTab = 
+analyzeFunction (Function identifier (TypeFuncReturnPrimitive primitive arrayDimension) params (Block statements)) scp isPublic symTab classSymTab = 
                     if  not (Map.member identifier symTab) then
                         -- La newFuncSymTab me da la symbol table de la funcion ya con sus parametros añadidos
                              let (newFuncSymTab, hasErrors) = (analyzeFuncParams params emptySymbolTable classSymTab)
@@ -203,28 +203,28 @@ analyzeFunction (Function identifier (TypeFuncReturnPrimitive primitive) params 
                                         -- Metemos ahora a la symbol table de la funcion la symbol table que exista en los statements
                                         -- Hacemos doble union para que adentro de los statements se puedan reconocer miembros internos!
                                         -- Asi mismo, es MUY importante crear de una vez la funcion, para que pueda ser usada dentro de nuestros statements sin problemas! (Recursion)
-                                        else let symTabFuncWithOwnFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypePrimitive primitive [])), scope = scp, body = (Block []), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab
+                                        else let symTabFuncWithOwnFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypePrimitive primitive arrayDimension)), scope = scp, body = (Block []), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab
                                              in let (newFuncSymTabWithStatements,hasErrors) = analyzeStatements statements scp (Map.union (Map.union symTabFuncWithOwnFunc symTab) newFuncSymTab) classSymTab
                                                     in if (hasErrors) then (emptySymbolTable,True)
                                                         -- Hacemos el difference porque newFuncSymTabWithStatements tiene como miembros los simbolos de la clase actual
                                                         -- Se actualiza con el insert
-                                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypePrimitive primitive [])), scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = (Map.difference newFuncSymTabWithStatements symTab), params = params}) symTab
-                                                                in let areRetTypesOk = areReturnTypesOk scp (TypePrimitive primitive []) statements newSymTabFunc newFuncSymTabWithStatements classSymTab
+                                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypePrimitive primitive arrayDimension)), scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTabWithStatements, params = params}) symTab
+                                                                in let areRetTypesOk = areReturnTypesOk scp (TypePrimitive primitive arrayDimension) statements newSymTabFunc newFuncSymTabWithStatements classSymTab
                                                                 in if areRetTypesOk == True then (newSymTabFunc, False)
                                                                    else (emptySymbolTable, True) 
                         else (emptySymbolTable, True)
-analyzeFunction (Function identifier (TypeFuncReturnClassId classIdentifier) params (Block statements)) scp isPublic symTab classSymTab = 
-                if (checkTypeExistance (TypeClassId classIdentifier []) classSymTab)
+analyzeFunction (Function identifier (TypeFuncReturnClassId classIdentifier arrayDimension) params (Block statements)) scp isPublic symTab classSymTab = 
+                if (checkTypeExistance (TypeClassId classIdentifier arrayDimension) classSymTab)
                     then if not (Map.member identifier symTab) then
                          let (newFuncSymTab, hasErrors) = (analyzeFuncParams params emptySymbolTable classSymTab)
                                     -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros, error
                                    in if (hasErrors) || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)
-                                        else let symTabFuncWithOwnFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypeClassId classIdentifier [])), scope = scp, body = (Block []), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab 
+                                        else let symTabFuncWithOwnFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypeClassId classIdentifier arrayDimension)), scope = scp, body = (Block []), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab 
                                             -- Metemos ahora a la symbol table de la funcion la symbol table que exista en los statements
                                              in let (newFuncSymTabWithStatements,hasErrors) = analyzeStatements statements scp (Map.union (Map.union symTabFuncWithOwnFunc symTab) newFuncSymTab) classSymTab
                                                     in if (hasErrors) then (emptySymbolTable,True)
-                                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypeClassId classIdentifier [])), scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = (Map.difference newFuncSymTabWithStatements symTab), params = params}) symTab
-                                                          in let areRetTypesOk = areReturnTypesOk scp (TypeClassId classIdentifier []) statements newSymTabFunc newFuncSymTabWithStatements classSymTab
+                                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypeClassId classIdentifier arrayDimension)), scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTabWithStatements, params = params}) symTab
+                                                          in let areRetTypesOk = areReturnTypesOk scp (TypeClassId classIdentifier arrayDimension) statements newSymTabFunc newFuncSymTabWithStatements classSymTab
                                                              in if areRetTypesOk == True then (newSymTabFunc, False)
                                                                 else (emptySymbolTable, True)
                         else (emptySymbolTable, True)
@@ -239,7 +239,7 @@ analyzeFunction (Function identifier (TypeFuncReturnNothing) params (Block state
                                              -- Metemos ahora a la symbol table de la funcion la symbol table que exista en los statements
                                              in let (newFuncSymTabWithStatements,hasErrors) = analyzeStatements statements scp (Map.union (Map.union symTabFuncWithOwnFunc symTab) newFuncSymTab) classSymTab
                                                     in if (hasErrors) then (emptySymbolTable,True)
-                                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = Nothing, scope = scp, body = (Block statements), shouldReturn = False ,isPublic = isPublic, symbolTable = (Map.difference newFuncSymTabWithStatements symTab), params = params}) symTab
+                                                        else let newSymTabFunc = Map.insert identifier (SymbolFunction {returnType = Nothing, scope = scp, body = (Block statements), shouldReturn = False ,isPublic = isPublic, symbolTable = newFuncSymTabWithStatements, params = params}) symTab
                                                             in if (hasErrors) then (emptySymbolTable,True)
                                                                 else (newSymTabFunc,False)
                         else (emptySymbolTable, True)
@@ -655,16 +655,16 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                        | varScp >= scp ->
                                             let typeIndexExp = (expressionProcess scp expressionIndex symTab classSymTab )
                                             in case typeIndexExp of
-                                                   Just PrimitiveInt ->  Just (TypePrimitive prim [])
-                                                   Just PrimitiveInteger ->  Just (TypePrimitive prim [])
+                                                   Just PrimitiveInt ->  Just (TypePrimitive prim (("[",size,"]") : []))
+                                                   Just PrimitiveInteger ->  Just (TypePrimitive prim (("[",size,"]") : []))
                                                    _ -> Nothing
                                        | otherwise -> Nothing
                                     Just (SymbolVar (TypeClassId classIdentifier (("[",size,"]") : []) ) varScp _)  
                                        | varScp >= scp ->
                                             let typeIndexExp = (expressionProcess scp expressionIndex symTab classSymTab)
                                             in case typeIndexExp of
-                                                   Just PrimitiveInt ->  Just (TypeClassId classIdentifier [])
-                                                   Just PrimitiveInteger ->  Just (TypeClassId classIdentifier [])
+                                                   Just PrimitiveInt ->  Just (TypeClassId classIdentifier (("[",size,"]") : []))
+                                                   Just PrimitiveInteger ->  Just (TypeClassId classIdentifier (("[",size,"]") : []))
                                                    _ -> Nothing
                                        | otherwise -> Nothing
                                     _ -> Nothing
@@ -677,8 +677,8 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                                 typeColExp = (expressionProcess scp colExp symTab classSymTab)
                                             in if (typeColExp == typeRowExp) then
                                                 case typeRowExp of
-                                                   Just PrimitiveInt ->  Just (TypePrimitive prim [])
-                                                   Just PrimitiveInteger ->  Just (TypePrimitive prim [])
+                                                   Just PrimitiveInt ->  Just (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]") : []))
+                                                   Just PrimitiveInteger ->  Just (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]") : []))
                                                    _ -> Nothing
                                                 else Nothing
                                        | otherwise -> Nothing
@@ -688,8 +688,8 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                                 typeColExp = (expressionProcess scp colExp symTab classSymTab)
                                             in if (typeColExp == typeRowExp) then
                                                 case typeRowExp of
-                                                   Just PrimitiveInt ->  Just (TypeClassId classIdentifier [])
-                                                   Just PrimitiveInteger ->  Just (TypeClassId classIdentifier [])
+                                                   Just PrimitiveInt ->  Just (TypeClassId classIdentifier (("[",rows,"]") : ("[",cols,"]") : []))
+                                                   Just PrimitiveInteger ->  Just (TypeClassId classIdentifier (("[",rows,"]") : ("[",cols,"]") : []))
                                                    _ -> Nothing
                                                 else Nothing
                                       | otherwise -> Nothing

@@ -123,8 +123,8 @@ Params :
         |  "->" TypeFuncParams var_identifier Params { ($2,$3) : $4 }
 
 TypeFuncReturn : 
-          Primitive {TypeFuncReturnPrimitive $1}
-        | class_identifier {TypeFuncReturnClassId $1}
+          Primitive ArrayIndexesDeclaration {TypeFuncReturnPrimitive $1 $2}
+        | class_identifier ArrayIndexesDeclaration {TypeFuncReturnClassId $1 $2}
         | "Nothing" {TypeFuncReturnNothing}
 
 TypeFuncParams :
@@ -417,6 +417,7 @@ parseError tokenList = let pos = tokenPosn(head(tokenList))
 startTypeChecker ::  String -> IO()
 startTypeChecker source = do
                             let parseTree = ooh (alexScanTokens2 source)
+                            putStrLn $ ppShow $ parseTree
                             startSemanticAnalysis parseTree
 
 main = do 
