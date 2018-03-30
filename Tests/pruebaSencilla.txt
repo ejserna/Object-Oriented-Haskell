@@ -1,13 +1,14 @@
 main{
-    Int i = 1000;
+    Int i = 100;
     Int j = 100;
+    i++;
     Bool t,t1,t2,t3;
     t2 = False;
     String s;
     Money m1,m2;
     m1 = 1.222222;
     m2 = m1;
-    if ( (100 + j ) == j){
+    if (i == 100 || j == 100){
         displayLn("Es cien",i);
     }
     else{

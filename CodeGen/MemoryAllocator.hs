@@ -15,6 +15,7 @@ import Control.Monad.Trans
 import Control.Monad
 import Data.Decimal
 import DataTypes
+import CodeGenDataTypes
 import Quadruple
 import SymbolTable
 import ClassSymbolTable
@@ -28,17 +29,17 @@ import Data.Function (on)
 
 
 data SymbolEnvironment = SymbolEnvironment
-                {   symTab :: SymbolTable, 
-                    classTab :: ClassSymbolTable
+                {   symTabMem :: SymbolTable, 
+                    classTabMem :: ClassSymbolTable
                 }
                 deriving (Show)
 
 data MemoryState = MemoryState
-                {   idAddressMap :: IdentifierAddressMap, 
-                    constAddressMap :: ConstantAddressMap,
-                    objAddressMap :: ObjectAddressMap,
-                    funcMap :: FunctionMap,
-                    varCounters :: VariableCounters,
+                {   idAddressMapMem :: IdentifierAddressMap, 
+                    constTable :: ConstantAddressMap,
+                    objAddressMapMem :: ObjectAddressMap,
+                    funcMapMem :: FunctionMap,
+                    varCountersMem :: VariableCounters,
                     literalCounters :: LiteralCounters
                 }
                 deriving (Show)
@@ -67,13 +68,13 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
             (stateAfterConstants3,_) <- execRWST (fillFromExpression (ExpressionLitVar $ IntegerLiteral 0 ) ) env stateAfterConstants2
             (stateAfterConstants4,_) <- execRWST (fillFromExpression (ExpressionLitVar $ StringLiteral "") ) env stateAfterConstants3
             (stateAfterConstants5,_) <- execRWST (fillFromExpression (ExpressionLitVar $ BoolLiteral True) ) env stateAfterConstants4
-            let constantAddressMap = (constAddressMap stateAfterConstants5)
+            let constantAddressMap = (constTable stateAfterConstants5)
             (stateAfterVariablesInStatements,_) <- execRWST (prepareAddressMapsFromSymbolTable) env stateAfterConstants5
             let (idMap,constMap, objMap, funcMap, varCounters, litCounters) = getCurrentMemoryState stateAfterVariablesInStatements
-            -- let (varCounters,newIdMap,objectAddressMap) = (prepareAddressMapsFromSymbolTable symTab classSymTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory)
+            -- let (varCountersMem,newIdMap,objectAddressMap) = (prepareAddressMapsFromSymbolTable symTab classSymTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory)
             --                                                     (Map.empty) (Map.empty))
         
-            startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters idMap constMap objMap 
+            startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters idMap constMap objMap Map.empty "_main_"
 
 prepareConstantAddressMap :: [Statement] -> MA
 prepareConstantAddressMap []  = return ()
@@ -232,55 +233,55 @@ prepareAddressMapsFromSymbolTable :: MA
 prepareAddressMapsFromSymbolTable = 
                             do 
                                 env <-  ask
-                                let symTabList = (Map.toList (symTab env))
+                                let symTabList = (Map.toList (symTabMem env))
                                 fillIdentifierAddressMap symTabList 
 
-fillIdentifierAddressMap :: [(Identifier,Symbol)] -> MA
+fillIdentifierAddressMap :: [(Identifier,Symbol)] -> MemoryAllocator ()
 fillIdentifierAddressMap [] = return ()
 fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) : rest ) =
                         do
                             memState <- get
-                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters memState)
-                            let identifierAddressMap = (idAddressMap memState)
+                            let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem memState)
+                            let identifierAddressMap = (idAddressMapMem memState)
                             case prim of
                                 PrimitiveBool -> 
                                                 do 
                                                     let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
-                                                    modify $ \s -> (s { varCounters = (intGC,decGC,strGC,boolGC + 1,objGC) }) 
-                                                    modify $ \s -> (s { idAddressMap = newIdMap })
+                                                    modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC,boolGC + 1,objGC) }) 
+                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                     fillIdentifierAddressMap rest
                                 PrimitiveInt ->
                                                 do 
                                                     let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                    modify $ \s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
-                                                    modify $ \s -> (s { idAddressMap = newIdMap })
+                                                    modify $ \s -> (s { varCountersMem = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
+                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                     fillIdentifierAddressMap rest
 
                                 PrimitiveInteger -> do 
                                                         let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                        modify $ \s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
-                                                        modify $ \s -> (s { idAddressMap = newIdMap })
+                                                        modify $ \s -> (s { varCountersMem = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
+                                                        modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                         fillIdentifierAddressMap rest 
                                 PrimitiveString -> do 
                                                     let newIdMap = (Map.insert identifier strGC identifierAddressMap)
-                                                    modify $ \s -> (s { varCounters = (intGC,decGC,strGC + 1,boolGC,objGC) }) 
-                                                    modify $ \s -> (s { idAddressMap = newIdMap })
+                                                    modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC + 1,boolGC,objGC) }) 
+                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                     fillIdentifierAddressMap rest
                                 PrimitiveMoney -> do 
                                                     let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                    modify $ \s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
-                                                    modify $ \s -> (s { idAddressMap = newIdMap })
+                                                    modify $ \s -> (s { varCountersMem = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
+                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                     fillIdentifierAddressMap rest
                                 PrimitiveDouble -> do 
                                                     let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                    modify $ \s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
-                                                    modify $ \s -> (s { idAddressMap = newIdMap })
+                                                    modify $ \s -> (s { varCountersMem = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
+                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                     fillIdentifierAddressMap rest
 fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) : rest ) = 
                             do
                                 memState <- get
-                                let (intGC,decGC,strGC,boolGC,objGC) = (varCounters memState)
-                                let identifierAddressMap = (idAddressMap memState)
+                                let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem memState)
+                                let identifierAddressMap = (idAddressMapMem memState)
                                 case (arrayAccess) of 
                                     [] -> 
                                         do 
@@ -288,14 +289,14 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAcce
                                             currentMemState <- get
                                             (idMapFromObject,newMemState, _) <- liftIO $ runRWST (insertObjectInObjectAddressMap (TypeClassId classId arrayAccess)) env currentMemState
                                             modify $ \s -> newMemState 
-                                            let newObjAddressMap = (objAddressMap newMemState)
-                                            let identifierAddressMap = (idAddressMap newMemState)
-                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters newMemState)
+                                            let newObjAddressMap = (objAddressMapMem newMemState)
+                                            let identifierAddressMap = (idAddressMapMem newMemState)
+                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem newMemState)
                                             let newIdMap = (Map.insert identifier objGC identifierAddressMap) 
                                             let newObjMap = (Map.insert objGC idMapFromObject newObjAddressMap)
-                                            modify $ \s -> (s { varCounters = (intGC,decGC,strGC,boolGC,objGC + 1) }) 
-                                            modify $ \s -> (s { idAddressMap = newIdMap })
-                                            modify $ \s -> (s { objAddressMap = newObjMap })
+                                            modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC,boolGC,objGC + 1) }) 
+                                            modify $ \s -> (s { idAddressMapMem = newIdMap })
+                                            modify $ \s -> (s { objAddressMapMem = newObjMap })
                                             fillIdentifierAddressMap rest 
                                     (("[",size,"]") : []) -> 
                                          do 
@@ -327,7 +328,7 @@ updateArrayClasses 0 size _ _   = return ()
 updateArrayClasses limit size strToAppend ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) =
                             do 
                                 memState <- get
-                                let identifierAddressMap = (idAddressMap memState)
+                                let identifierAddressMap = (idAddressMapMem memState)
                                 case (Map.lookup (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) identifierAddressMap) of
                                     Just address -> 
                                         do
@@ -337,9 +338,9 @@ updateArrayClasses limit size strToAppend ( (identifier,(SymbolVar (TypeClassId 
                                             modify $ \s -> newMemState 
                                             let (idMap,constMap, newObjAddressMap, funcMap, varCounters, litCounters) = getCurrentMemoryState newMemState
                                             let newObjMap = (Map.insert address idMapFromObject newObjAddressMap)
-                                            modify $ \s -> (s { varCounters = varCounters }) 
-                                            modify $ \s -> (s { idAddressMap = idMap })
-                                            modify $ \s -> (s { objAddressMap = newObjMap })
+                                            modify $ \s -> (s { varCountersMem = varCounters }) 
+                                            modify $ \s -> (s { idAddressMapMem = idMap })
+                                            modify $ \s -> (s { objAddressMapMem = newObjMap })
                                             updateArrayClasses (limit - 1) size strToAppend ((identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)))
             
 
@@ -355,73 +356,73 @@ fillArray 0 size _ _  = return ()
 fillArray limit size strToAppend ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) = 
                                 do 
                                     currentMemState <- get
-                                    let currentObjAddressMap = (objAddressMap currentMemState)
-                                    let identifierAddressMap = (idAddressMap currentMemState)
-                                    let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                    let currentObjAddressMap = (objAddressMapMem currentMemState)
+                                    let identifierAddressMap = (idAddressMapMem currentMemState)
+                                    let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
                                     let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) objGC identifierAddressMap) 
                                     -- Como es un arreglo de objetos, es importante asignarle su propio identifier address map a cada
                                     -- celda, y por el momento, estan vacios. Esto es necesario para asegurar que se guarden de manera contigua.
                                     let newObjMap = (Map.insert objGC (Map.empty) currentObjAddressMap)
-                                    modify $ \s -> (s { varCounters = (intGC,decGC,strGC,boolGC,objGC + 1) }) 
-                                    modify $ \s -> (s { idAddressMap = newIdMap })
-                                    modify $ \s -> (s { objAddressMap = newObjMap }) 
+                                    modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC,boolGC,objGC + 1) }) 
+                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
+                                    modify $ \s -> (s { objAddressMapMem = newObjMap }) 
                                     fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)))
 
 fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveBool arrayAccess) scp isPublic))) = 
                                                                         do 
                                                                             currentMemState <- get
-                                                                            let identifierAddressMap = (idAddressMap currentMemState)
-                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                                                            let identifierAddressMap = (idAddressMapMem currentMemState)
+                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
                                                                             let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) boolGC identifierAddressMap)
-                                                                            modify $ \s -> (s { varCounters = (intGC,decGC,strGC,boolGC + 1,objGC) }) 
-                                                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                                                            modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC,boolGC + 1,objGC) }) 
+                                                                            modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                                             fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveBool arrayAccess) scp isPublic))) 
 
 fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveString arrayAccess) scp isPublic))) =
                                                                         do 
                                                                             currentMemState <- get
-                                                                            let identifierAddressMap = (idAddressMap currentMemState)
-                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                                                            let identifierAddressMap = (idAddressMapMem currentMemState)
+                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
                                                                             let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) strGC identifierAddressMap)
-                                                                            modify $ \s -> (s { varCounters = (intGC,decGC,strGC + 1,boolGC,objGC) }) 
-                                                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                                                            modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC + 1,boolGC,objGC) }) 
+                                                                            modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                                             fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveString arrayAccess) scp isPublic))) 
 fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInteger arrayAccess) scp isPublic)))  = 
                                                                         do 
                                                                             currentMemState <- get
-                                                                            let identifierAddressMap = (idAddressMap currentMemState)
-                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                                                            let identifierAddressMap = (idAddressMapMem currentMemState)
+                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
                                                                             let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) intGC identifierAddressMap)
-                                                                            modify $ \s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
-                                                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                                                            modify $ \s -> (s { varCountersMem = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
+                                                                            modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                                             fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInteger arrayAccess) scp isPublic))) 
 fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInt arrayAccess) scp isPublic))) =
                                                                         do 
                                                                             currentMemState <- get
-                                                                            let identifierAddressMap = (idAddressMap currentMemState)
-                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                                                            let identifierAddressMap = (idAddressMapMem currentMemState)
+                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
                                                                             let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) intGC identifierAddressMap)
-                                                                            modify $ \s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
-                                                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                                                            modify $ \s -> (s { varCountersMem = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
+                                                                            modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                                             fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInt arrayAccess) scp isPublic)))
 
 fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveMoney arrayAccess) scp isPublic))) = 
                                                                         do 
                                                                             currentMemState <- get
-                                                                            let identifierAddressMap = (idAddressMap currentMemState)
-                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                                                            let identifierAddressMap = (idAddressMapMem currentMemState)
+                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
                                                                             let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) decGC identifierAddressMap)
-                                                                            modify $ \s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
-                                                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                                                            modify $ \s -> (s { varCountersMem = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
+                                                                            modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                                             fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveMoney arrayAccess) scp isPublic)))
 fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveDouble arrayAccess) scp isPublic))) = 
                                                                         do 
                                                                             currentMemState <- get
-                                                                            let identifierAddressMap = (idAddressMap currentMemState)
-                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCounters currentMemState)
+                                                                            let identifierAddressMap = (idAddressMapMem currentMemState)
+                                                                            let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
                                                                             let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) decGC identifierAddressMap)
-                                                                            modify $ \s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
-                                                                            modify $ \s -> (s { idAddressMap = newIdMap })
+                                                                            modify $ \s -> (s { varCountersMem = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
+                                                                            modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                                             fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveDouble arrayAccess) scp isPublic)))
 
 
@@ -436,7 +437,7 @@ insertObjectInObjectAddressMap ::  Type -> MemoryAllocator IdentifierAddressMap
 insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) =
                                 do 
                                     env <- ask
-                                    let classSymTab = (classTab env)
+                                    let classSymTab = (classTabMem env)
                                     case (Map.lookup classId classSymTab) of
                                         Just symbolTableOfClass -> 
                                             do 
@@ -481,32 +482,32 @@ fillFromExpressionAdaptee (ExpressionLitVar litOrVar) =
                 do 
                     memState <- get
                     let (intLitC,decLitC,strLitC,boolLitC) = (literalCounters memState)
-                    let constantAddressMap = (constAddressMap memState)
+                    let constantAddressMap = (constTable memState)
                     case litOrVar of
                          IntegerLiteral int -> case (Map.lookup ("<int>" ++ (show int)) constantAddressMap) of
                                                     Just _ -> return ()
                                                     _ ->  do 
                                                             let newConsAddressMap = (Map.insert ("<int>" ++ (show int)) intLitC constantAddressMap)
                                                             modify $ \s -> (s { literalCounters = (intLitC + 1, decLitC,strLitC,boolLitC) }) 
-                                                            modify $ \s -> (s { constAddressMap = newConsAddressMap }) 
+                                                            modify $ \s -> (s { constTable = newConsAddressMap }) 
                          DecimalLiteral dec -> case (Map.lookup ("<dec>" ++ (show dec)) constantAddressMap) of
                                                     Just _ -> return ()
                                                     _ -> do
                                                             let newConsAddressMap = (Map.insert ("<dec>" ++ (show dec)) decLitC constantAddressMap)
                                                             modify $ \s -> (s { literalCounters = (intLitC, decLitC + 1,strLitC,boolLitC) }) 
-                                                            modify $ \s -> (s { constAddressMap = newConsAddressMap }) 
+                                                            modify $ \s -> (s { constTable = newConsAddressMap }) 
                          StringLiteral str -> case (Map.lookup ("<str>" ++ (show str)) constantAddressMap) of
                                                     Just _ -> return ()
                                                     _ -> do 
                                                             let newConsAddressMap = (Map.insert ("<str>" ++ str) strLitC constantAddressMap)
                                                             modify $ \s -> (s { literalCounters = (intLitC, decLitC,strLitC + 1,boolLitC) }) 
-                                                            modify $ \s -> (s { constAddressMap = newConsAddressMap }) 
+                                                            modify $ \s -> (s { constTable = newConsAddressMap }) 
                          BoolLiteral bool -> case (Map.lookup ("<bool>" ++ (show bool)) constantAddressMap) of
                                                     Just _ -> return ()
                                                     _ -> do 
                                                          let newConsAddressMap = (Map.insert ("<bool>" ++ (show bool)) boolLitC constantAddressMap)
                                                          modify $ \s -> (s { literalCounters = (intLitC, decLitC,strLitC,boolLitC + 1) }) 
-                                                         modify $ \s -> (s { constAddressMap = newConsAddressMap }) 
+                                                         modify $ \s -> (s { constTable = newConsAddressMap }) 
                          _ -> return ()
 fillFromExpressionAdaptee  (ExpressionVarArray _ ((ArrayAccessExpression expression) : []))  = 
                             fillFromExpression expression

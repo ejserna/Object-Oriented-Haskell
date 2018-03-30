@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Quadruple where
 import DataTypes
+import CodeGenDataTypes
 import Data.List (intercalate)
 
 buildQuadrupleThreeAddresses :: QuadNum -> Operation -> (Address,Address,Address)-> Quadruple

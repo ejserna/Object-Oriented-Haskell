@@ -74,11 +74,16 @@ checkDataTypeOfLitVar scp (VarIdentifier identifier) symTab =
                                       | varScp >= scp -> (Just prim)
                                       | otherwise -> Nothing
                                     _ -> Nothing
+
 checkDataTypeOfLitVar scp (IntegerLiteral int) symTab = (Just PrimitiveInt)
 checkDataTypeOfLitVar scp (DecimalLiteral dec) symTab = (Just PrimitiveDouble)
 checkDataTypeOfLitVar scp (StringLiteral int) symTab = (Just PrimitiveString)
 checkDataTypeOfLitVar scp (BoolLiteral _) symTab = (Just PrimitiveBool)
 
+checkDataTypeOfVar ::  LiteralOrVariable -> SymbolTable -> Type
+checkDataTypeOfVar  (VarIdentifier identifier) symTab = 
+                                  case (Map.lookup identifier symTab) of
+                                    Just (SymbolVar dataType varScp _) -> dataType
 
 expressionCheckOp :: Scope -> Expression -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
 expressionCheckOp scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab classSymTab = checkDataTypesMult (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab

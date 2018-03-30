@@ -471,7 +471,7 @@ isAssignmentOk  (AssignmentObjectMember identifier (ObjectMember objectIdentifie
                                     if (varScp >= scp)
                                         then 
                                         case (Map.lookup objectIdentifier symTab) of
-                                            Just (SymbolVar (TypeClassId classIdentifier _) objScp _) -> 
+                                            Just (SymbolVar (TypeClassId classIdentifier []) objScp _) -> 
                                                 if (objScp >= scp) 
                                                     then
                                                     case (Map.lookup classIdentifier classSymTab) of

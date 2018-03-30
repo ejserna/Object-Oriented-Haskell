@@ -22,6 +22,7 @@ import Control.Exception
 import Data.Stack as Stack
 import Quadruple
 import DataTypes
+import CodeGenDataTypes
 import Data.Decimal
 import Text.Show.Pretty
 import qualified Data.HashMap.Strict as Map

@@ -60,11 +60,11 @@ main{
     s2 = c2.coso;
     sHumano1 = perroHumano.l;
     sHumano2 = perroHumano2.l;
-    display(s1,s2);
-    display(m1,m2);
-    display(sHumano1,sHumano2);
+    displayLn(s1,s2);
+    displayLn(m1,m2);
+    displayLn(sHumano1,sHumano2);
     if (s1 == s2){
-        display("Mismo perro");
+        displayLn("Mismo perro");
     }
     Int iEdad1,iEdad2;
     String sNombre1, sNombre2;
@@ -75,11 +75,11 @@ main{
     sNombre1 = h1.nombre;
     sNombre2 = h2.nombre;
     if (iEdad1 == iEdad2 && sNombre1 == sNombre2){
-        display("Son el mismo humano",sNombre2);
+        displayLn("Son el mismo humano",sNombre2);
 
     }
     for counter2 in [1..10]{
-        display(counter2);
+        displayLn(counter2);
     }
 
     

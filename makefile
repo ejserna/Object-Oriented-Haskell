@@ -5,7 +5,7 @@ default:
 	rm -f Scanner.hs
 	alex Analysis/Scanner.x
 	happy Analysis/Parser.y
-	ghc -o ObjectiveOrientedHaskell DataTypes.hs CodeGen/ExpressionOptimizer.hs Analysis/SymbolTable.hs Analysis/Expression.hs Analysis/ClassSymbolTable.hs CodeGen/Quadruple.hs VirtualMachine.hs CodeGen/ExpressionCodeGen.hs CodeGen/CodeGen.hs CodeGen/MemoryAllocator.hs Analysis/TypeChecker.hs Analysis/Scanner.hs Analysis/Parser.hs
+	ghc -o ObjectiveOrientedHaskell DataTypes.hs CodeGen/CodeGenDataTypes.hs CodeGen/ExpressionOptimizer.hs Analysis/SymbolTable.hs Analysis/Expression.hs Analysis/ClassSymbolTable.hs CodeGen/Quadruple.hs VirtualMachine.hs CodeGen/ExpressionCodeGen.hs CodeGen/CodeGen.hs CodeGen/MemoryAllocator.hs Analysis/TypeChecker.hs Analysis/Scanner.hs Analysis/Parser.hs
 
 
 pruebaClases:
