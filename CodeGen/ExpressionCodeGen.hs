@@ -148,6 +148,7 @@ expCodeGen (ExpressionLitVar (VarIdentifier id)) =
                                                                                         tell $ [(buildQuadrupleTwoAddresses quadNum ASSIGNMENT (addressCons, addressCons ))]
                                                                                         modify $ \s -> (s { varCounters = (intGC, decGC, strGC, boolGC,objGC)})
                                                                                         modify $ \s -> (s { currentQuadNum = quadNum + 1})
+expCodeGen(ExpressionFuncCall functionCall) = generateCodeFuncCall functionCall
                                                                                                             
 expCodeGen (ExpressionMult exp1 exp2) = genQuadrupleArithmetic exp1 exp2 MULTIPLY_
 expCodeGen (ExpressionDiv exp1 exp2) = genQuadrupleArithmetic exp1 exp2 DIVIDE_
@@ -528,7 +529,244 @@ genQuadrupleRelational exp1 exp2 op =
             return ()
 
 
+generateCodeFromCallParams :: [Address] -> [Type] -> [Expression] -> CodeGen [(Address,Address)]
+generateCodeFromCallParams [] [] [] = return []
+generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
+                            do 
+                                cgEnv <- ask
+                                cgState <- get
+                                let (_,_,idTable,_,funcMap,currentModule) = getCGEnvironment cgEnv
+                                let (symTab,_,quadNum) = getCGState cgState 
+                                case t of
+                                    (TypeClassId classId accessExpression) ->
+                                        case accessExpression of 
+                                            [] -> 
+                                                case e of 
+                                                    (ExpressionLitVar (VarIdentifier identifierExp)) ->
+                                                        case (Map.lookup identifierExp idTable) of 
+                                                            Just attrObject ->
+                                                                                do 
+                                                                                    let (a : as) = addressesInFunction
+                                                                                    let paramsZip = zip [attrObject] [a]
+                                                                                    generateCodeFromCallParams as ts es
 
+                                                                                    (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams  as ts es) cgEnv cgState
+                                                            
+                                                                                    modify $ (\s -> newCGState)
+                                                                                    tell $ quads
+
+                                                                                    return $ paramsZip ++ quadsParams
+                                            (("[",size,"]") : []) -> case e of 
+                                                                        (ExpressionLitVar (VarIdentifier identifierExp)) ->
+                                                                            case (Map.lookup (identifierExp ++ "[0]") idTable) of 
+                                                                                Just attrBase ->
+                                                                                            do 
+                                                                                                let addressesC = [attrBase..] 
+                                                                                                let addressesCurrent = take (fromIntegral size) addressesC
+                                                                                                let addressesFunction = take (fromIntegral size) addressesInFunction
+                                                                                                let paramsZip = zip addressesCurrent addressesFunction
+
+                                                                                                (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams (drop (fromIntegral size) addressesInFunction) ts es) cgEnv cgState
+                                                            
+                                                                                                modify $ (\s -> newCGState)
+                                                                                                tell $ quads
+
+                                                                                                return (paramsZip ++ quadsParams)
+                                            (("[",rows,"]") : ("[",cols,"]") : []) -> case e of 
+                                                                        (ExpressionLitVar (VarIdentifier identifierExp)) ->
+                                                                            case (Map.lookup (identifierExp ++ "[0][0]") idTable) of 
+                                                                                Just attrBase -> 
+                                                                                            do 
+
+                                                                                                let addressesC = [attrBase..] 
+                                                                                                let addressesCurrent = take (fromIntegral $ rows * cols) addressesC
+                                                                                                let addressesFunction = take (fromIntegral $ rows * cols) addressesInFunction
+                                                                                                let paramsZip = zip addressesCurrent addressesFunction
+                                                                                                (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams (drop (fromIntegral $ rows * cols) addressesInFunction) ts es) cgEnv cgState
+                                                            
+                                                                                                modify $ (\s -> newCGState)
+                                                                                                tell $ quads
+
+                                                                                                return (paramsZip ++ quadsParams)
+                                    (TypePrimitive prim accessExpression) ->
+                                        case accessExpression of 
+                                            [] -> case e of 
+                                                    (ExpressionLitVar (VarIdentifier identifierExp)) ->
+                                                        case (Map.lookup identifierExp idTable) of 
+                                                            Just attrObject ->
+                                                                                do 
+                                                                                    let (a : as) = addressesInFunction
+                                                                                    let paramsZip = zip [attrObject] [a]
+                                                                                    -- generateCodeFromCallParams as ts es
+
+                                                                                    (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams  as ts es) cgEnv cgState
+                                                            
+                                                                                    modify $ (\s -> newCGState)
+                                                                                    tell $ quads
+                                                                                    return (paramsZip ++ quadsParams)
+                                                    -- A todo lo demas, generamos la expresión resultante
+                                                    _ -> do 
+                                                            (_,quads) <- listen $ expCodeGen e
+                                                            -- tell $ quads
+                                                            cgEnvironment <- ask
+                                                            cgState <- get
+                                                            let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                            let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
+                                                            case prim of 
+                                                                PrimitiveDouble ->
+                                                                                do 
+                                                                                    let (a : as) = addressesInFunction
+                                                                                    let paramsZip = zip [(decGC - 1)] [a]
+                                                                                    (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams  as ts es) cgEnv cgState
+                                                            
+                                                                                    modify $ (\s -> newCGState)
+                                                                                    tell $ quads
+                                                                                    return (paramsZip ++ quadsParams)
+
+                                                                PrimitiveMoney ->
+                                                                                do 
+                                                                                    let (a : as) = addressesInFunction
+                                                                                    let paramsZip = zip [(decGC - 1)] [a]
+                                                                                    (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams  as ts es) cgEnv cgState
+                                                            
+                                                                                    modify $ (\s -> newCGState)
+                                                                                    tell $ quads
+                                                                                    return (paramsZip ++ quadsParams)
+                                                                PrimitiveInteger ->
+                                                                                do 
+                                                                                    let (a : as) = addressesInFunction
+                                                                                    let paramsZip = zip [(intGC - 1)] [a]
+                                                                                    (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams  as ts es) cgEnv cgState
+                                                            
+                                                                                    modify $ (\s -> newCGState)
+                                                                                    tell $ quads
+                                                                                    return (paramsZip ++ quadsParams)
+                                                                PrimitiveInt ->
+                                                                                do 
+                                                                                    let (a : as) = addressesInFunction
+                                                                                    let paramsZip = zip [(intGC - 1)] [a]
+                                                                                    (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams  as ts es) cgEnv cgState
+                                                            
+                                                                                    modify $ (\s -> newCGState)
+                                                                                    tell $ quads
+                                                                                    return (paramsZip ++ quadsParams)
+                                                                PrimitiveString ->
+                                                                                do 
+                                                                                    let (a : as) = addressesInFunction
+                                                                                    let paramsZip = zip [(strGC - 1)] [a]
+                                                                                    (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams  as ts es) cgEnv cgState
+                                                            
+                                                                                    modify $ (\s -> newCGState)
+                                                                                    tell $ quads
+                                                                                    return (paramsZip ++ quadsParams)
+                                                                PrimitiveBool ->
+                                                                                do 
+                                                                                    let (a : as) = addressesInFunction
+                                                                                    let paramsZip = zip [(boolGC - 1)] [a]
+                                                                                    (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams  as ts es) cgEnv cgState
+                                                            
+                                                                                    modify $ (\s -> newCGState)
+                                                                                    tell $ quads
+                                                                                    return (paramsZip ++ quadsParams)
+                                            (("[",size,"]") : []) -> case e of 
+                                                                        (ExpressionLitVar (VarIdentifier identifierExp)) ->
+                                                                            case (Map.lookup (identifierExp ++ "[0]") idTable) of 
+                                                                                Just attrBase ->
+                                                                                            do 
+                                                                                                let addressesC = [attrBase..] 
+                                                                                                let addressesCurrent = take (fromIntegral size) addressesC
+                                                                                                let addressesFunction = take (fromIntegral size) addressesInFunction
+                                                                                                let paramsZip = zip addressesCurrent addressesFunction
+
+                                                                                                (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams (drop (fromIntegral size) addressesInFunction) ts es) cgEnv cgState
+                                                            
+                                                                                                modify $ (\s -> newCGState)
+                                                                                                tell $ quads
+                                                                                                return (paramsZip ++ quadsParams)
+                                            (("[",rows,"]") : ("[",cols,"]") : []) -> case e of 
+                                                                                        (ExpressionLitVar (VarIdentifier identifierExp)) ->
+                                                                                            case (Map.lookup (identifierExp ++ "[0][0]") idTable) of 
+                                                                                                Just attrBase -> 
+                                                                                                            do 
+                                                                                                                let addressesC = [attrBase..] 
+                                                                                                                let addressesCurrent = take (fromIntegral $ rows * cols) addressesC
+                                                                                                                let addressesFunction = take (fromIntegral $ rows * cols) addressesInFunction
+                                                                                                                let paramsZip = zip addressesCurrent addressesFunction
+                                                                                                                (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams (drop (fromIntegral $ rows * cols) addressesInFunction) ts es) cgEnv cgState
+                                                                            
+                                                                                                                modify $ (\s -> newCGState)
+                                                                                                                tell $ quads
+                                                                                                                return (paramsZip ++ quadsParams)
+                                    
+
+generateCodeFuncCall :: FunctionCall -> CG
+generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) =
+                            do 
+                                cgEnv <- ask
+                                cgState <- get
+                                let (_,_,idTable,_,funcMap,currentModule) = getCGEnvironment cgEnv
+                                let (symTab,_,_) = getCGState cgState
+                                -- liftIO $ putStrLn.ppShow $ funcMap
+                                liftIO $ putStrLn.ppShow $ currentModule ++ funcIdentifier
+                                case (Map.lookup (currentModule ++ funcIdentifier) funcMap) of 
+                                    Just (FunctionData _ paramsAddressesFunc idMapFunc objMapFunc) -> 
+                                            do 
+                                                case (Map.lookup funcIdentifier symTab) of 
+                                                    Just (SymbolFunction params returnType _ _ _ _ _) ->
+                                                        do 
+                                                            let typesParams = (map (\f -> fst f) params)
+                                                            let expressionsParams = (map (\f -> 
+                                                                                                let (ParamsExpression exp) = f 
+                                                                                                 in exp) 
+                                                                                    callParams)
+                                                            (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams  paramsAddressesFunc typesParams expressionsParams) cgEnv cgState
+                                                            tell $ quads
+                                                            
+                                                            -- Actualizamos el estado
+                                                            modify $ (\s -> newCGState)
+                                                            cgState <- get
+                                                            let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
+                                                            let funcCallQuad = buildFuncCall quadNum [] quadsParams (currentModule ++ funcIdentifier)
+                                                            tell $ [funcCallQuad]
+                                                            case returnType of 
+                                                                Nothing -> do 
+                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 1}))
+                                                                Just (TypePrimitive PrimitiveMoney []) -> 
+                                                                               do 
+                                                                                let ret = buildReturnAssignment (quadNum + 1) [decGC]
+                                                                                tell $ [ret]
+                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                modify $ (\s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC)})) 
+                                                                Just (TypePrimitive PrimitiveDouble []) -> 
+                                                                               do 
+                                                                                let ret = buildReturnAssignment (quadNum + 1) [decGC]
+                                                                                tell $ [ret]
+                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                modify $ (\s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC)})) 
+                                                                Just (TypePrimitive PrimitiveInteger []) -> 
+                                                                               do 
+                                                                                let ret = buildReturnAssignment (quadNum + 1) [intGC]
+                                                                                tell $ [ret]
+                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                modify $ (\s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC)}))
+                                                                Just (TypePrimitive PrimitiveInt []) -> 
+                                                                               do 
+                                                                                let ret = buildReturnAssignment (quadNum + 1) [intGC]
+                                                                                tell $ [ret]
+                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                modify $ (\s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC)})) 
+                                                                Just (TypePrimitive PrimitiveString []) -> 
+                                                                               do 
+                                                                                let ret = buildReturnAssignment (quadNum + 1) [strGC]
+                                                                                tell $ [ret]
+                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                modify $ (\s -> (s { varCounters = (intGC,decGC,strGC + 1,boolGC,objGC)})) 
+                                                                Just (TypePrimitive PrimitiveBool []) -> 
+                                                                               do 
+                                                                                let ret = buildReturnAssignment (quadNum + 1) [strGC]
+                                                                                tell $ [ret]
+                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC + 1,objGC)}))
 
 
 

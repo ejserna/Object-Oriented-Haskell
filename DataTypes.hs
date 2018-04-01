@@ -2,6 +2,8 @@ module DataTypes where
 import Data.Decimal
 import qualified Data.HashMap.Strict as Map
 import Data.List (intercalate)
+import Quadruple
+
 -- Esta sección tiene las producciones semánticas para producir el árbol abstracto de sintaxis 
 type Identifier = String
 type ClassIdentifier = String
@@ -262,80 +264,6 @@ data Return
     = ReturnFunctionCall FunctionCall
     | ReturnExp Expression 
   deriving(Show,Eq)
-
-data Operation = 
-        -- Expression Operators
-          GT_
-        | LT_
-        | GTEQ_
-        | LTEQ_
-        | EQ_
-        | NOTEQ_
-        | AND_
-        | OR_      
-        | ADD_
-        | SUB_ 
-        | MULTIPLY_
-        | DIVIDE_
-        | NEG_
-        | NOT_
-        | MOD_
-        | POWER_
-        -- Assignment Operators
-        | ASSIGNMENT
-        -- Flow Control Operators
-        | GOTO
-        | GOTO_IF_FALSE
-        | GOTO_IF_TRUE
-        | GOTO_NORMAL
-        | DISPLAY
-        | DISPLAY_LINE
-        | READ
-        | NOP
-        | FOR
-        | INT_64
-        | DOUBLE
-        | BOUNDS
-        | ADD_INDEX
-        | ACCESS_INDEX -- ACCESS_INDEX (2002) _ ADDRESS Esto sirve para que el valor que haya en 2002 se ponga a dentro de address
-        | PUT_INDEX -- PUT_INDEX ADDRESS_VALOR _ (2002) Esto sirve para que el valor se ponga a dentro del 2002
-        | DISPLAY_VALUE_IN_INDEX
-      deriving(Eq)
-
-instance Show Operation where
-    show op = case op of
-        GT_  -> id ">"
-        LT_  -> id "<"
-        GTEQ_  -> id ">="
-        LTEQ_  -> id "<=" 
-        EQ_  -> id "=="
-        NOTEQ_  -> id "!="
-        AND_  -> id "&&"
-        OR_  -> id "||"
-        ADD_  -> id "+" 
-        SUB_  -> id "-"
-        MULTIPLY_  -> id "*"
-        DIVIDE_  -> id "/"
-        NEG_  -> id "NEG"
-        NOT_  -> id "!" 
-        MOD_  -> id "%"
-        POWER_  -> id "POW"
-        GOTO  -> id "GOTO"
-        GOTO_IF_FALSE  -> id "GOTO_F"
-        GOTO_IF_TRUE  -> id  "GOTO_T" 
-        ASSIGNMENT  -> id  "="
-        DISPLAY -> id "PRINT"
-        DISPLAY_LINE -> id "PRINTLN"
-        READ -> id "READ"
-        NOP -> id "NOP"
-        FOR -> id "FOR"
-        INT_64 -> id "INT_64"
-        DOUBLE -> id "DOUBLE"
-        BOUNDS -> id "BOUNDS"
-        ADD_INDEX -> id "ADD_INDEX"
-        ACCESS_INDEX -> id "ASSIGNMENT_FROM_INDEX"
-        PUT_INDEX -> id "PUT_INDEX"
-        DISPLAY_VALUE_IN_INDEX -> id "DISPLAY_VAL_IN_INDEX"
 
 intToDecimal :: Integer -> Decimal
 intToDecimal int = let num = show(int)

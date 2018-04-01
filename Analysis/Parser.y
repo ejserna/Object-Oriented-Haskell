@@ -11,6 +11,7 @@
 module Main where
 import Scanner
 import DataTypes
+import Quadruple
 import Data.Decimal
 import Text.Show.Pretty
 import TypeChecker

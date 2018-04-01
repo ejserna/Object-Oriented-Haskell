@@ -69,12 +69,13 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
             (stateAfterConstants4,_) <- execRWST (fillFromExpression (ExpressionLitVar $ StringLiteral "") ) env stateAfterConstants3
             (stateAfterConstants5,_) <- execRWST (fillFromExpression (ExpressionLitVar $ BoolLiteral True) ) env stateAfterConstants4
             let constantAddressMap = (constTable stateAfterConstants5)
-            (stateAfterVariablesInStatements,_) <- execRWST (prepareAddressMapsFromSymbolTable) env stateAfterConstants5
+            (stateAfterVariablesInStatements,_) <- execRWST (prepareAddressMapsFromSymbolTable "_main_") env stateAfterConstants5
             let (idMap,constMap, objMap, funcMap, varCounters, litCounters) = getCurrentMemoryState stateAfterVariablesInStatements
+            putStrLn $ ppShow $(sortBy (compare `on` fst) (Map.toList funcMap) ) 
             -- let (varCountersMem,newIdMap,objectAddressMap) = (prepareAddressMapsFromSymbolTable symTab classSymTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory)
             --                                                     (Map.empty) (Map.empty))
         
-            startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters idMap constMap objMap Map.empty "_main_"
+            startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters idMap constMap objMap funcMap "_main_"
 
 prepareConstantAddressMap :: [Statement] -> MA
 prepareConstantAddressMap []  = return ()
@@ -229,16 +230,16 @@ fillFromCallParams ((ParamsExpression exp) : params) = do
                                                         
         
                 
-prepareAddressMapsFromSymbolTable :: MA
-prepareAddressMapsFromSymbolTable = 
+prepareAddressMapsFromSymbolTable :: String -> MA
+prepareAddressMapsFromSymbolTable fromModule = 
                             do 
                                 env <-  ask
                                 let symTabList = (Map.toList (symTabMem env))
-                                fillIdentifierAddressMap symTabList 
+                                fillIdentifierAddressMap symTabList fromModule
 
-fillIdentifierAddressMap :: [(Identifier,Symbol)] -> MemoryAllocator ()
-fillIdentifierAddressMap [] = return ()
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) : rest ) =
+fillIdentifierAddressMap :: [(Identifier,Symbol)] -> String -> MemoryAllocator ()
+fillIdentifierAddressMap [] _ = return ()
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) : rest ) fromModule =
                         do
                             memState <- get
                             let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem memState)
@@ -249,35 +250,35 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) 
                                                     let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
                                                     modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC,boolGC + 1,objGC) }) 
                                                     modify $ \s -> (s { idAddressMapMem = newIdMap })
-                                                    fillIdentifierAddressMap rest
+                                                    fillIdentifierAddressMap rest fromModule
                                 PrimitiveInt ->
                                                 do 
                                                     let newIdMap = (Map.insert identifier intGC identifierAddressMap)
                                                     modify $ \s -> (s { varCountersMem = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
                                                     modify $ \s -> (s { idAddressMapMem = newIdMap })
-                                                    fillIdentifierAddressMap rest
+                                                    fillIdentifierAddressMap rest fromModule
 
                                 PrimitiveInteger -> do 
                                                         let newIdMap = (Map.insert identifier intGC identifierAddressMap)
                                                         modify $ \s -> (s { varCountersMem = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
                                                         modify $ \s -> (s { idAddressMapMem = newIdMap })
-                                                        fillIdentifierAddressMap rest 
+                                                        fillIdentifierAddressMap rest fromModule
                                 PrimitiveString -> do 
                                                     let newIdMap = (Map.insert identifier strGC identifierAddressMap)
                                                     modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC + 1,boolGC,objGC) }) 
                                                     modify $ \s -> (s { idAddressMapMem = newIdMap })
-                                                    fillIdentifierAddressMap rest
+                                                    fillIdentifierAddressMap rest fromModule
                                 PrimitiveMoney -> do 
                                                     let newIdMap = (Map.insert identifier decGC identifierAddressMap)
                                                     modify $ \s -> (s { varCountersMem = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
                                                     modify $ \s -> (s { idAddressMapMem = newIdMap })
-                                                    fillIdentifierAddressMap rest
+                                                    fillIdentifierAddressMap rest fromModule
                                 PrimitiveDouble -> do 
                                                     let newIdMap = (Map.insert identifier decGC identifierAddressMap)
                                                     modify $ \s -> (s { varCountersMem = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
                                                     modify $ \s -> (s { idAddressMapMem = newIdMap })
-                                                    fillIdentifierAddressMap rest
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) : rest ) = 
+                                                    fillIdentifierAddressMap rest fromModule
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) : rest ) fromModule = 
                             do
                                 memState <- get
                                 let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem memState)
@@ -287,7 +288,7 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAcce
                                         do 
                                             env <- ask
                                             currentMemState <- get
-                                            (idMapFromObject,newMemState, _) <- liftIO $ runRWST (insertObjectInObjectAddressMap (TypeClassId classId arrayAccess)) env currentMemState
+                                            (idMapFromObject,newMemState, _) <- liftIO $ runRWST (insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) ("_" ++ classId ++ "_") ) env currentMemState 
                                             modify $ \s -> newMemState 
                                             let newObjAddressMap = (objAddressMapMem newMemState)
                                             let identifierAddressMap = (idAddressMapMem newMemState)
@@ -297,35 +298,116 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAcce
                                             modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC,boolGC,objGC + 1) }) 
                                             modify $ \s -> (s { idAddressMapMem = newIdMap })
                                             modify $ \s -> (s { objAddressMapMem = newObjMap })
-                                            fillIdentifierAddressMap rest 
+                                            fillIdentifierAddressMap rest fromModule
                                     (("[",size,"]") : []) -> 
                                          do 
                                             fillArray size size "" (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))
-                                            updateArrayClasses size size "" (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))
-                                            fillIdentifierAddressMap rest
+                                            updateArrayClasses size size "" (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) fromModule
+                                            fillIdentifierAddressMap rest fromModule
 
                                     (("[",rows,"]") : ("[",cols,"]")  : [] ) ->
                                           do 
                                             fillMatrix rows cols rows (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))
-                                            updateMatrixClasses rows cols rows (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))
-                                            fillIdentifierAddressMap rest
+                                            updateMatrixClasses rows cols rows (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) fromModule
+                                            fillIdentifierAddressMap rest fromModule
 
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic)) : rest ) =
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic)) : rest ) fromModule =
                                                     do 
                                                         fillArray size size "" (identifier,(SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic))
-                                                        fillIdentifierAddressMap rest
+                                                        fillIdentifierAddressMap rest fromModule
                                                         
 
-fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)) : rest ) =
+fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)) : rest ) fromModule =
                                                     do 
                                                         let dt = (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : []))
                                                         fillMatrix rows cols rows (identifier,(SymbolVar dt scp isPublic))
-                                                        fillIdentifierAddressMap rest
+                                                        fillIdentifierAddressMap rest fromModule
+
+fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statements) p2 p3 p4 symTabFunc)) : rest) fromModule =
+                                                    do 
+                                                        env <- ask
+                                                        memState <- get
+                                                        let funcMap = (funcMapMem memState)
+                                                        if (Map.member (fromModule ++ identifier) funcMap) then fillIdentifierAddressMap rest fromModule
+                                                            else do 
+  
+                                                                    (stateAfterFuncConstants,_) <-  liftIO $ execRWST (prepareConstantAddressMap statements) (setEnvironment symTabFunc (classTabMem env)) 
+                                                                                                                                                    (setMemoryState (Map.empty) (constTable memState) 
+                                                                                                                                                                 (Map.empty) funcMap (startIntLocalMemory,startDecimalLocalMemory,startStringLocalMemory,startBoolLocalMemory, startObjectLocalMemory)
+                                                                                                                                                                 (literalCounters memState))
+                                                                    
+                                                                    -- Obtenemos las dependencias de la funcion, para primero realizar los metodos de las funciones que utiliza la funcion
+                                                                    let functionDependenciesMap = (Map.filter getFuncs symTabFunc)
+                                                                    -- let functionDependenciesMapNoSelf = (Map.filter )
+                                                                    liftIO $ putStrLn.ppShow $ (fromModule ++ identifier)
+                                                                    let functionSymTabNoFuncs = (Map.filter filterFuncs symTabFunc)
+                                                                    (stateAfterDependencies,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable (fromModule)) (setEnvironment functionDependenciesMap (classTabMem env)) stateAfterFuncConstants
+                                                                    
+                                                                    (stateAfterVariablesFromFunc,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable (fromModule)) (setEnvironment functionSymTabNoFuncs (classTabMem env)) stateAfterDependencies
+                                                                    let (idMapFromFunc, newConstTable, funcObjMap,funcMap,varCountersFromFunc,newLiteralCounters) = getCurrentMemoryState stateAfterVariablesFromFunc
+                                                                    let paramsAddresses = fillParamsFromFunction params idMapFromFunc
+                                                                    -- Se inserta un funcData vacio para funciones recursivas
+                                                                    let funcData = FunctionData [] paramsAddresses idMapFromFunc funcObjMap
+                                                                    let newFuncMap = (Map.insert (fromModule ++ identifier) funcData funcMap)
+                                                                    -- Para funciones recursivas
+                                                                    let symTabFuncWithOwnFunc = (Map.insert identifier (SymbolFunction params p1 (Block statements) p2 p3 p4 symTabFunc) symTabFunc)
+                                                                    let cgState = (setCGState symTabFuncWithOwnFunc varCountersFromFunc 0)
+                                                                    let cgEnv = setCGEnvironment (classTabMem env) funcObjMap idMapFromFunc newConstTable newFuncMap (fromModule)
+                                                                    (_,quads) <-  liftIO $ execRWST (generateCodeFromStatements statements) cgEnv cgState
+                                                                    -- Se actualiza el que se acaba de insertar, ahora con los quads recien generados
+                                                                    let funcData = FunctionData quads paramsAddresses idMapFromFunc funcObjMap
+                                                                    let newFuncMap = (Map.insert (fromModule ++ identifier) funcData funcMap)
+                                                                    modify $ \s -> (s { literalCounters = newLiteralCounters }) 
+                                                                    modify $ \s -> (s { constTable = newConstTable })
+                                                                    modify $ \s -> (s { funcMapMem = newFuncMap })
+                                                                   
+                                                                    -- liftIO $ putStrLn $ (fromModule ++ identifier)
+                                                                    -- liftIO $ putStrLn.ppShow $ funcData
+                                                                    fillIdentifierAddressMap rest fromModule
+
+getFuncs :: Symbol -> Bool
+getFuncs (SymbolFunction _ _ _ _ _ _ _) = True
+getFuncs _ = False
+
+filterFuncs :: Symbol -> Bool
+filterFuncs (SymbolFunction _ _ _ _ _ _ _) = False
+filterFuncs _ = True
+
+fillParamsFromFunction :: [(Type,Identifier)] -> IdentifierAddressMap -> [Address]
+fillParamsFromFunction [] _ = []
+fillParamsFromFunction ((dt,id) : ids) idMapFunc = 
+                                                    case dt of
+                                                        (TypePrimitive prim []) ->
+                                                            case (Map.lookup id idMapFunc) of 
+                                                                Just address -> [address] ++ (fillParamsFromFunction ids idMapFunc)
+                                                        (TypePrimitive prim (("[",size,"]") : [])) ->
+                                                            case (Map.lookup (id ++ "[0]") idMapFunc) of
+                                                                Just addressBase ->
+                                                                    ( fillArrayParam  addressBase size) ++ (fillParamsFromFunction ids idMapFunc)
+                                                        (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]") : [])) ->
+                                                            case (Map.lookup (id ++ "[0][0]") idMapFunc) of
+                                                                Just addressBase ->
+                                                                    (fillArrayParam  addressBase (rows * cols)) ++ (fillParamsFromFunction ids idMapFunc)
+                                                        (TypeClassId _ []) ->
+                                                            case (Map.lookup id idMapFunc) of 
+                                                                Just address -> [address] ++ (fillParamsFromFunction ids idMapFunc)
+                                                        (TypeClassId _ (("[",size,"]") : [])) ->
+                                                            case (Map.lookup (id ++ "[0]") idMapFunc) of 
+                                                                Just addressBase ->
+                                                                    ( fillArrayParam  addressBase size) ++ (fillParamsFromFunction ids idMapFunc)
+                                                        (TypeClassId _ (("[",rows,"]") : ("[",cols,"]") : [])) ->
+                                                            case (Map.lookup (id ++ "[0][0]") idMapFunc) of
+                                                                Just addressBase ->
+                                                                    (fillArrayParam  addressBase (rows * cols)) ++ (fillParamsFromFunction ids idMapFunc)
+
+fillArrayParam :: Address -> Integer -> [Address]
+fillArrayParam address size = let addresses = [address..] 
+                                in take (fromIntegral size) addresses
 
 -- MARK TODO: Funciones
-updateArrayClasses  :: Integer -> Integer -> String -> (Identifier,Symbol) -> MA
-updateArrayClasses 0 size _ _   = return ()
-updateArrayClasses limit size strToAppend ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) =
+updateArrayClasses  :: Integer -> Integer -> String -> (Identifier,Symbol) -> String -> MA
+updateArrayClasses 0 size _ _ _  = return ()
+updateArrayClasses limit size strToAppend ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) _ =
                             do 
                                 memState <- get
                                 let identifierAddressMap = (idAddressMapMem memState)
@@ -334,22 +416,24 @@ updateArrayClasses limit size strToAppend ( (identifier,(SymbolVar (TypeClassId 
                                         do
                                             env <- ask
                                             currentMemState <- get
-                                            (idMapFromObject,newMemState, _) <- liftIO $ runRWST (insertObjectInObjectAddressMap (TypeClassId classId arrayAccess)) env currentMemState
+                                            (idMapFromObject,newMemState, _) <- liftIO $ runRWST (insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) ("_"++ classId ++ "_")) env currentMemState 
                                             modify $ \s -> newMemState 
                                             let (idMap,constMap, newObjAddressMap, funcMap, varCounters, litCounters) = getCurrentMemoryState newMemState
+
                                             let newObjMap = (Map.insert address idMapFromObject newObjAddressMap)
                                             modify $ \s -> (s { varCountersMem = varCounters }) 
                                             modify $ \s -> (s { idAddressMapMem = idMap })
                                             modify $ \s -> (s { objAddressMapMem = newObjMap })
-                                            updateArrayClasses (limit - 1) size strToAppend ((identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)))
+                                            modify $ \s -> (s { funcMapMem = funcMap })
+                                            updateArrayClasses (limit - 1) size strToAppend ((identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic))) ("_"++ classId ++ "_")
             
 
-updateMatrixClasses  :: Integer -> Integer -> Integer -> (Identifier,Symbol)  -> MA
-updateMatrixClasses  0  _ _ _  = return ()
-updateMatrixClasses rows columns fixedRows idAndSymbol =
+updateMatrixClasses  :: Integer -> Integer -> Integer -> (Identifier,Symbol) -> String  -> MA
+updateMatrixClasses  0  _ _ _ _ = return ()
+updateMatrixClasses rows columns fixedRows idAndSymbol fromModule =
         do 
-            updateArrayClasses columns columns ("[" ++ (show (fixedRows - rows)) ++ "]")  idAndSymbol
-            updateMatrixClasses (rows - 1) columns fixedRows idAndSymbol
+            updateArrayClasses columns columns ("[" ++ (show (fixedRows - rows)) ++ "]")  idAndSymbol fromModule
+            updateMatrixClasses (rows - 1) columns fixedRows idAndSymbol fromModule
 
 fillArray  :: Integer -> Integer -> String -> (Identifier,Symbol)  -> MA
 fillArray 0 size _ _  = return ()
@@ -433,8 +517,8 @@ fillMatrix rows columns fixedRows idAndSymbol =
                                     fillArray columns columns ("[" ++ (show (fixedRows - rows)) ++ "]") idAndSymbol
                                     fillMatrix (rows - 1) columns fixedRows idAndSymbol
 
-insertObjectInObjectAddressMap ::  Type -> MemoryAllocator IdentifierAddressMap 
-insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) =
+insertObjectInObjectAddressMap ::  Type -> String -> MemoryAllocator IdentifierAddressMap 
+insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) fromModule =
                                 do 
                                     env <- ask
                                     let classSymTab = (classTabMem env)
@@ -444,7 +528,7 @@ insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) =
                                                 currentMemState <- get
                                                 let (idMap,constMap, objMap, funcMap, varCounters, litCounters) = getCurrentMemoryState currentMemState
                                                 -- Cambiamos el estado por el momento para que ahora analice los atributos dentro de la symbol table de la clase
-                                                (stateAfterAttributesInserted,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable) 
+                                                (stateAfterAttributesInserted,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable ("_" ++ classId ++ "_")) 
                                                                                                       (setEnvironment symbolTableOfClass classSymTab) 
                                                                                                       -- La mandamos vacia porque lo que obtendremos es una IDMap llena con los
                                                                                                       -- atributos de esa clase!

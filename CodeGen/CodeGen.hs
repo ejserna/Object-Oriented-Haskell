@@ -28,6 +28,7 @@ startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> VariableCounters -
 startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters1 idTable constTable objMap funcMap currModule =
             do 
             let cgState = (setCGState symTab varCounters1 0)
+            -- putStrLn.ppShow $ funcMap
             let cgEnv = setCGEnvironment classSymTab objMap idTable constTable funcMap currModule
             (newCgState,quads) <-  execRWST (generateCodeFromStatements statements) cgEnv cgState
             let (int,dec,str,bool,obj) = (varCounters newCgState)
@@ -43,19 +44,39 @@ startCodeGen (Program classes functions variables (Block statements)) symTab cla
             -- mapM_ (putStrLn.ppShow) $ intercalate " , " [(color White . show $ (int - endIntGlobalMemory)), (color White . show $ (dec - endDecimalGlobalMemory)), (color White . show $ (str - endStringGlobalMemory)), (color White . show $ (obj - endObjectGlobalMemory))]
             let (objMem,memoryFromAttributes) = prepareMemoryFromObjects (Map.toList objMap) Map.empty Map.empty
             mapM_ (putStrLn.show) quads
-            -- putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList idTable) )
+            let funcMem = prepareMemoryFromFunctions (Map.toList funcMap) (Map.empty) 
+            -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList funcMem) )
             -- putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList constTable) )
 
-            -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList objMem) )
+            -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList idTable) )
             -- putStrLn $ ppShow $ (Map.union  memoryFromAttributes (prepareMemory idTable constTable))
-            startVM quads (Map.union  memoryFromAttributes (prepareMemory idTable constTable)) (Map.empty) objMem
+            startVM quads (Map.union  memoryFromAttributes (prepareMemory idTable constTable)) (Map.empty) objMem funcMem
 
+-- generateQuadruplesFromInput :: [Statement] -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> FunctionMap -> String -> CodeGen [Quadruple]
+-- generateQuadruplesFromInput  statements symTab classSymTab varCounters1 idTable constTable objMap funcMap currModule =
+--             do 
+--                 let cgState = (setCGState symTab varCounters1 0)
+--                 let cgEnv = setCGEnvironment classSymTab objMap idTable constTable funcMap currModule
+--                 (_,quads) <-  liftIO $ execRWST (generateCodeFromStatements statements) cgEnv cgState
+--                 return quads
 
 prepareMemory :: IdentifierAddressMap -> ConstantAddressMap -> Memory
 prepareMemory idTable constTable = (Map.union 
                                         (makeMemory (Map.toList idTable) (Map.empty))
                                         (makeMemory (Map.toList constTable) (Map.empty))
                                     )
+
+prepareMemoryFromFunctions :: [(String,FunctionData)] -> FunctionMemoryMap -> FunctionMemoryMap
+prepareMemoryFromFunctions []  fmem = fmem
+prepareMemoryFromFunctions ((funcID,funcData) : funcs) fmem =
+                                        let (FunctionData instructions _ fIdMap fObjMap) = funcData
+                                        in let memFunc = prepareMemory fIdMap (Map.empty)
+                                        in let (objMemFunc,objMemAttributes) = prepareMemoryFromObjects (Map.toList fObjMap) Map.empty Map.empty
+                                        in let funcMem = (FunctionMemory instructions (Map.union memFunc objMemAttributes) objMemFunc)
+                                        in let fMemNew = (Map.insert funcID funcMem fmem)
+                                        in let fMems = prepareMemoryFromFunctions funcs fMemNew 
+                                        in fMems
+
 prepareMemoryFromObjects :: [(Address,IdentifierAddressMap)] -> ObjectMemory -> Memory -> (ObjectMemory,Memory)
 prepareMemoryFromObjects [] objMem mem = (objMem,mem)
 prepareMemoryFromObjects ((objAddress,idMap) : idMaps) objMem mem = 
@@ -187,13 +208,65 @@ generateCodeFromLoop sts lowerBound upperBound currentIteration
                             generateCodeFromLoop sts lowerBound upperBound (currentIteration + 1)
             | otherwise = return ()
 
+-- generateCodeFuncCall (FunctionCallObjMem (ObjectMember objectIdentifier functionIdentifier) callParams)  = 
+
+generateCodeReturnFromFunction :: Expression -> CG
+generateCodeReturnFromFunction (ExpressionLitVar (VarIdentifier identifierExp)) = 
+                                                 do 
+                                                    cgEnv <- ask
+                                                    cgState <- get
+                                                    let (_,_,idTable,_,funcMap,currentModule) = getCGEnvironment cgEnv
+                                                    let (symTab,_,quadNum) = getCGState cgState 
+                                                    case (Map.lookup identifierExp symTab) of 
+                                                        Just (SymbolVar (TypePrimitive prim accessExpression) _ _) ->
+                                                            case accessExpression of 
+                                                                [] -> case ((Map.lookup identifierExp idTable)) of
+                                                                        Just address -> do 
+                                                                                            tell $ [(buildReturnFromFunction quadNum [address])]
+                                                                                            modify $ \s -> (s { currentQuadNum = quadNum + 1})
+                                                                (("[",size,"]") : []) -> case ((Map.lookup (identifierExp ++ "[0]") idTable)) of
+                                                                                            Just address -> do 
+                                                                                                                let addressesArray = take (fromIntegral size) [address..]
+                                                                                                                tell $ [(buildReturnFromFunction quadNum addressesArray)]
+                                                                                                                modify $ \s -> (s { currentQuadNum = quadNum + 1})
+
+                                                                (("[",rows,"]") : ("[",cols,"]") : []) -> case ((Map.lookup (identifierExp ++ "[0][0]") idTable)) of
+                                                                                    Just address -> do 
+                                                                                                        let addressesArray = take (fromIntegral $ rows * cols) [address..]
+                                                                                                        tell $ [(buildReturnFromFunction quadNum addressesArray)]
+                                                                                                        modify $ \s -> (s { currentQuadNum = quadNum + 1})
+                                                        Just (SymbolVar (TypeClassId prim accessExpression) _ _) ->
+                                                            case accessExpression of 
+                                                                [] -> case ((Map.lookup identifierExp idTable)) of
+                                                                        Just address -> do 
+                                                                                            tell $ [(buildReturnFromFunction quadNum [address])]
+                                                                                            modify $ \s -> (s { currentQuadNum = quadNum + 1})
+                                                                (("[",size,"]") : []) -> case ((Map.lookup (identifierExp ++ "[0]") idTable)) of
+                                                                                            Just address -> do 
+                                                                                                                let addressesArray = take (fromIntegral size) [address..]
+                                                                                                                tell $ [(buildReturnFromFunction quadNum addressesArray)]
+                                                                                                                modify $ \s -> (s { currentQuadNum = quadNum + 1})
+
+                                                                (("[",rows,"]") : ("[",cols,"]") : []) -> case ((Map.lookup (identifierExp ++ "[0][0]") idTable)) of
+                                                                                    Just address -> do 
+                                                                                                        let addressesArray = take (fromIntegral $ rows * cols) [address..]
+                                                                                                        tell $ [(buildReturnFromFunction quadNum  addressesArray)]
+                                                                                                        modify $ \s -> (s { currentQuadNum = quadNum + 1})
+generateCodeReturnFromFunction expression =  do 
+                                                (_,quads) <- listen $ expCodeGen expression
+                                                cgState <- get
+                                                let (_,_,quadNum) = getCGState cgState
+                                                tell $ [(buildReturnFromFunction quadNum [(getLastAddress $ last $ quads)])]
+                                                modify $ \s -> (s { currentQuadNum = quadNum + 1})
+
+                                                            
 generateCodeFromStatement :: Statement -> CG
 generateCodeFromStatement (AssignStatement assignment)  = generateCodeFromAssignment assignment
 generateCodeFromStatement (VariableStatement varStatement) = generateCodeFromVariableStatement varStatement 
 generateCodeFromStatement (DPMStatement assignment)  = generateCodeFromStatement (AssignStatement assignment)
 -- MARK TODO: Hacer cuadruplos de cuando se hace una llamada a funcion
--- generateCodeFromStatement (FunctionCallStatement functionCall) literalCounters constantAddressMap = fillFromFunctionCall functionCall literalCounters constantAddressMap
--- generateCodeFromStatement (ReturnStatement (ReturnExp expression)) literalCounters constantAddressMap = fillFromExpression literalCounters constantAddressMap expression
+generateCodeFromStatement (FunctionCallStatement functionCall)  = generateCodeFuncCall functionCall
+generateCodeFromStatement (ReturnStatement (ReturnExp expression)) = generateCodeReturnFromFunction expression
 -- generateCodeFromStatement (ReturnStatement (ReturnFunctionCall functionCall)) literalCounters constantAddressMap = fillFromFunctionCall functionCall literalCounters constantAddressMap
 generateCodeFromStatement (ReadStatement (Reading identifier))  = 
     do 

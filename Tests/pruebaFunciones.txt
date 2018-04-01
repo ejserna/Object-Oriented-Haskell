@@ -2,9 +2,11 @@ class Point{
     [+] Double x;
     [+] Double y;
 
-    [-] callMethod => Nothing{
+
+    [+] callMethod => Nothing{
         display("Llamada interna");
     }
+
 
     [+] setPoint => Nothing :: Double dX -> Double dY{
         x = dX;
@@ -12,19 +14,62 @@ class Point{
         callMethod();
     }
 
+
+
 }
 
-fibo => Int :: Int n {
-    return n;
+fiboPerro => Int :: Int n {
+    if (n == 0){
+        return 0;
+    }
+
+    if (n == 1){
+        return 1;
+    }
+    return fiboPerro(n - 1) + fiboPerro(n - 2);
 }
 
-fibo2 => Int [10][10] :: Int n {
-    Int [10][10] i;
-    return i;
+fibo => Int :: Int n -> Int k {
+    Int koko;
+    koko = n ^ 10;
+    displayLn(koko,k);
+    return koko;
 }
+
+displayChido => Nothing :: Int [10][10] n {
+    n[2][0] = 29292929;
+    displayLn(n);
+}
+
+puntos => Nothing :: Point [10] n {
+    Point pChido;
+    pChido = n[2];
+    pChido.x = 2929292.2;
+    pChido.y = 393393939.3;
+    n[2] = pChido;
+    displayLn(n);
+}
+
+punto => Nothing :: Point p -> Point [10] n -> Point k  {
+    p.x = 555555.555;
+    displayLn(n);
+    displayLn(p.x,p.y);
+}
+
+
 
 main{
+    Int [10][10] n = [[1,2,3,4,5,6,7]];
     Point p;
-    p.setPoint(1.0,2.0);
+    p.x = 1.222;
+    p.y = 1.3333;
+    Point [10] ps = [p,p,p,p,p];
     displayLn("hola");
+    p.y = 1.4;
+    punto(p,ps,p);
+    Int i = 20;
+    i = fibo(2,i);
+    displayLn(i);
+    i = fiboPerro(10);
+    displayLn(i);
 }
