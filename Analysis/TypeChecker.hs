@@ -339,7 +339,7 @@ analyzeStatement (ConditionStatement (If expression (Block statements))) scp sym
                                                     -- Si la expresión del if regresa booleano, entonces está bien
                                                     Just (PrimitiveBool) -> analyzeStatements statements (scp - 1) symTab classTab
                                                    -- De lo contrario, no se puede tener esa expresión en el if
-                                                    _ -> (emptySymbolTable, False)  
+                                                    _ -> (emptySymbolTable, True)  
 analyzeStatement (ConditionStatement (IfElse expression (Block statements) (Block statements2))) scp symTab classTab = 
                                                 case (expressionProcess scp expression symTab classTab) of
                                                     -- Si la expresión del if regresa booleano, entonces está bien
