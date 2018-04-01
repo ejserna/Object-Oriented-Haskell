@@ -208,7 +208,14 @@ runInstruction (QuadrupleThreeAddresses quadNum GT_ a1 a2 a3) =  do doAbstractOp
 runInstruction (QuadrupleThreeAddresses quadNum LT_ a1 a2 a3) =  do doAbstractOperation (|<|) a1 a2 a3 
 runInstruction (QuadrupleThreeAddresses quadNum GTEQ_ a1 a2 a3) =  do doAbstractOperation (|>=|) a1 a2 a3 
 runInstruction (QuadrupleThreeAddresses quadNum LTEQ_ a1 a2 a3) =  do doAbstractOperation (|<=|) a1 a2 a3 
-runInstruction (QuadrupleThreeAddresses quadNum EQ_ a1 a2 a3) =  do doAbstractOperation (|==|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum EQ_ a1 a2 a3) | 
+                    a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
+                    || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory = do
+                                                                                        insertValueInAddress (VMBool True) a3
+                                                                                        doDeepEqualityOperation (|==|) a1 a2 a3
+                                                                                        modify $ \s -> (s { ip = (ip s) + 1 }) 
+                   | otherwise = do 
+                                  doAbstractOperation (|==|) a1 a2 a3 
 runInstruction (QuadrupleThreeAddresses quadNum NOTEQ_ a1 a2 a3) =  do doAbstractOperation (|!=|) a1 a2 a3 
 runInstruction (QuadrupleThreeAddresses quadNum AND_ a1 a2 a3) =  do doAbstractOperation (|&&|) a1 a2 a3 
 runInstruction (QuadrupleThreeAddresses quadNum OR_ a1 a2 a3) =  do doAbstractOperation (|-||-|) a1 a2 a3 
@@ -457,6 +464,48 @@ doDisplay a1 nestFactor
                             return ()
                 return ()
 
+doDeepEqualityOperation :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM
+doDeepEqualityOperation f a1 a2 a3 
+        -- Si es un objeto, la asignacion debe hacerse considerando todos sus atributos
+     | a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
+        || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory  = do
+                                                                             
+                                                                            cpuState <- get
+                                                                            
+                                                                            let (panic,currentIP,globalMemory,localMemory,objectMemory,_) = getCPUState cpuState
+                                                                            case (Map.lookup a1 objectMemory) of
+                                                                                Just addresses1 ->
+                                                                                  case (Map.lookup a2 objectMemory) of
+                                                                                     Just addresses2 -> do 
+                                                                                        -- liftIO $ putStrLn.show $ addresses1
+                                                                                        -- liftIO $ putStrLn.show $ addresses2
+                                                                                        doDeepEqualityOperation2 f addresses1 addresses2 a3
+     | otherwise = do 
+                cpuState <- get
+                let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
+                let memories = (Map.union globalMemory localMemory) 
+                case (Map.lookup a1 memories) of 
+                    Just val1 -> do 
+                            case (Map.lookup a2 memories) of 
+                              Just val2 -> 
+                                case (Map.lookup a3 memories) of 
+                                  Just val3 -> do 
+                                                  let val = (f val1 val2) |&&| val3
+                                                  insertValueInAddress val a3
+                                                  
+                    _ -> do 
+                            return ()
+                return ()
+
+doDeepEqualityOperation2 :: (VMValue -> VMValue -> VMValue) -> [Address] -> [Address] -> Address -> VM
+doDeepEqualityOperation2 f [] [] a3 = return ()
+doDeepEqualityOperation2 f (a1:a1s) (a2:a2s) a3 = 
+                                      do 
+                                        doDeepEqualityOperation f a1 a2 a3
+                                        doDeepEqualityOperation2 f a1s a2s a3
+
+
+
 doAssignment :: Address -> Address -> VM
 doAssignment a1 a2 
     -- Si es un objeto, la asignacion debe hacerse considerando todos sus atributos
@@ -472,6 +521,11 @@ doAssignment a1 a2
                                                                                         Just addressesAttributesReceiver ->
                                                                                             do 
                                                                                                 doDeepAssignment addressesAttributesGiver addressesAttributesReceiver
+                                                                                        _ -> -- Si no se encontro, se crea el object memory del atributo on the fly
+                                                                                            do 
+                                                                                              let newObjMap = (Map.insert a2 addressesAttributesGiver objectMemory)
+                                                                                              modify $ \s -> (s { objectMemory = newObjMap })
+
                                                                                                                                                            
     | otherwise = do 
                     cpuState <- get

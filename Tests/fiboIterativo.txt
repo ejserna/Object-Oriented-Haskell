@@ -1,5 +1,7 @@
 main{
     Integer f1,f2,fn,n,fiboIterativo1,fiboIterativo2;
+    Decimal decimal;
+    decimal = 1.22222;
     f1 = 0;
     f2 = 1;
     for i in [1..1000]{

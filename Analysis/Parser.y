@@ -74,6 +74,7 @@ import System.Environment
   "Integer"           { TInteger _ }
   "Double"            { TDouble _ }
   "Money"             { TMoney _ }
+  "Decimal"           { TDecimal _ }
   "String"            { TString _ }
   "Bool"              { TBool _ }
   "Nothing"           { TNothing _ }
@@ -139,6 +140,7 @@ Primitive :
         | "String" {PrimitiveString}
         | "Bool" {PrimitiveBool}
         | "Integer" {PrimitiveInteger}
+        | "Decimal" {PrimitiveMoney}
 
 Type :
           Primitive ArrayIndexesDeclaration {TypePrimitive $1 $2}

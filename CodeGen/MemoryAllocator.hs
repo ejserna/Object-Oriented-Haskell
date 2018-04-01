@@ -280,6 +280,7 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) 
                                                     fillIdentifierAddressMap rest fromModule
 fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) : rest ) fromModule = 
                             do
+                                -- Aqui podemos añadir un check de que si ese classId es igual al modulo actual, se pueden parar en la 10000 iteracion
                                 memState <- get
                                 let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem memState)
                                 let identifierAddressMap = (idAddressMapMem memState)

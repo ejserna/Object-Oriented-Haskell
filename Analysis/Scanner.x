@@ -72,6 +72,7 @@ tokens :-
   "Integer"                         { \p s -> TInteger p }
   "Double"                          { \p s -> TDouble p }
   "Money"                           { \p s -> TMoney p }
+  "Decimal"                           { \p s -> TDecimal p }
   "String"                          { \p s -> TString p }
   "Bool"                            { \p s -> TBool p }
   "Nothing"                         { \p s -> TNothing p }
@@ -141,6 +142,7 @@ data Token =
       TInteger AlexPosn             |
       TDouble AlexPosn              |
       TMoney AlexPosn               |
+      TDecimal AlexPosn             |
       TString AlexPosn              |
       TBool AlexPosn                |
       TNothing AlexPosn             |
@@ -207,6 +209,7 @@ tokenPosn (TInt p) = p
 tokenPosn (TInteger p) = p
 tokenPosn (TDouble p) = p
 tokenPosn (TMoney p) = p
+tokenPosn (TDecimal p) = p
 tokenPosn (TString p) = p
 tokenPosn (TBool p) = p
 tokenPosn (TNothing p) = p

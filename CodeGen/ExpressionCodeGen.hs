@@ -145,10 +145,10 @@ expCodeGen (ExpressionLitVar (VarIdentifier id)) =
                                                                                         cgState <- get
                                                                                         let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
                                                                                         let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
-                                                                                        tell $ [(buildQuadrupleTwoAddresses quadNum ASSIGNMENT (addressCons, addressCons ))]
-                                                                                        modify $ \s -> (s { varCounters = (intGC, decGC, strGC, boolGC,objGC)})
+                                                                                        tell $ [(buildQuadrupleTwoAddresses quadNum ASSIGNMENT (addressCons, objGC ))]
+                                                                                        modify $ \s -> (s { varCounters = (intGC, decGC, strGC, boolGC,objGC + 1)})
                                                                                         modify $ \s -> (s { currentQuadNum = quadNum + 1})
-expCodeGen(ExpressionFuncCall functionCall) = generateCodeFuncCall functionCall
+expCodeGen(ExpressionFuncCall functionCall) = generateCodeFuncCall functionCall []
                                                                                                             
 expCodeGen (ExpressionMult exp1 exp2) = genQuadrupleArithmetic exp1 exp2 MULTIPLY_
 expCodeGen (ExpressionDiv exp1 exp2) = genQuadrupleArithmetic exp1 exp2 DIVIDE_
@@ -277,17 +277,17 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) =
                                                                                                                                 tell $ boundQuad ++ baseAddQuad ++ quadAssignment
                                                                                                                                 modify $ \s -> (s { currentQuadNum = quadNum + 3})
                                                                                                                                 modify $ \s -> (s { varCounters = (intGC + 1, decGC, strGC, boolGC + 1,objGC)})
-                                                                                        -- Just (SymbolVar (TypeClassId _ (("[",size,"]") : [] )) _ _) ->
-                                                                                        --     case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
-                                                                                        --         Just address ->
-                                                                                        --             case (Map.lookup (identifier ++ "[0]") idTable) of
-                                                                                        --                 Just addressBase -> do 
-                                                                                        --                                         let boundQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quads), address ))])
-                                                                                        --                                         let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quads), intGC))]
-                                                                                        --                                         let quadAssignment = ([(buildQuadrupleTwoAddresses (quadNum + 2) ACCESS_INDEX (intGC,objGC))])
-                                                                                        --                                         tell $ boundQuad ++ baseAddQuad ++ quadAssignment
-                                                                                        --                                         modify $ \s -> (s { currentQuadNum = quadNum + 3})
-                                                                                        --                                         modify $ \s -> (s { varCounters = (intGC + 1, decGC, strGC, boolGC,objGC)})
+                                                                                        Just (SymbolVar (TypeClassId _ (("[",size,"]") : [] )) _ _) ->
+                                                                                            case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
+                                                                                                Just address ->
+                                                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                        Just addressBase -> do 
+                                                                                                                                let boundQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quads), address ))])
+                                                                                                                                let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quads), intGC))]
+                                                                                                                                let quadAssignment = ([(buildQuadrupleTwoAddresses (quadNum + 2) ACCESS_INDEX (intGC,objGC))])
+                                                                                                                                tell $ boundQuad ++ baseAddQuad ++ quadAssignment
+                                                                                                                                modify $ \s -> (s { currentQuadNum = quadNum + 3})
+                                                                                                                                modify $ \s -> (s { varCounters = (intGC + 1, decGC, strGC, boolGC,objGC + 1)})
 
 expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression rowsIndexExp) : (ArrayAccessExpression colsIndexExp) : [])) = 
                                                                                             do
@@ -524,6 +524,10 @@ genQuadrupleRelational exp1 exp2 op =
                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (boolGC - 1, boolGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
+                _ -> do
+                                            tell $ [(buildQuadrupleThreeAddresses quadNum2 op (objGC - 1, objGC2 - 1, (boolGC2)))]
+                                            modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
+                                            modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
         else do 
             liftIO $ putStrLn "ERROR Typechecker ERROR WENT THROUGH CODEGEN" 
             return ()
@@ -699,8 +703,8 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                                                                                                                 return (paramsZip ++ quadsParams)
                                     
 
-generateCodeFuncCall :: FunctionCall -> CG
-generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) =
+generateCodeFuncCall :: FunctionCall -> [Address] -> CG
+generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet =
                             do 
                                 cgEnv <- ask
                                 cgState <- get
@@ -726,48 +730,59 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) =
                                                             modify $ (\s -> newCGState)
                                                             cgState <- get
                                                             let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
+                                                            -- Mark todo: aqui debemos sacar en que módulo se está actualmente
                                                             let funcCallQuad = buildFuncCall quadNum [] quadsParams (currentModule ++ funcIdentifier)
                                                             tell $ [funcCallQuad]
-                                                            case returnType of 
-                                                                Nothing -> do 
-                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 1}))
-                                                                Just (TypePrimitive PrimitiveMoney []) -> 
-                                                                               do 
-                                                                                let ret = buildReturnAssignment (quadNum + 1) [decGC]
-                                                                                tell $ [ret]
-                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
-                                                                                modify $ (\s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC)})) 
-                                                                Just (TypePrimitive PrimitiveDouble []) -> 
-                                                                               do 
-                                                                                let ret = buildReturnAssignment (quadNum + 1) [decGC]
-                                                                                tell $ [ret]
-                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
-                                                                                modify $ (\s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC)})) 
-                                                                Just (TypePrimitive PrimitiveInteger []) -> 
-                                                                               do 
-                                                                                let ret = buildReturnAssignment (quadNum + 1) [intGC]
-                                                                                tell $ [ret]
-                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
-                                                                                modify $ (\s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC)}))
-                                                                Just (TypePrimitive PrimitiveInt []) -> 
-                                                                               do 
-                                                                                let ret = buildReturnAssignment (quadNum + 1) [intGC]
-                                                                                tell $ [ret]
-                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
-                                                                                modify $ (\s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC)})) 
-                                                                Just (TypePrimitive PrimitiveString []) -> 
-                                                                               do 
-                                                                                let ret = buildReturnAssignment (quadNum + 1) [strGC]
-                                                                                tell $ [ret]
-                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
-                                                                                modify $ (\s -> (s { varCounters = (intGC,decGC,strGC + 1,boolGC,objGC)})) 
-                                                                Just (TypePrimitive PrimitiveBool []) -> 
-                                                                               do 
-                                                                                let ret = buildReturnAssignment (quadNum + 1) [strGC]
-                                                                                tell $ [ret]
-                                                                                modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
-                                                                                modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC + 1,objGC)}))
+                                                            case addressesToSet of 
+                                                                [] -> do 
+                                
 
+                                                                    case returnType of 
+                                                                        Just (TypePrimitive PrimitiveMoney []) -> 
+                                                                                       do 
+                                                                                        let ret = buildReturnAssignment (quadNum + 1) [decGC]
+                                                                                        tell $ [ret]
+                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                        modify $ (\s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC)})) 
+                                                                        Just (TypePrimitive PrimitiveDouble []) -> 
+                                                                                       do 
+                                                                                        let ret = buildReturnAssignment (quadNum + 1) [decGC]
+                                                                                        tell $ [ret]
+                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                        modify $ (\s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC)})) 
+                                                                        Just (TypePrimitive PrimitiveInteger []) -> 
+                                                                                       do 
+                                                                                        let ret = buildReturnAssignment (quadNum + 1) [intGC]
+                                                                                        tell $ [ret]
+                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                        modify $ (\s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveInt []) -> 
+                                                                                       do 
+                                                                                        let ret = buildReturnAssignment (quadNum + 1) [intGC]
+                                                                                        tell $ [ret]
+                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                        modify $ (\s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC)})) 
+                                                                        Just (TypePrimitive PrimitiveString []) -> 
+                                                                                       do 
+                                                                                        let ret = buildReturnAssignment (quadNum + 1) [strGC]
+                                                                                        tell $ [ret]
+                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                        modify $ (\s -> (s { varCounters = (intGC,decGC,strGC + 1,boolGC,objGC)})) 
+                                                                        Just (TypePrimitive PrimitiveBool []) -> 
+                                                                                       do 
+                                                                                        let ret = buildReturnAssignment (quadNum + 1) [strGC]
+                                                                                        tell $ [ret]
+                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                        modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC + 1,objGC)}))
+                                                                        _ -> do 
+                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 1}))
+
+                                                                _ -> 
+                                                                    do 
+                                                                        let ret = buildReturnAssignment (quadNum + 1) addressesToSet
+                                                                        tell $ [ret]
+                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                            
 
 
 

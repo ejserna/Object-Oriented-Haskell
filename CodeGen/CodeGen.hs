@@ -208,7 +208,7 @@ generateCodeFromLoop sts lowerBound upperBound currentIteration
                             generateCodeFromLoop sts lowerBound upperBound (currentIteration + 1)
             | otherwise = return ()
 
--- generateCodeFuncCall (FunctionCallObjMem (ObjectMember objectIdentifier functionIdentifier) callParams)  = 
+
 
 generateCodeReturnFromFunction :: Expression -> CG
 generateCodeReturnFromFunction (ExpressionLitVar (VarIdentifier identifierExp)) = 
@@ -265,7 +265,7 @@ generateCodeFromStatement (AssignStatement assignment)  = generateCodeFromAssign
 generateCodeFromStatement (VariableStatement varStatement) = generateCodeFromVariableStatement varStatement 
 generateCodeFromStatement (DPMStatement assignment)  = generateCodeFromStatement (AssignStatement assignment)
 -- MARK TODO: Hacer cuadruplos de cuando se hace una llamada a funcion
-generateCodeFromStatement (FunctionCallStatement functionCall)  = generateCodeFuncCall functionCall
+generateCodeFromStatement (FunctionCallStatement functionCall)  = generateCodeFuncCall functionCall []
 generateCodeFromStatement (ReturnStatement (ReturnExp expression)) = generateCodeReturnFromFunction expression
 -- generateCodeFromStatement (ReturnStatement (ReturnFunctionCall functionCall)) literalCounters constantAddressMap = fillFromFunctionCall functionCall literalCounters constantAddressMap
 generateCodeFromStatement (ReadStatement (Reading identifier))  = 
@@ -371,7 +371,9 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                                                                         case (Map.lookup addressObj objMap) of
                                                                                                                             Just objTable -> case (Map.lookup attribute objTable) of
                                                                                                                                                 Just addressAttr -> 
-                                                                                                                                                        tell $ [(buildQuadOneAddress quadNum (op) addressAttr)]
+                                                                                                                                                        do 
+                                                                                                                                                            tell $ [(buildQuadOneAddress quadNum (op) addressAttr)]
+                                                                                                                                                            modify $ \s -> (s { currentQuadNum = quadNum + 1})
                                                                                                             (("[",size,"]") : []) -> case ((Map.lookup object idTable)) of
                                                                                                                                         Just addressObj -> 
                                                                                                                                             case (Map.lookup addressObj objMap) of
@@ -673,6 +675,48 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray 
                                             let quadAssignment = ([(buildQuadrupleTwoAddresses quadNum ASSIGNMENT ((getLastAddress $ last $ quadsExp),addressIdentifier))])
                                             tell $ quadAssignment
                                             modify $ \s -> (s { currentQuadNum = quadNum + 1})
+
+generateCodeFromAssignment (AssignmentExpression identifier (ExpressionFuncCall functionCall))  = 
+                                                            -- Todo mark, a;adir que a un identificador de clase se le pueda asignar una direccion de algun arreglo o matriz
+                                                            do 
+                                                                cgEnv <- ask
+                                                                cgState <- get
+                                                                let (classSymTab,objMap,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                                                                let (symTab,_,quadNum) = getCGState cgState
+                                                                case (Map.lookup identifier symTab) of 
+                                                                    Just (SymbolVar (TypeClassId classIdentifier []) _ _) -> 
+                                                                        case (Map.lookup (identifier) idTable) of 
+                                                                                    Just address -> generateCodeFuncCall functionCall [address]
+                                    
+                                                                    Just (SymbolVar (TypeClassId _ (("[",size,"]") : []) ) _ _) -> 
+                                                                        case (Map.lookup (identifier ++ "[0]") idTable) of 
+                                                                                    Just address ->  
+                                                                                        do 
+                                                                                            let addressesArray = take (fromIntegral $ size) [address..]
+                                                                                            generateCodeFuncCall functionCall addressesArray
+
+                                                                    Just (SymbolVar (TypeClassId _ (("[",rows,"]") : ("[",columns,"]") : []) ) _ _) -> 
+                                                                        case (Map.lookup (identifier ++ "[0][0]") idTable) of 
+                                                                                    Just address ->  
+                                                                                         do 
+                                                                                            let addressesArray = take (fromIntegral $ rows * columns) [address..]
+                                                                                            generateCodeFuncCall functionCall addressesArray
+                                                                    Just (SymbolVar (TypePrimitive prim (("[",size,"]") : []) ) _ _) -> 
+                                                                        case (Map.lookup (identifier ++ "[0]") idTable) of 
+                                                                                    Just address ->  
+                                                                                         do 
+                                                                                            let addressesArray = take (fromIntegral $ size) [address..]
+                                                                                            generateCodeFuncCall functionCall addressesArray
+                                                                    Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",columns,"]") : []) ) _ _) -> 
+                                                                        case (Map.lookup (identifier ++ "[0][0]") idTable) of 
+                                                                                    Just address ->  
+                                                                                         do 
+                                                                                            let addressesArray = take (fromIntegral $ rows * columns) [address..]
+                                                                                            generateCodeFuncCall functionCall addressesArray
+                                                                    _ ->  do
+                                                                            case (Map.lookup (identifier) idTable) of 
+                                                                                    Just address -> generateCodeFuncCall functionCall [address]
+
 generateCodeFromAssignment (AssignmentExpression identifier expression)  = 
     -- Todo mark, a;adir que a un identificador de clase se le pueda asignar una direccion de algun arreglo o matriz
     do
@@ -697,6 +741,9 @@ generateCodeFromAssignment (AssignmentExpression identifier expression)  =
                                 _ -> do 
                                         tell $ [(buildQuadrupleTwoAddresses quadNum ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))]
                                         modify $ \s -> (s { currentQuadNum = quadNum + 1})
+
+
+                                              
 
 generateCodeFromAssignment (AssignmentObjectMember identifier (ObjectMember objectIdentifier attrIdentifier))  = 
         do 

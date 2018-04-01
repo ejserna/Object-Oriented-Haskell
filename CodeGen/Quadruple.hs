@@ -155,6 +155,9 @@ getQuadNum (QuadrupleOneQuad quadNum op quadNumAssigned) = quadNum
 getQuadNum (QuadrupleOneAddress quadNum op address) = quadNum
 getQuadNum (QuadrupleEmpty quadNum op) = quadNum
 getQuadNum (QuadrupleTwoAddressesOneQuad quadNum op address1 address2 quadNumAssigned) = quadNum
+getQuadNum (QuadrupleFunctionCall quadNum op addressesObjParams addressesParams funcName) = quadNum
+getQuadNum (QuadrupleReturnSet quadNum op addresses) = quadNum
+getQuadNum (QuadrupleReturn quadNum op addresses) = quadNum
 
 
 getLastAddress :: Quadruple -> QuadNum
