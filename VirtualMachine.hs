@@ -404,15 +404,23 @@ runInstruction (QuadrupleFunctionCall quadNum GO_SUB addressesObjParams addresse
                                                                                                 case returnInstruction of 
                                                                                                   (QuadrupleReturnSet quadNum RETURN_SET addressesCurrentContext) ->
                                                                                                         if ((isMainContext context)) then 
-                                                                                                          do 
-                                                                                                            let newGlobalMemory = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem returnAddresses addressesCurrentContext
-                                                                                                            let newGlobalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc newGlobalMemory objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext 
-                                                                                                            modify $ \s -> (s { globalMemory =  newGlobalMemoryWithObjectAttributes })
+                                                                                                          do
+                                                                                                            -- El orden es MUUUY importante, porque primero se deben actualizar los atributos de los objetos, y hasta el final
+                                                                                                            -- los return addresses, porque puede darse el caso que se este asignando un atributo de un objeto a la llamada de funcion
+                                                                                                            -- por lo que tendria que cambiarse de nuevo ese atributo de objeto
+                                                                                                            let newGlobalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext 
+                                                                                                            let newGlobalMemory = doDeepAssignmentMemories localMemAfterFunc newGlobalMemoryWithObjectAttributes objMemAfterFunc currentObjMem returnAddresses addressesCurrentContext
+                                                                                                             
+                                                                                                            modify $ \s -> (s { globalMemory =  newGlobalMemory })
                                                                                                             modify $ \s -> (s { ip = (ip s) + 1 })
                                                                                                         else do 
-                                                                                                               let newLocalMemory = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem returnAddresses addressesCurrentContext
-                                                                                                               let newLocalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc newLocalMemory objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext
-                                                                                                               modify $ \s -> (s { localMemory =  newLocalMemoryWithObjectAttributes })
+                                                                                                               -- El orden es MUUUY importante, porque primero se deben actualizar los atributos de los objetos, y hasta el final
+                                                                                                               -- los return addresses, porque puede darse el caso que se este asignando un atributo de un objeto a la llamada de funcion
+                                                                                                               -- por lo que tendria que cambiarse de nuevo ese atributo de objeto
+                                                                                                               let newLocalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext
+                                                                                                               let newLocalMemory = doDeepAssignmentMemories localMemAfterFunc newLocalMemoryWithObjectAttributes objMemAfterFunc currentObjMem returnAddresses addressesCurrentContext
+   
+                                                                                                               modify $ \s -> (s { localMemory =  newLocalMemory })
                                                                                                                modify $ \s -> (s { ip = (ip s) + 1 })
                                                                                                   _ -> do 
                                                                                                         if ((isMainContext context)) then 

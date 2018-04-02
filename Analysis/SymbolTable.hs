@@ -37,7 +37,7 @@ data Symbol = SymbolVar
 instance Show Symbol where
     show sym = case sym of
         SymbolVar dt scope isPublic  -> "SYMVAR  " ++ intercalate ", " [ppShow dt, show scope, show isPublic]
-        SymbolFunction params ret body scope shouldRet isPublic symbolTable -> "SYMFUNC  " ++intercalate ", " [ppShow params, show ret, ppShow body, show scope, show shouldRet, show isPublic, ppShow symbolTable]
+        SymbolFunction params ret body scope shouldRet isPublic symbolTable -> "SYMFUNC  " ++intercalate ", " [ppShow params, "SYMFUNC OF SYMFUNC ->" ++ ppShow symbolTable]
 
 emptySymbolTable :: SymbolTable
 emptySymbolTable = Map.empty 

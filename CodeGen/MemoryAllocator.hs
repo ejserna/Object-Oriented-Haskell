@@ -26,6 +26,7 @@ import CodeGen
 import Data.List (sortBy)
 import Data.Ord (comparing)
 import Data.Function (on)
+import Data.Maybe
 
 
 data SymbolEnvironment = SymbolEnvironment
@@ -338,7 +339,10 @@ fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statement
                                                                                                                                                                  (literalCounters memState))
                                                                     
                                                                     -- Obtenemos las dependencias de la funcion, para primero realizar los metodos de las funciones que utiliza la funcion
-                                                                    let functionDependenciesMap = (Map.filter getFuncs symTabFunc)
+                                                                    let funcs1 = (Map.filter getFuncs symTabFunc)
+                                                                    let functionDependenciesMap = updateDependenciesForChildClasses fromModule funcs1 (classTabMem env)
+                                                                    
+                                                                    -- liftIO $ putStrLn.ppShow $ (functionDependenciesMap)
                                                                     -- let functionDependenciesMapNoSelf = (Map.filter )
                                                                     -- liftIO $ putStrLn.ppShow $ (fromModule ++ identifier)
                                                                     let functionSymTabNoFuncs = (Map.filter filterFuncs symTabFunc)
@@ -369,6 +373,15 @@ fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statement
                                                                     -- liftIO $ putStrLn $ (fromModule ++ identifier)
                                                                     -- liftIO $ putStrLn.ppShow $ funcData
                                                                     fillIdentifierAddressMap rest fromModule
+
+
+
+updateDependenciesForChildClasses :: String -> SymbolTable -> ClassSymbolTable -> SymbolTable
+updateDependenciesForChildClasses "_main_" funcs1 classSymTab = funcs1
+updateDependenciesForChildClasses fromModule funcs1 classSymTab = 
+                                     let functionsClass = (fromJust (Map.lookup (getClassNameFromCurrentModule fromModule) classSymTab))
+                                     in (Map.filter getFuncs (Map.intersection functionsClass funcs1))
+
 
 getFuncs :: Symbol -> Bool
 getFuncs (SymbolFunction _ _ _ _ _ _ _) = True

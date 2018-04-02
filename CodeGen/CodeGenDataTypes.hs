@@ -13,6 +13,8 @@ import Control.Monad.Trans.Except
 import Control.Monad.Identity
 import Control.Monad.Trans
 import Control.Monad
+import Text.Show.Pretty
+
 
 -- Los primeros 4 son los contadores de variables de tipo Integers,Decimales,Strings,Bool 
 type VariableCounters = (Address,Address,Address,Address,Address) 
@@ -35,7 +37,10 @@ data FunctionData = FunctionData
                     funcIdMap :: IdentifierAddressMap,
                     funcObjMap :: ObjectAddressMap              
                 }
-                deriving (Show)
+
+instance Show FunctionData where
+    show fd = case fd of
+        FunctionData instructions paramsAddresses funcIdMap funcObjMap  -> "Function Data  "  ++ intercalate ", " [ppShow instructions, ppShow paramsAddresses, ppShow funcIdMap, ppShow funcObjMap] ++ "\n\n\n"
 
 data CGEnvironment = CGEnvironment
                 {   classTab :: ClassSymbolTable,

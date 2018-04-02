@@ -13,20 +13,27 @@ class Point{
         Integer [2][5] mat = [[1,2,3,4,5],
                                 [6,7,8,9,99999999999]];
         display("Llamada interna");
-        displayLn(x,y);
+        displayLn("EEEE", x,y);
         x = 11.1;
         y = 12.1;
         op.i = 100;
         op.matriz = mat;
-        displayLn(x,y);
+        displayLn("ZZZZ",x,y);
     }
 
+
+
+
+    [+] editX => Decimal{
+        return 3948400990.1;
+    }
 
     [+] setPoint => Nothing :: Decimal dX -> Decimal dY{
         x = dX;
         y = dY;
         
         callMethod();
+        y = editX();
         displayLn(x,y);
 
     }
@@ -44,9 +51,21 @@ class Point3D : Point{
         z = dZ;
 
     }
+
+
+    [+] editZ => Decimal{
+        z = 0.00000000001;
+        return 3948400990.1;
+    }
+
     [+] callMethod => Nothing{
         displayLn("Es publico");
+        displayLn("Es publico 2");
+        y = editZ();
+        displayLn("Esto es y",y);
     }
+
+
 
     [+] setPoint => Nothing :: Decimal dX -> Decimal dY -> Decimal dZ{
         x = dX;
@@ -56,22 +75,15 @@ class Point3D : Point{
         callMethod();
         displayLn("Sup");
 
-    }
-
-    
+    }    
 }
-
-
-
 
 main{
     Point3D p3d = Point3D(1.2,2.2,3.3);
     Point p;
-    displayLn(p3d.x,p3d.y,p3d.z);
     p3d.z = 1.33;
     p3d.setPoint(1.22,2.22,5.555);
-    p.setPoint(32.22,55.22);
-    displayLn(p3d);
-    displayLn(p);
+    displayLn(p3d.x,p3d.y,p3d.z);
+    p.setPoint(1.2,1.3);
 
 }

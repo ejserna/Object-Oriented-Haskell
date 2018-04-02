@@ -45,7 +45,7 @@ startCodeGen (Program classes functions variables (Block statements)) symTab cla
             let (objMem,memoryFromAttributes) = prepareMemoryFromObjects (Map.toList objMap) Map.empty Map.empty
             mapM_ (putStrLn.show) quads
             let funcMem = prepareMemoryFromFunctions (Map.toList funcMap) (Map.empty) 
-            -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList funcMem) )
+            -- mapM_ (putStrLn.show) $ (sortBy (compare `on` fst) (Map.toList funcMem) )
             -- putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList constTable) )
 
             -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList idTable) )

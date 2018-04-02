@@ -31,10 +31,29 @@ startSemanticAnalysis (Program classList functionList varsList (Block statements
                 else do putStrLn $ ppShow $ "[SEMANTIC ANALYSIS 2]: Semantic Variable Analysis Passed."
                         putStrLn $ ppShow $  symbolTableStatements
                         putStrLn $ show "[CODEGEN 1] Starting Memory Allocation for CodeGen"
-                        startMemoryAllocation (Program classList functionList varsList (Block statements)) symbolTableStatements classSymbolTable 
+                        startMemoryAllocation (Program classList functionList varsList (Block statements)) symbolTableStatements classSymbolTable
 
+-- removeCyclicDependencies :: ClassSymbolTable -> ClassSymbolTable
+-- removeCyclicDependencies classSymTab = (Map.fromList (remove1 (Map.toList classSymTab)))
 
-            
+-- remove1 :: [(ClassIdentifier,SymbolTable)] -> [(ClassIdentifier,SymbolTable)]
+-- remove1 []  = []
+-- remove1 ((identifier,symTabClass) : rest) = let sym1 = (remove2 (Map.toList symTabClass) "")
+--                                             in let filteredClass = (identifier,(Map.fromList sym1)) 
+--                                             in let classes1 = remove1 rest
+--                                             in ([filteredClass] ++ classes1)
+
+deepFilter :: [(Identifier,Symbol)] -> Identifier -> [(Identifier,Symbol)]
+deepFilter [] _  = []
+deepFilter ((identifier,(SymbolFunction params p1 (Block statements) p2 p3 p4 symTabFunc)) : rest) identifierParent
+    | identifier == identifierParent = ( deepFilter rest identifierParent )
+    | otherwise = let filteredSym = (Map.fromList ( deepFilter (Map.toList symTabFunc) identifierParent ) )   
+                  in let newSymTab = [(identifier,(SymbolFunction params p1 (Block statements) p2 p3 p4 filteredSym))]
+                  in newSymTab ++ ( deepFilter rest identifierParent )
+    
+
+deepFilter (sym : rest) identifierParent = [sym] ++ (deepFilter rest identifierParent)
+
 -- Analyze classes regresa una tabla de simbolos de clase y un booleano. Si es true, significa que hubo errores, si es false, no hubo errores
 analyzeClasses :: [Class] -> ClassSymbolTable -> (ClassSymbolTable, Bool)
 analyzeClasses [] memSymTab = (memSymTab, False) 
@@ -203,17 +222,19 @@ filterFuncs _ = False
 
 
 analyzeFunction :: Function -> Scope -> Maybe Bool -> SymbolTable -> ClassSymbolTable -> (SymbolTable, Bool)
-analyzeFunction (Function identifier (TypeFuncReturnPrimitive primitive arrayDimension) params (Block statements)) scp isPublic symTab classSymTab = 
+analyzeFunction (Function identifier (TypeFuncReturnPrimitive primitive arrayDimension) params (Block statements)) scp isPublic symTab' classSymTab = 
                     -- if  not (Map.member identifier symTab) then  -- Esto se comenta para que se pueda hacer override de las funciones
                         if True then
                         -- La newFuncSymTab me da la symbol table de la funcion ya con sus parametros añadidos
                              let (newFuncSymTab, hasErrors) = (analyzeFuncParams params emptySymbolTable classSymTab)
                                     -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros, error
-                                   in if (hasErrors) || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)
+                                   in if (hasErrors) || ((Map.size (Map.intersection symTab' newFuncSymTab)) /= 0) then (emptySymbolTable,True)
                                         -- Metemos ahora a la symbol table de la funcion la symbol table que exista en los statements
                                         -- Hacemos doble union para que adentro de los statements se puedan reconocer miembros internos!
                                         -- Asi mismo, es MUY importante crear de una vez la funcion, para que pueda ser usada dentro de nuestros statements sin problemas! (Recursion)
-                                        else let symTabFuncWithOwnFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypePrimitive primitive arrayDimension)), scope = scp, body = (Block []), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab
+                                        -- Es importante filtrar por el caso en el que sea herencia, para quitar dependencias ciclicas de cuando se hace un override
+                                        else let symTab = (Map.fromList (deepFilter (Map.toList symTab') identifier) )
+                                            in let symTabFuncWithOwnFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypePrimitive primitive arrayDimension)), scope = scp, body = (Block []), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab
                                              in let (newFuncSymTabWithStatements,hasErrors) = analyzeStatements statements scp (Map.union (Map.union symTabFuncWithOwnFunc symTab) newFuncSymTab) classSymTab
                                                     in if (hasErrors) then (emptySymbolTable,True)
                                                         -- Hacemos el difference porque newFuncSymTabWithStatements tiene como miembros los simbolos de la clase actual
@@ -223,14 +244,15 @@ analyzeFunction (Function identifier (TypeFuncReturnPrimitive primitive arrayDim
                                                                 in if areRetTypesOk == True then (newSymTabFunc, False)
                                                                    else (emptySymbolTable, True) 
                         else (emptySymbolTable, True)
-analyzeFunction (Function identifier (TypeFuncReturnClassId classIdentifier arrayDimension) params (Block statements)) scp isPublic symTab classSymTab = 
+analyzeFunction (Function identifier (TypeFuncReturnClassId classIdentifier arrayDimension) params (Block statements)) scp isPublic symTab' classSymTab = 
                 if (checkTypeExistance (TypeClassId classIdentifier arrayDimension) classSymTab)
                     -- then if not (Map.member identifier symTab) then  -- Esto se comenta para que se pueda hacer override de las funciones
                     then if True then
                          let (newFuncSymTab, hasErrors) = (analyzeFuncParams params emptySymbolTable classSymTab)
                                     -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros, error
-                                   in if (hasErrors) || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)
-                                        else let symTabFuncWithOwnFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypeClassId classIdentifier arrayDimension)), scope = scp, body = (Block []), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab 
+                                   in if (hasErrors) || ((Map.size (Map.intersection symTab' newFuncSymTab)) /= 0) then (emptySymbolTable,True)
+                                        else let symTab = (Map.fromList (deepFilter (Map.toList symTab') identifier) ) 
+                                            in let symTabFuncWithOwnFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypeClassId classIdentifier arrayDimension)), scope = scp, body = (Block []), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab 
                                             -- Metemos ahora a la symbol table de la funcion la symbol table que exista en los statements
                                              in let (newFuncSymTabWithStatements,hasErrors) = analyzeStatements statements scp (Map.union (Map.union symTabFuncWithOwnFunc symTab) newFuncSymTab) classSymTab
                                                     in if (hasErrors) then (emptySymbolTable,True)
@@ -241,13 +263,14 @@ analyzeFunction (Function identifier (TypeFuncReturnClassId classIdentifier arra
                         else (emptySymbolTable, True)
                     else (emptySymbolTable, True)
     -- Como no regresa nada, no hay que buscar que regrese algo el bloque
-analyzeFunction (Function identifier (TypeFuncReturnNothing) params (Block statements)) scp isPublic symTab classSymTab =  
+analyzeFunction (Function identifier (TypeFuncReturnNothing) params (Block statements)) scp isPublic symTab' classSymTab =  
                   -- if  not (Map.member identifier symTab) -- Esto se comenta para que se pueda hacer override de las funciones
                     if True
                         then let (newFuncSymTab, hasErrors) = (analyzeFuncParams params emptySymbolTable classSymTab)
                                     -- Si hay errores o literalmente hay identificadores que son iguales que otros miembros o bien, que el usuario quiere regresar algo adentro de una funcion cuyo valor de retorno es nothing
-                                   in if (hasErrors) || (length (getReturnStatements statements)) > 0 || ((Map.size (Map.intersection symTab newFuncSymTab)) /= 0) then (emptySymbolTable,True)
-                                        else let symTabFuncWithOwnFunc = Map.insert identifier (SymbolFunction {returnType = Nothing, scope = scp, body = (Block []), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab 
+                                   in if (hasErrors) || (length (getReturnStatements statements)) > 0 || ((Map.size (Map.intersection symTab' newFuncSymTab)) /= 0) then (emptySymbolTable,True)
+                                        else let symTab = (Map.fromList (deepFilter (Map.toList symTab') identifier) ) 
+                                            in let symTabFuncWithOwnFunc = Map.insert identifier (SymbolFunction {returnType = Nothing, scope = scp, body = (Block []), shouldReturn = True ,isPublic = isPublic, symbolTable = newFuncSymTab, params = params}) symTab 
                                              -- Metemos ahora a la symbol table de la funcion la symbol table que exista en los statements
                                              in let (newFuncSymTabWithStatements,hasErrors) = analyzeStatements statements scp (Map.union (Map.union symTabFuncWithOwnFunc symTab) newFuncSymTab) classSymTab
                                                     in if (hasErrors) then (emptySymbolTable,True)
