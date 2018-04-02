@@ -1,7 +1,8 @@
 module CodeGenDataTypes where
 import Data.Decimal
+import Data.Maybe
 import qualified Data.HashMap.Strict as Map
-import Data.List (intercalate)
+import Data.List (intercalate,findIndex)
 import DataTypes
 import SymbolTable
 import Quadruple
@@ -71,86 +72,122 @@ type CodeGen a =  RWST CGEnvironment [Quadruple] CGState IO a
 
 type CG =  CodeGen ()
 
-startIntGlobalMemory = 1
-endIntGlobalMemory = 100000000000000000000000000000000000000000000000000
+onlyAttributes :: Symbol -> Bool
+onlyAttributes (SymbolFunction _ _ _ _ _ _ _) = False
+onlyAttributes _ = True
 
-startDecimalGlobalMemory = 100000000000000000000000000000000000000000000000001
-endDecimalGlobalMemory = 200000000000000000000000000000000000000000000000000
+getClassNameFromCurrentModule :: String -> String
+getClassNameFromCurrentModule currentModule = let currentModule1 = drop 1 currentModule
+                                                  numToTakeSecond = findIndex(`elem` "_") currentModule1
+                                                  className = take (fromJust numToTakeSecond) currentModule1
+                                              in className  
 
-startStringGlobalMemory = 200000000000000000000000000000000000000000000000001
-endStringGlobalMemory = 300000000000000000000000000000000000000000000000000
 
-startBoolGlobalMemory = 300000000000000000000000000000000000000000000000001
-endBoolGlobalMemory = 400000000000000000000000000000000000000000000000000
+-- getAttributesOfCurrentClass :: String -> ClassSymbolTable -> [Identifier]
+-- getAttributesOfCurrentClass currentModule classSymTab = 
+--                                             let className = getClassNameFromCurrentModule currentModule
+--                                             in case (Map.lookup className classSymTab) of 
+--                                                 Just symTableOfClass -> let filteredSymTab = (Map.filter onlyAttributes symTableOfClass)
+--                                                                             attributesList = (Map.toList filteredSymTab)
+--                                                                             identifiers = (map (\f -> fst f) attributesList)
+--                                                                          in identifiers
+--                                                 _ -> []
 
-startIntLocalMemory = 400000000000000000000000000000000000000000000000001
-endIntLocalMemory = 500000000000000000000000000000000000000000000000000
+getAttributesOfCurrentClass :: String -> ClassSymbolTable -> [Identifier]
+getAttributesOfCurrentClass currentModule classSymTab = let attributesList = getAttributesOfCurrentClassWithSymbol currentModule classSymTab
+                                                            identifiers = (map (\f -> fst f) attributesList)
+                                                         in identifiers
 
-startDecimalLocalMemory = 500000000000000000000000000000000000000000000000001
-endDecimalLocalMemory = 600000000000000000000000000000000000000000000000000
 
-startStringLocalMemory = 600000000000000000000000000000000000000000000000001
-endStringLocalMemory = 700000000000000000000000000000000000000000000000000
-
-startBoolLocalMemory = 700000000000000000000000000000000000000000000000001
-endBoolLocalMemory = 800000000000000000000000000000000000000000000000000
-
-startIntLiteralMemory = 800000000000000000000000000000000000000000000000001
-endIntLiteralMemory = 900000000000000000000000000000000000000000000000000
-
-startDecimalLiteralMemory = 900000000000000000000000000000000000000000000000001
-endDecimalLiteralMemory = 1000000000000000000000000000000000000000000000000000
-
-startStringLiteralMemory = 1000000000000000000000000000000000000000000000000001
-endStringLiteralMemory = 1100000000000000000000000000000000000000000000000000
-
-startBoolLiteralMemory = 1100000000000000000000000000000000000000000000000001
-endBoolLiteralMemory = 1200000000000000000000000000000000000000000000000000
-
-startObjectLocalMemory = 1200000000000000000000000000000000000000000000000001
-endObjectLocalMemory = 1300000000000000000000000000000000000000000000000000
-
-startObjectGlobalMemory = 1300000000000000000000000000000000000000000000000001
-endObjectGlobalMemory = 1400000000000000000000000000000000000000000000000000
+getAttributesOfCurrentClassWithSymbol :: String -> ClassSymbolTable -> [(Identifier,Symbol)]
+getAttributesOfCurrentClassWithSymbol currentModule classSymTab = 
+                                            let className = getClassNameFromCurrentModule currentModule
+                                            in case (Map.lookup className classSymTab) of 
+                                                Just symTableOfClass -> let filteredSymTab = (Map.filter onlyAttributes symTableOfClass)
+                                                                            attributesList = (Map.toList filteredSymTab)
+                                                                        in attributesList
+                                                _ -> []
 
 -- startIntGlobalMemory = 1
--- endIntGlobalMemory = 4000
+-- endIntGlobalMemory = 100000000000000000000000000000000000000000000000000
 
--- startDecimalGlobalMemory = 4001
--- endDecimalGlobalMemory = 8000
+-- startDecimalGlobalMemory = 100000000000000000000000000000000000000000000000001
+-- endDecimalGlobalMemory = 200000000000000000000000000000000000000000000000000
 
--- startStringGlobalMemory = 8001
--- endStringGlobalMemory = 12000
+-- startStringGlobalMemory = 200000000000000000000000000000000000000000000000001
+-- endStringGlobalMemory = 300000000000000000000000000000000000000000000000000
 
--- startBoolGlobalMemory = 12001
--- endBoolGlobalMemory = 16000
+-- startBoolGlobalMemory = 300000000000000000000000000000000000000000000000001
+-- endBoolGlobalMemory = 400000000000000000000000000000000000000000000000000
 
--- startIntLocalMemory = 16001
--- endIntLocalMemory = 20000
+-- startIntLocalMemory = 400000000000000000000000000000000000000000000000001
+-- endIntLocalMemory = 500000000000000000000000000000000000000000000000000
 
--- startDecimalLocalMemory = 20001
--- endDecimalLocalMemory = 24000
+-- startDecimalLocalMemory = 500000000000000000000000000000000000000000000000001
+-- endDecimalLocalMemory = 600000000000000000000000000000000000000000000000000
 
--- startStringLocalMemory = 24001
--- endStringLocalMemory = 26000
+-- startStringLocalMemory = 600000000000000000000000000000000000000000000000001
+-- endStringLocalMemory = 700000000000000000000000000000000000000000000000000
 
--- startBoolLocalMemory = 26001
--- endBoolLocalMemory = 30000
+-- startBoolLocalMemory = 700000000000000000000000000000000000000000000000001
+-- endBoolLocalMemory = 800000000000000000000000000000000000000000000000000
 
--- startIntLiteralMemory = 64001
--- endIntLiteralMemory = 68000
+-- startIntLiteralMemory = 800000000000000000000000000000000000000000000000001
+-- endIntLiteralMemory = 900000000000000000000000000000000000000000000000000
 
--- startDecimalLiteralMemory = 68001
--- endDecimalLiteralMemory = 72000
+-- startDecimalLiteralMemory = 900000000000000000000000000000000000000000000000001
+-- endDecimalLiteralMemory = 1000000000000000000000000000000000000000000000000000
 
--- startStringLiteralMemory = 76001
--- endStringLiteralMemory = 80000
+-- startStringLiteralMemory = 1000000000000000000000000000000000000000000000000001
+-- endStringLiteralMemory = 1100000000000000000000000000000000000000000000000000
 
--- startBoolLiteralMemory = 80001
--- endBoolLiteralMemory = 84000
+-- startBoolLiteralMemory = 1100000000000000000000000000000000000000000000000001
+-- endBoolLiteralMemory = 1200000000000000000000000000000000000000000000000000
 
--- startObjectLocalMemory = 84001
--- endObjectLocalMemory = 88000
+-- startObjectLocalMemory = 1200000000000000000000000000000000000000000000000001
+-- endObjectLocalMemory = 1300000000000000000000000000000000000000000000000000
 
--- startObjectGlobalMemory = 100001
--- endObjectGlobalMemory = 104000
+-- startObjectGlobalMemory = 1300000000000000000000000000000000000000000000000001
+-- endObjectGlobalMemory = 1400000000000000000000000000000000000000000000000000
+
+startIntGlobalMemory = 1
+endIntGlobalMemory = 4000
+
+startDecimalGlobalMemory = 4001
+endDecimalGlobalMemory = 8000
+
+startStringGlobalMemory = 8001
+endStringGlobalMemory = 12000
+
+startBoolGlobalMemory = 12001
+endBoolGlobalMemory = 16000
+
+startIntLocalMemory = 16001
+endIntLocalMemory = 20000
+
+startDecimalLocalMemory = 20001
+endDecimalLocalMemory = 24000
+
+startStringLocalMemory = 24001
+endStringLocalMemory = 26000
+
+startBoolLocalMemory = 26001
+endBoolLocalMemory = 30000
+
+startIntLiteralMemory = 64001
+endIntLiteralMemory = 68000
+
+startDecimalLiteralMemory = 68001
+endDecimalLiteralMemory = 72000
+
+startStringLiteralMemory = 76001
+endStringLiteralMemory = 80000
+
+startBoolLiteralMemory = 80001
+endBoolLiteralMemory = 84000
+
+startObjectLocalMemory = 84001
+endObjectLocalMemory = 88000
+
+startObjectGlobalMemory = 100001
+endObjectGlobalMemory = 104000

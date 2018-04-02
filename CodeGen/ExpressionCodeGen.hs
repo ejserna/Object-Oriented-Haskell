@@ -704,27 +704,7 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                                                                                                                 tell $ quads
                                                                                                                 return (paramsZip ++ quadsParams)
                                     
-onlyAttributes :: Symbol -> Bool
-onlyAttributes (SymbolFunction _ _ _ _ _ _ _) = False
-onlyAttributes _ = True
 
-
-getClassNameFromCurrentModule :: String -> String
-getClassNameFromCurrentModule currentModule = let currentModule1 = drop 1 currentModule
-                                                  numToTakeSecond = findIndex(`elem` "_") currentModule1
-                                                  className = take (fromJust numToTakeSecond) currentModule1
-                                              in className  
-
-
-getAttributesOfCurrentClass :: String -> ClassSymbolTable -> [Identifier]
-getAttributesOfCurrentClass currentModule classSymTab = 
-                                            let className = getClassNameFromCurrentModule currentModule
-                                            in case (Map.lookup className classSymTab) of 
-                                                Just symTableOfClass -> let filteredSymTab = (Map.filter onlyAttributes symTableOfClass)
-                                                                            attributesList = (Map.toList filteredSymTab)
-                                                                            identifiers = (map (\f -> fst f) attributesList)
-                                                                         in identifiers
-                                                _ -> []
 
 
 
@@ -781,6 +761,9 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet 
                                                             cgState <- get
                                                             let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
                                                             -- Mark todo: aqui debemos sacar en que módulo se está actualmente
+                                                            -- liftIO $ putStrLn.ppShow $ funcMap
+                                                            liftIO $ putStrLn.show $ currentModule
+                                                            liftIO $ putStrLn.show $ symTab
                                                             let addressesAttributesOfCaller = getAddressesOfAttributesInClassFunction currentModule idTable classSymTab
                                                             let addressesAttributesOfCallingFunction = getAddressesOfAttributesInClassFunction currentModule idMapFunc classSymTab
                                                             let zippedAddresses = zip addressesAttributesOfCaller addressesAttributesOfCallingFunction
@@ -843,7 +826,7 @@ generateCodeFuncCall (FunctionCallObjMem (ObjectMember identifier funcIdentifier
                                 cgState <- get
                                 let (classSymTab,objMap,idTable,_,funcMap,_) = getCGEnvironment cgEnv
                                 let (symTab,_,_) = getCGState cgState
-                                -- liftIO $ putStrLn.ppShow $ funcMap
+                                
                                 -- liftIO $ putStrLn.ppShow $ currentModule ++ funcIdentifier
 
                                 case (Map.lookup identifier symTab) of 
@@ -868,6 +851,7 @@ generateCodeFuncCall (FunctionCallObjMem (ObjectMember identifier funcIdentifier
                                                                             modify $ (\s -> newCGState)
                                                                             cgState <- get
                                                                             let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
+                                                                            
                                                                             let addressesAttributesOfCaller = getAddressesOfAttributesInObjMap identifier ("_" ++ classId ++ "_") idTable objMap classSymTab
                                                                             let addressesAttributesOfCallingFunction = getAddressesOfAttributesInClassFunction ("_" ++ classId ++ "_") idMapFunc classSymTab
                                                                             let zippedAddresses = zip addressesAttributesOfCaller addressesAttributesOfCallingFunction

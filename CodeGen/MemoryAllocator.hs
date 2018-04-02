@@ -342,9 +342,13 @@ fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statement
                                                                     -- let functionDependenciesMapNoSelf = (Map.filter )
                                                                     liftIO $ putStrLn.ppShow $ (fromModule ++ identifier)
                                                                     let functionSymTabNoFuncs = (Map.filter filterFuncs symTabFunc)
+                                                                    -- Para herencia, tenemos que meter los atritibutos de la clase de la funcion hijo
+                                                                    let attributesWithSymbols = getAttributesOfCurrentClassWithSymbol fromModule (classTabMem env)
+                                                                    let functionSymTabNoFuncsList = (Map.toList functionSymTabNoFuncs)
+                                                                    let functionSymTabWithNewAttributes = (Map.fromList (functionSymTabNoFuncsList ++ attributesWithSymbols))
                                                                     (stateAfterDependencies,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable (fromModule)) (setEnvironment functionDependenciesMap (classTabMem env)) stateAfterFuncConstants
                                                                     
-                                                                    (stateAfterVariablesFromFunc,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable (fromModule)) (setEnvironment functionSymTabNoFuncs (classTabMem env)) stateAfterDependencies
+                                                                    (stateAfterVariablesFromFunc,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable (fromModule)) (setEnvironment functionSymTabWithNewAttributes (classTabMem env)) stateAfterDependencies
                                                                     let (idMapFromFunc, newConstTable, funcObjMap,funcMap,varCountersFromFunc,newLiteralCounters) = getCurrentMemoryState stateAfterVariablesFromFunc
                                                                     let paramsAddresses = fillParamsFromFunction params idMapFromFunc
                                                                     -- Se inserta un funcData vacio para funciones recursivas

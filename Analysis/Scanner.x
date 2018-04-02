@@ -82,7 +82,7 @@ tokens :-
   $digit+\.$digit+                  { \p s -> TDecimalLiteral  p (read (getLast255Decimals s) ) } -- numero decimal
   $digit+                           { \p s -> TIntegerLiteral p (read s) }                 -- numero entero
   [$alphaLower \_][$alphaLower $digit $alphaUpper \_]*   { \p s -> TVarIdent p s }
-  [$alphaUpper][$alphaLower]*                            { \p s -> TClassIdent p s }      
+  [$alphaUpper][$alphaLower $digit $alphaUpper \_]*                          { \p s -> TClassIdent p s }      
   \"(\\. | [^\"\\])*\" 	       	                         { \p s -> TStringLiteral p (init (tail s)) } -- esto hace que se remuevan las dobles comillas al momento de procesar el string literal
 
 {

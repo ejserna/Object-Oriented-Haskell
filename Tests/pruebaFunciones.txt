@@ -8,12 +8,8 @@ class Point{
     [+] Decimal y;
     [+] Clase op;
 
-    Point{
-        x = 2.222;
-        y = 2.222;
-    }
 
-    [+] callMethod => Nothing{
+    [-] callMethod => Nothing{
         Integer [2][5] mat = [[1,2,3,4,5],
                                 [6,7,8,9,99999999999]];
         display("Llamada interna");
@@ -39,58 +35,43 @@ class Point{
 
 }
 
-fiboPerro => Int :: Int n {
-    if (n == 0){
-        return 0;
+class Point3D : Point{
+    [+] Decimal z;
+
+    Point3D :: Decimal dX -> Decimal dY -> Decimal dZ{
+        x = dX;
+        y = dY;
+        z = dZ;
+
+    }
+    [+] callMethod => Nothing{
+        displayLn("Es publico");
     }
 
-    if (n == 1){
-        return 1;
+    [+] setPoint => Nothing :: Decimal dX -> Decimal dY -> Decimal dZ{
+        x = dX;
+        y = dY;
+        z = dZ;
+
+        callMethod();
+        displayLn("Sup");
+
     }
-    return fiboPerro(n - 1) + fiboPerro(n - 2);
+
+    
 }
 
-fibo => Int :: Int n -> Int k {
-    Int koko;
-    koko = n ^ 10;
-    displayLn(koko,k);
-    return koko;
-}
-
-enteroMatriz => Int [10][10] :: Int [10][10] n {
-    n[9][9] = 29292929;
-    return n;
-}
-
-puntos => Point [10] :: Point [10] n {
-    Point pChido;
-    pChido = n[2];
-    pChido.x = 1.0 / 3.0;
-    pChido.y = 393393939.3;
-    n[2] = pChido;
-    return n;
-}
-
-punto => Nothing :: Point p -> Point [10] n -> Point k  {
-    p.x = 555557777.555;
-    displayLn(p.x,p.y);
-}
 
 
 
 main{
-    Point p = Point();
+    Point3D p3d = Point3D(1.2,2.2,3.3);
+    Point p;
+    displayLn(p3d.x,p3d.y,p3d.z);
+    p3d.z = 1.33;
+    p3d.setPoint(1.22,2.22,5.555);
+    p.setPoint(32.22,55.22);
+    displayLn(p3d);
     displayLn(p);
-    Clase c;
-    Integer [2][5] matriz;
-    p.x = 1.222;
-    p.y = 1.3333;
-    displayLn(p);
-    
-    p.setPoint(5.5,6.5);
-    c = p.op;
-    matriz = c.matriz;
-    displayLn(p,matriz);
 
-    
 }
