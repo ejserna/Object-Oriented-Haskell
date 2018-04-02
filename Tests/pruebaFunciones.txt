@@ -1,77 +1,88 @@
-class Clase{
-    [+] Integer i;
-    [+] Integer [2][5] matriz;
-}
-
 class Point{
     [+] Decimal x;
     [+] Decimal y;
-    [+] Clase op;
 
 
-    [-] callMethod => Nothing{
-        Integer [2][5] mat = [[1,2,3,4,5],
-                                [6,7,8,9,99999999999]];
+    [+] callMethod => Nothing{
         display("Llamada interna");
-        displayLn(x,y);
-        x = 11.1;
-        y = 12.1;
-        op.i = 100;
-        op.matriz = mat;
-        displayLn(x,y);
     }
 
 
     [+] setPoint => Nothing :: Decimal dX -> Decimal dY{
         x = dX;
         y = dY;
-        
         callMethod();
-        displayLn(x,y);
-
     }
 
 
 
 }
 
-class Point3D : Point{
-    [+] Decimal z;
-
-    Point3D :: Decimal dX -> Decimal dY -> Decimal dZ{
-        x = dX;
-        y = dY;
-        z = dZ;
-
-    }
-    [+] callMethod => Nothing{
-        displayLn("Es publico");
+fiboPerro => Int :: Int n {
+    if (n == 0){
+        return 0;
     }
 
-    [+] setPoint => Nothing :: Decimal dX -> Decimal dY -> Decimal dZ{
-        x = dX;
-        y = dY;
-        z = dZ;
-
-        callMethod();
-        displayLn("Sup");
-
+    if (n == 1){
+        return 1;
     }
-
-    
+    return fiboPerro(n - 1) + fiboPerro(n - 2);
 }
 
+fibo => Int :: Int n -> Int k {
+    Int koko;
+    koko = n ^ 10;
+    displayLn(koko,k);
+    return koko;
+}
+
+enteroMatriz => Int [10][10] :: Int [10][10] n {
+    n[9][9] = 29292929;
+    return n;
+}
+
+puntos => Point [10] :: Point [10] n {
+    Point pChido;
+    pChido = n[2];
+    pChido.x = 1.0 / 3.0;
+    pChido.y = 393393939.3;
+    n[2] = pChido;
+    return n;
+}
+
+punto => Nothing :: Point p -> Point [10] n -> Point k  {
+    p.x = 555555.555;
+    displayLn(p.x,p.y);
+}
 
 
 
 main{
-    Point3D p3d = Point3D(1.2,2.2,3.3);
+    Int [10][10] n = [[1,2,3,4,5,6,7]];
     Point p;
-    displayLn(p3d.x,p3d.y,p3d.z);
-    p3d.z = 1.33;
-    p3d.setPoint(1.22,2.22,5.555);
-    p.setPoint(32.22,55.22);
-    displayLn(p3d);
-    displayLn(p);
+    p.x = 1.222;
+    p.y = 1.3333;
+    Point [10] ps = [p,p,p,p,p];
+    Point [10] puntillos;
+    displayLn("hola");
+    p.y = 1.4;
+    punto(p,ps,p);
+    Int i = 20;
+    i = fibo(2,i);
+    displayLn(i);
+    i = fiboPerro(10);
+    displayLn(i);
 
+    ps = puntos(ps);
+    p = ps[2];
+    displayLn(p.x,p.y);
+    n = enteroMatriz(n);
+    displayLn(n[9][9]);
+    puntillos = ps;
+    Point p1,p2;
+    p1 = ps[2];
+    p2 = puntillos[2];
+    Decimal x1,y1,x2,y2;
+
+    displayLn(p1,p2);   
 }

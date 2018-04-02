@@ -762,8 +762,8 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet 
                                                             let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
                                                             -- Mark todo: aqui debemos sacar en que módulo se está actualmente
                                                             -- liftIO $ putStrLn.ppShow $ funcMap
-                                                            liftIO $ putStrLn.show $ currentModule
-                                                            liftIO $ putStrLn.show $ symTab
+                                                            -- liftIO $ putStrLn.show $ currentModule
+                                                            -- liftIO $ putStrLn.show $ symTab
                                                             let addressesAttributesOfCaller = getAddressesOfAttributesInClassFunction currentModule idTable classSymTab
                                                             let addressesAttributesOfCallingFunction = getAddressesOfAttributesInClassFunction currentModule idMapFunc classSymTab
                                                             let zippedAddresses = zip addressesAttributesOfCaller addressesAttributesOfCallingFunction

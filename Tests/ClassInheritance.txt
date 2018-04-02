@@ -1,0 +1,77 @@
+class Clase{
+    [+] Integer i;
+    [+] Integer [2][5] matriz;
+}
+
+class Point{
+    [+] Decimal x;
+    [+] Decimal y;
+    [+] Clase op;
+
+
+    [-] callMethod => Nothing{
+        Integer [2][5] mat = [[1,2,3,4,5],
+                                [6,7,8,9,99999999999]];
+        display("Llamada interna");
+        displayLn(x,y);
+        x = 11.1;
+        y = 12.1;
+        op.i = 100;
+        op.matriz = mat;
+        displayLn(x,y);
+    }
+
+
+    [+] setPoint => Nothing :: Decimal dX -> Decimal dY{
+        x = dX;
+        y = dY;
+        
+        callMethod();
+        displayLn(x,y);
+
+    }
+
+
+
+}
+
+class Point3D : Point{
+    [+] Decimal z;
+
+    Point3D :: Decimal dX -> Decimal dY -> Decimal dZ{
+        x = dX;
+        y = dY;
+        z = dZ;
+
+    }
+    [+] callMethod => Nothing{
+        displayLn("Es publico");
+    }
+
+    [+] setPoint => Nothing :: Decimal dX -> Decimal dY -> Decimal dZ{
+        x = dX;
+        y = dY;
+        z = dZ;
+
+        callMethod();
+        displayLn("Sup");
+
+    }
+
+    
+}
+
+
+
+
+main{
+    Point3D p3d = Point3D(1.2,2.2,3.3);
+    Point p;
+    displayLn(p3d.x,p3d.y,p3d.z);
+    p3d.z = 1.33;
+    p3d.setPoint(1.22,2.22,5.555);
+    p.setPoint(32.22,55.22);
+    displayLn(p3d);
+    displayLn(p);
+
+}

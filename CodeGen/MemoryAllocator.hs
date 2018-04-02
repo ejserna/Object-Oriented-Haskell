@@ -71,7 +71,7 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
             let constantAddressMap = (constTable stateAfterConstants5)
             (stateAfterVariablesInStatements,_) <- execRWST (prepareAddressMapsFromSymbolTable "_main_") env stateAfterConstants5
             let (idMap,constMap, objMap, funcMap, varCounters, litCounters) = getCurrentMemoryState stateAfterVariablesInStatements
-            putStrLn $ ppShow $(sortBy (compare `on` fst) (Map.toList funcMap) ) 
+            -- putStrLn $ ppShow $(sortBy (compare `on` fst) (Map.toList funcMap) ) 
             -- let (varCountersMem,newIdMap,objectAddressMap) = (prepareAddressMapsFromSymbolTable symTab classSymTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory)
             --                                                     (Map.empty) (Map.empty))
         
@@ -340,7 +340,7 @@ fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statement
                                                                     -- Obtenemos las dependencias de la funcion, para primero realizar los metodos de las funciones que utiliza la funcion
                                                                     let functionDependenciesMap = (Map.filter getFuncs symTabFunc)
                                                                     -- let functionDependenciesMapNoSelf = (Map.filter )
-                                                                    liftIO $ putStrLn.ppShow $ (fromModule ++ identifier)
+                                                                    -- liftIO $ putStrLn.ppShow $ (fromModule ++ identifier)
                                                                     let functionSymTabNoFuncs = (Map.filter filterFuncs symTabFunc)
                                                                     -- Para herencia, tenemos que meter los atritibutos de la clase de la funcion hijo
                                                                     let attributesWithSymbols = getAttributesOfCurrentClassWithSymbol fromModule (classTabMem env)
