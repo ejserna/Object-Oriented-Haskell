@@ -406,23 +406,35 @@ runInstruction (QuadrupleFunctionCall quadNum GO_SUB addressesObjParams addresse
                                                                                                         if ((isMainContext context)) then 
                                                                                                           do 
                                                                                                             let newGlobalMemory = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem returnAddresses addressesCurrentContext
-                                                                                                            modify $ \s -> (s { globalMemory =  newGlobalMemory })
+                                                                                                            let newGlobalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc newGlobalMemory objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext 
+                                                                                                            modify $ \s -> (s { globalMemory =  newGlobalMemoryWithObjectAttributes })
                                                                                                             modify $ \s -> (s { ip = (ip s) + 1 })
-                                                                                                            modify $ \s -> (s { objectMemory =  currentObjMem })
                                                                                                         else do 
                                                                                                                let newLocalMemory = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem returnAddresses addressesCurrentContext
-                                                                                                               modify $ \s -> (s { localMemory =  newLocalMemory })
+                                                                                                               let newLocalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc newLocalMemory objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext
+                                                                                                               modify $ \s -> (s { localMemory =  newLocalMemoryWithObjectAttributes })
                                                                                                                modify $ \s -> (s { ip = (ip s) + 1 })
-                                                                                                               modify $ \s -> (s { objectMemory =  currentObjMem })
                                                                                                   _ -> do 
-                                                                                                        modify $ \s -> (s { localMemory =  currentLocalMem })
-                                                                                                        modify $ \s -> (s { objectMemory =  currentObjMem })
-                                                                                                        modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                        if ((isMainContext context)) then 
+                                                                                                          do 
+                                                                                                              let newGlobalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext 
+                                                                                                              modify $ \s -> (s { globalMemory =  newGlobalMemoryWithObjectAttributes })
+                                                                                                              modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                        else do 
+                                                                                                               let newLocalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext
+                                                                                                               modify $ \s -> (s { localMemory =  newLocalMemoryWithObjectAttributes })
+                                                                                                               modify $ \s -> (s { ip = (ip s) + 1 })
                                                                                             else 
                                                                                               do 
-                                                                                                modify $ \s -> (s { localMemory =  currentLocalMem })
-                                                                                                modify $ \s -> (s { objectMemory =  currentObjMem })
-                                                                                                modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                if ((isMainContext context)) then 
+                                                                                                          do 
+                                                                                                              let newGlobalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext 
+                                                                                                              modify $ \s -> (s { globalMemory =  newGlobalMemoryWithObjectAttributes })
+                                                                                                              modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                        else do 
+                                                                                                               let newLocalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext
+                                                                                                               modify $ \s -> (s { localMemory =  newLocalMemoryWithObjectAttributes })
+                                                                                                               modify $ \s -> (s { ip = (ip s) + 1 })
                                                                                             
                                         
 

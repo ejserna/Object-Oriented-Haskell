@@ -59,18 +59,23 @@ analyzeClassBlock (ClassNormal classIdentifier classBlock) symTab classSymTab = 
 
 analyzeMembersOfClassBlock :: ClassBlock -> ClassIdentifier -> Scope -> SymbolTable -> ClassSymbolTable  -> (SymbolTable,Bool)
 analyzeMembersOfClassBlock (ClassBlockNoConstructor classMembers) classIdentifier scp symTab classSymTab = analyzeClassMembers classMembers classIdentifier scp symTab classSymTab
-analyzeMembersOfClassBlock (ClassBlock classMembers (ClassConstructor params block)) classIdentifier scp symTab classSymTab = 
-                                        let (newSymTab1, hasErrors) = analyzeClassMembers classMembers classIdentifier scp symTab classSymTab
-                                        in if (hasErrors == True) then (emptySymbolTable,True)
-                                            else let (symTabFunc, hasErrors2) = analyzeFuncParams params emptySymbolTable classSymTab   
-                                                in if (hasErrors2 == True) then (emptySymbolTable, True)
-                                                    -- Debido a que funciones pueden tener identificadores en sus parametros,
-                                                    -- hay que verificar que no interfieran con otros identificadores dentro de la
-                                                    -- clase
-                                                    else if (Map.size (Map.intersection symTabFunc newSymTab1)) == 0
-                                                         then let newSymTab = (Map.insert (classIdentifier ++ "_constructor") (SymbolFunction {returnType = (Just (TypeClassId classIdentifier [])), scope = scp, body = block, shouldReturn = False ,isPublic = (Just True), symbolTable = symTabFunc, params = params}) symTab)
-                                                                in analyzeClassMembers classMembers classIdentifier scp newSymTab classSymTab
-                                                          else (emptySymbolTable, True)                       
+analyzeMembersOfClassBlock (ClassBlock classMembers (ClassConstructor classIdConstructor params block)) classIdentifier scp symTab classSymTab = 
+                                        if (classIdConstructor /= classIdentifier) then (emptySymbolTable,True)
+                                        else let (newSymTab1, hasErrors) = analyzeClassMembers classMembers classIdentifier scp symTab classSymTab
+                                        in if (hasErrors) then (emptySymbolTable,True)
+                                        else  analyzeFunction (Function (classIdentifier ++ "_constructor") TypeFuncReturnNothing params block) scp (Just True) newSymTab1 classSymTab 
+                                        -- let functionConstructor = (Function identifier (TypeFuncReturnPrimitive primitive arrayDimension) params (Block statements))
+                                        -- let (newSymTab1, hasErrors) = analyzeClassMembers classMembers classIdentifier scp symTab classSymTab
+                                        -- in if (hasErrors == True) then (emptySymbolTable,True)
+                                        --     else let (symTabFunc, hasErrors2) = analyzeFuncParams params emptySymbolTable classSymTab   
+                                        --         in if (hasErrors2 == True) then (emptySymbolTable, True)
+                                        --             -- Debido a que funciones pueden tener identificadores en sus parametros,
+                                        --             -- hay que verificar que no interfieran con otros identificadores dentro de la
+                                        --             -- clase
+                                        --             else if (Map.size (Map.intersection symTabFunc newSymTab1)) == 0
+                                        --                  then let newSymTab = (Map.insert (classIdentifier ++ "_constructor") (SymbolFunction {returnType = (Just  ), scope = scp, body = block, shouldReturn = False ,isPublic = (Just True), symbolTable = symTabFunc, params = params}) symTab)
+                                        --                         in analyzeClassMembers classMembers classIdentifier scp newSymTab classSymTab
+                                        --                   else (emptySymbolTable, True)                       
 -- let (newSymTab2,hasErrors) = analyzeClassMember cm scp newSymTab
 --                                             if hasErrors then (emptySymbolTable, True)
 --                                                 else let (newSymTab3,hasErrors2) = analyzeMembersOfClassBlock 

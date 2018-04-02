@@ -218,8 +218,8 @@ ClassFunction :
       | "[-]" Function {ClassFunctionPrivate $2}
 
 ClassConstructor :
-        "::" TypeFuncParams var_identifier Params Block {ClassConstructor (($2,$3) : $4) $5}
-      | "::" Block { ClassConstructor [] $2 }
+        class_identifier "::" TypeFuncParams var_identifier Params Block {ClassConstructor $1 (($3,$4) : $5) $6}
+      | class_identifier Block { ClassConstructor $1 [] $2 }
 
 LiteralOrVariable :
         var_identifier {VarIdentifier $1}

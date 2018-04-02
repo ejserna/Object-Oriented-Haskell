@@ -1,5 +1,6 @@
 module ExpressionCodeGen where
 import Data.Decimal
+import Data.Maybe
 import Control.Monad.RWS
 import Control.Monad.Except
 import Control.Monad.Trans.Except
@@ -10,10 +11,11 @@ import DataTypes
 import CodeGenDataTypes
 import Quadruple
 import SymbolTable
+import ClassSymbolTable
 import Expression
 import Text.Show.Pretty
 import qualified Data.HashMap.Strict as Map
-import Data.List (intercalate, maximumBy)
+import Data.List (intercalate, maximumBy,findIndex)
 import Data.Ord (comparing)
 
 expCodeGen :: Expression -> CG 
@@ -702,16 +704,64 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                                                                                                                 tell $ quads
                                                                                                                 return (paramsZip ++ quadsParams)
                                     
+onlyAttributes :: Symbol -> Bool
+onlyAttributes (SymbolFunction _ _ _ _ _ _ _) = False
+onlyAttributes _ = True
+
+
+getClassNameFromCurrentModule :: String -> String
+getClassNameFromCurrentModule currentModule = let currentModule1 = drop 1 currentModule
+                                                  numToTakeSecond = findIndex(`elem` "_") currentModule1
+                                                  className = take (fromJust numToTakeSecond) currentModule1
+                                              in className  
+
+
+getAttributesOfCurrentClass :: String -> ClassSymbolTable -> [Identifier]
+getAttributesOfCurrentClass currentModule classSymTab = 
+                                            let className = getClassNameFromCurrentModule currentModule
+                                            in case (Map.lookup className classSymTab) of 
+                                                Just symTableOfClass -> let filteredSymTab = (Map.filter onlyAttributes symTableOfClass)
+                                                                            attributesList = (Map.toList filteredSymTab)
+                                                                            identifiers = (map (\f -> fst f) attributesList)
+                                                                         in identifiers
+                                                _ -> []
+
+
+
+
+
+getAddressesOfAttributesInClassFunction :: String -> IdentifierAddressMap -> ClassSymbolTable -> [Address]
+getAddressesOfAttributesInClassFunction currentModule idMapOfFunc classSymTab = 
+                                                                    let identifierAttributes = getAttributesOfCurrentClass currentModule classSymTab
+                                                                    in (map (\f -> case (Map.lookup f idMapOfFunc) of 
+                                                                                    Just addressIdentifier -> addressIdentifier) identifierAttributes)
+getAddressesOfAttributesInObjMap :: Identifier -> ClassIdentifier  -> IdentifierAddressMap -> ObjectAddressMap -> ClassSymbolTable -> [Address]
+getAddressesOfAttributesInObjMap objIdentifier classIdentifier idMap objMap classSymTab = 
+                                                                    let identifierAttributes = getAttributesOfCurrentClass classIdentifier classSymTab
+                                                                    in case (Map.lookup objIdentifier idMap) of 
+                                                                        Just addressObj -> case (Map.lookup addressObj objMap) of 
+                                                                                                Just idTableObj -> 
+                                                                                                    (map (\f -> case (Map.lookup f idTableObj) of 
+                                                                                                                    Just addressIdentifier -> addressIdentifier) 
+                                                                                                    identifierAttributes)
+
+                                                                    
+
+
+
+
+
 
 generateCodeFuncCall :: FunctionCall -> [Address] -> CG
 generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet =
                             do 
                                 cgEnv <- ask
                                 cgState <- get
-                                let (_,_,idTable,_,funcMap,currentModule) = getCGEnvironment cgEnv
+                                let (classSymTab,_,idTable,_,funcMap,currentModule) = getCGEnvironment cgEnv
                                 let (symTab,_,_) = getCGState cgState
                                 -- liftIO $ putStrLn.ppShow $ funcMap
-                                liftIO $ putStrLn.ppShow $ currentModule ++ funcIdentifier
+                                -- liftIO $ putStrLn.ppShow $ currentModule ++ funcIdentifier
+
                                 case (Map.lookup (currentModule ++ funcIdentifier) funcMap) of 
                                     Just (FunctionData _ paramsAddressesFunc idMapFunc objMapFunc) -> 
                                             do 
@@ -731,7 +781,10 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet 
                                                             cgState <- get
                                                             let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
                                                             -- Mark todo: aqui debemos sacar en que módulo se está actualmente
-                                                            let funcCallQuad = buildFuncCall quadNum [] quadsParams (currentModule ++ funcIdentifier)
+                                                            let addressesAttributesOfCaller = getAddressesOfAttributesInClassFunction currentModule idTable classSymTab
+                                                            let addressesAttributesOfCallingFunction = getAddressesOfAttributesInClassFunction currentModule idMapFunc classSymTab
+                                                            let zippedAddresses = zip addressesAttributesOfCaller addressesAttributesOfCallingFunction
+                                                            let funcCallQuad = buildFuncCall quadNum zippedAddresses quadsParams (currentModule ++ funcIdentifier)
                                                             tell $ [funcCallQuad]
                                                             case addressesToSet of 
                                                                 [] -> do 
@@ -784,7 +837,92 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet 
                                                                         modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
                                                             
 
+generateCodeFuncCall (FunctionCallObjMem (ObjectMember identifier funcIdentifier) callParams) addressesToSet =
+                            do 
+                                cgEnv <- ask
+                                cgState <- get
+                                let (classSymTab,objMap,idTable,_,funcMap,_) = getCGEnvironment cgEnv
+                                let (symTab,_,_) = getCGState cgState
+                                -- liftIO $ putStrLn.ppShow $ funcMap
+                                -- liftIO $ putStrLn.ppShow $ currentModule ++ funcIdentifier
 
+                                case (Map.lookup identifier symTab) of 
+                                    Just (SymbolVar (TypeClassId classId []) _ _) ->
+                                        case (Map.lookup (("_" ++ classId ++ "_") ++ funcIdentifier) funcMap) of 
+                                            Just (FunctionData _ paramsAddressesFunc idMapFunc objMapFunc) -> 
+                                                    do 
+                                                        case (Map.lookup classId classSymTab) of 
+                                                            Just symTabOfClass ->
+                                                                case (Map.lookup funcIdentifier symTabOfClass) of 
+                                                                    Just (SymbolFunction params returnType _ _ _ _ _) ->
+                                                                        do 
+                                                                            let typesParams = (map (\f -> fst f) params)
+                                                                            let expressionsParams = (map (\f -> 
+                                                                                                                let (ParamsExpression exp) = f 
+                                                                                                                 in exp) 
+                                                                                                    callParams)
+                                                                            (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams  paramsAddressesFunc typesParams expressionsParams) cgEnv cgState
+                                                                            tell $ quads
+                                                                            
+                                                                            -- Actualizamos el estado
+                                                                            modify $ (\s -> newCGState)
+                                                                            cgState <- get
+                                                                            let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
+                                                                            let addressesAttributesOfCaller = getAddressesOfAttributesInObjMap identifier ("_" ++ classId ++ "_") idTable objMap classSymTab
+                                                                            let addressesAttributesOfCallingFunction = getAddressesOfAttributesInClassFunction ("_" ++ classId ++ "_") idMapFunc classSymTab
+                                                                            let zippedAddresses = zip addressesAttributesOfCaller addressesAttributesOfCallingFunction
+                                                                            let funcCallQuad = buildFuncCall quadNum zippedAddresses quadsParams (("_" ++ classId ++ "_") ++ funcIdentifier)
+                                                                            tell $ [funcCallQuad]
+                                                                            case addressesToSet of 
+                                                                                [] -> do 
+                                                                                    case returnType of 
+                                                                                        Just (TypePrimitive PrimitiveMoney []) -> 
+                                                                                                       do 
+                                                                                                        let ret = buildReturnAssignment (quadNum + 1) [decGC]
+                                                                                                        tell $ [ret]
+                                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                                        modify $ (\s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC)})) 
+                                                                                        Just (TypePrimitive PrimitiveDouble []) -> 
+                                                                                                       do 
+                                                                                                        let ret = buildReturnAssignment (quadNum + 1) [decGC]
+                                                                                                        tell $ [ret]
+                                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                                        modify $ (\s -> (s { varCounters = (intGC,decGC + 1,strGC,boolGC,objGC)})) 
+                                                                                        Just (TypePrimitive PrimitiveInteger []) -> 
+                                                                                                       do 
+                                                                                                        let ret = buildReturnAssignment (quadNum + 1) [intGC]
+                                                                                                        tell $ [ret]
+                                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                                        modify $ (\s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC)}))
+                                                                                        Just (TypePrimitive PrimitiveInt []) -> 
+                                                                                                       do 
+                                                                                                        let ret = buildReturnAssignment (quadNum + 1) [intGC]
+                                                                                                        tell $ [ret]
+                                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                                        modify $ (\s -> (s { varCounters = (intGC + 1,decGC,strGC,boolGC,objGC)})) 
+                                                                                        Just (TypePrimitive PrimitiveString []) -> 
+                                                                                                       do 
+                                                                                                        let ret = buildReturnAssignment (quadNum + 1) [strGC]
+                                                                                                        tell $ [ret]
+                                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                                        modify $ (\s -> (s { varCounters = (intGC,decGC,strGC + 1,boolGC,objGC)})) 
+                                                                                        Just (TypePrimitive PrimitiveBool []) -> 
+                                                                                                       do 
+                                                                                                        let ret = buildReturnAssignment (quadNum + 1) [strGC]
+                                                                                                        tell $ [ret]
+                                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                                        modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC + 1,objGC)}))
+                                                                                        _ -> do 
+                                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 1}))
+
+                                                                                _ -> 
+                                                                                    do 
+                                                                                        let ret = buildReturnAssignment (quadNum + 1) addressesToSet
+                                                                                        tell $ [ret]
+                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+
+
+                                    
 
 
 

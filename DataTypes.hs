@@ -95,8 +95,8 @@ data ClassFunction
   deriving (Show, Eq)
 
 data ClassConstructor 
-    = ClassConstructorEmpty
-    | ClassConstructor [(Type,Identifier)] Block
+    = ClassConstructorEmpty ClassIdentifier
+    | ClassConstructor ClassIdentifier [(Type,Identifier)] Block
   deriving (Show, Eq)
 
 data LiteralOrVariable 

@@ -586,6 +586,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionLitVar (V
                         cgEnv <- ask
                         cgState <- get
                         let (_,_,quadNum) = getCGState cgState
+                        liftIO $ putStrLn.show $ idTable
                         case (Map.lookup identifier idTable) of
                             Just address -> do 
                                                 tell $ ([(buildQuadrupleTwoAddresses quadNum ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))])
@@ -1177,6 +1178,8 @@ generateCodeFromVariableStatement (VariableAssignment2D _ identifier listLiteral
                                 generateAssignmentArray2D  listLiteralOrVariables address cols
                         Just (SymbolVar (TypeClassId _ (("[",rows,"]") : ("[",cols,"]") : [] )) _ _) -> 
                                 generateAssignmentArray2D listLiteralOrVariables address cols
+generateCodeFromVariableStatement (VariableAssignmentObject _ identifier (ObjectCreation classIdentifier callParams)) = 
+                    generateCodeFromStatement (FunctionCallStatement (FunctionCallObjMem (ObjectMember identifier (classIdentifier ++ "_constructor")) callParams))
 generateCodeFromVariableStatement _  = return ()
 
 
