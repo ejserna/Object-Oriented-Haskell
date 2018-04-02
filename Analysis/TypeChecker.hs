@@ -690,16 +690,16 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                        | varScp >= scp ->
                                             let typeIndexExp = (expressionProcess scp expressionIndex symTab classSymTab )
                                             in case typeIndexExp of
-                                                   Just PrimitiveInt ->  Just (TypePrimitive prim (("[",size,"]") : []))
-                                                   Just PrimitiveInteger ->  Just (TypePrimitive prim (("[",size,"]") : []))
+                                                   Just PrimitiveInt ->  Just (TypePrimitive prim [])
+                                                   Just PrimitiveInteger ->  Just (TypePrimitive prim [])
                                                    _ -> Nothing
                                        | otherwise -> Nothing
                                     Just (SymbolVar (TypeClassId classIdentifier (("[",size,"]") : []) ) varScp _)  
                                        | varScp >= scp ->
                                             let typeIndexExp = (expressionProcess scp expressionIndex symTab classSymTab)
                                             in case typeIndexExp of
-                                                   Just PrimitiveInt ->  Just (TypeClassId classIdentifier (("[",size,"]") : []))
-                                                   Just PrimitiveInteger ->  Just (TypeClassId classIdentifier (("[",size,"]") : []))
+                                                   Just PrimitiveInt ->  Just (TypeClassId classIdentifier [])
+                                                   Just PrimitiveInteger ->  Just (TypeClassId classIdentifier [])
                                                    _ -> Nothing
                                        | otherwise -> Nothing
                                     _ -> Nothing
@@ -712,8 +712,8 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                                 typeColExp = (expressionProcess scp colExp symTab classSymTab)
                                             in if (typeColExp == typeRowExp) then
                                                 case typeRowExp of
-                                                   Just PrimitiveInt ->  Just (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]") : []))
-                                                   Just PrimitiveInteger ->  Just (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]") : []))
+                                                   Just PrimitiveInt ->  Just (TypePrimitive prim [])
+                                                   Just PrimitiveInteger ->  Just (TypePrimitive prim [])
                                                    _ -> Nothing
                                                 else Nothing
                                        | otherwise -> Nothing
@@ -723,8 +723,8 @@ preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression 
                                                 typeColExp = (expressionProcess scp colExp symTab classSymTab)
                                             in if (typeColExp == typeRowExp) then
                                                 case typeRowExp of
-                                                   Just PrimitiveInt ->  Just (TypeClassId classIdentifier (("[",rows,"]") : ("[",cols,"]") : []))
-                                                   Just PrimitiveInteger ->  Just (TypeClassId classIdentifier (("[",rows,"]") : ("[",cols,"]") : []))
+                                                   Just PrimitiveInt ->  Just (TypeClassId classIdentifier [])
+                                                   Just PrimitiveInteger ->  Just (TypeClassId classIdentifier [])
                                                    _ -> Nothing
                                                 else Nothing
                                       | otherwise -> Nothing

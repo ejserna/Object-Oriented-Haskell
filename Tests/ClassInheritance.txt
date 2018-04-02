@@ -24,8 +24,10 @@ class Point{
 
 
 
-    [+] editX => Decimal{
-        return 3948400990.1;
+    [+] editX => Decimal [2][2]{
+        x = 99.99;
+        Decimal [2][2] d = [[3948400990.1]];
+        return d;
     }
 
     [+] setPoint => Nothing :: Decimal dX -> Decimal dY{
@@ -33,8 +35,12 @@ class Point{
         y = dY;
         
         callMethod();
-        y = editX();
+        editX();
         displayLn(x,y);
+        Decimal [2][2] res;
+        res = editX();
+        x = res[0][0];
+        displayLn("X actualizao",x,y,res[0][0]);
 
     }
 
@@ -61,7 +67,7 @@ class Point3D : Point{
     [+] callMethod => Nothing{
         displayLn("Es publico");
         displayLn("Es publico 2");
-        y = editZ();
+        z = editZ();
         displayLn("Esto es y",y);
     }
 
@@ -83,7 +89,11 @@ main{
     Point p;
     p3d.z = 1.33;
     p3d.setPoint(1.22,2.22,5.555);
+    Decimal res1; 
     displayLn(p3d.x,p3d.y,p3d.z);
     p.setPoint(1.2,1.3);
+    Decimal [2][2] res = [[3948400990.1]];
+    res1 = res[0][0];
+    displayLn("RES",res1);
 
 }
