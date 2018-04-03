@@ -476,6 +476,14 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                                                                                 tell $  boundRowQuad ++ boundColQuad ++ positionRow ++ positionCol ++ baseAddQuad ++ displayObject ++ displayOp
                                                                                                                                 modify $ \s -> (s { currentQuadNum = quadNum + 7})
                 
+                                                                    genFromDisplay (DisplayFunctionCall funcCall op) =
+                                                                        do 
+                                                                            (_,quadsFuncExp) <- listen $ expCodeGen (reduceExpression (ExpressionFuncCall funcCall))
+                                                                            cgState <- get
+                                                                            let (_,_,quadNum) = getCGState cgState
+                                                                            tell $ [(buildQuadOneAddress quadNum (op) (getLastAddress $ last $ quadsFuncExp))]
+                                                                            modify $ \s -> (s { currentQuadNum = quadNum + 1})
+
                                                                     genFromDisplay (DisplayLiteralOrVariable (StringLiteral str) op) =
                                                                         do 
                                                                             cgEnv <- ask
@@ -517,7 +525,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                                                     tell $ [(buildQuadOneAddress quadNum (op) address)]
                                                                                                     modify $ \s -> (s { currentQuadNum = quadNum + 1})
 
-                                                                    genFromDisplay _  = return ()
+                                                                    
 
                                                                     genLoopArray :: Address -> Integer  -> Operation -> CG
                                                                     genLoopArray address 0  _ = return ()
@@ -541,8 +549,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                             genLoopMatrix (address + cols) (rows - 1) cols (offset + 1) op 
 
                                                                     -- TODO MARK: Hacer cuadruplos de funciones, y tambien sustituir lo anterior por expresion!
-                                                                    -- fillFromDisplay (DisplayFunctionCall funcCall) literalCounters constantAddressMap =
-                                                                    --     fillFromExpression literalCounters constantAddressMap (ExpressionFuncCall funcCall)
+                                                                    -- 
                                                                     -- fillFromDisplay (DisplayVarArrayAccess identifier arrayAccess) literalCounters constantAddressMap =
                                                                     --     fillFromExpression literalCounters constantAddressMap (ExpressionVarArray identifier arrayAccess)  
 generateCodeFromStatement _  = return ()

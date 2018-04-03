@@ -56,7 +56,7 @@ punto => Nothing :: Point p -> Point [10] n -> Point k  {
 }
 
 
-
+                                                        
 main{
     Int [10][10] n = [[1,2,3,4,5,6,7]];
     Point p;
@@ -70,7 +70,9 @@ main{
     Int i = 20;
     i = fibo(2,i);
     displayLn(i);
-    i = fiboPerro(10);
+    read(i);
+    display("Fibo de ",i," :");
+    i = fiboPerro(i);
     displayLn(i);
 
     ps = puntos(ps);

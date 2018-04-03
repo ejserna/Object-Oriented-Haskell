@@ -20,10 +20,7 @@ class Point{
         op.matriz = mat;
         displayLn("ZZZZ",x,y);
     }
-
-
-
-
+    
     [+] editX => Decimal [2][2]{
         x = 99.99;
         Decimal [2][2] d = [[292929.1,929292.2]];
@@ -47,9 +44,6 @@ class Point{
     [+] getDistance => Decimal{
         return (x^2.0 + y^2.0)^0.5;
     }    
-
-
-
 }
 
 class Point3D : Point{
@@ -89,7 +83,7 @@ class Point3D : Point{
 
         callMethod();
         displayLn("Sup");
-        z = dZ ^ 2.3;
+        z = dZ ^ 10.999;
         editX();
 
 
