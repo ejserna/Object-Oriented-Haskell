@@ -1,0 +1,55 @@
+class Humano{
+    [-] Decimal altura;
+    [-] Int edad;
+}
+
+class Persona : Humano{
+    [-] Money sueldo;
+    [-] String nombre;
+
+    Persona :: Money mSueldo -> String sNombre {
+        sueldo = mSueldo;
+        nombre = sNombre;
+        altura = 178.5;
+        edad = 23;
+    }
+
+    [+] setSueldo => Nothing :: Money mSueldo{
+        sueldo = mSueldo;
+    }
+
+    [+] setNombre => Nothing :: String sNombre{
+        nombre = sNombre;
+    }
+
+    [+] getNombre => String{
+        return nombre;
+    }
+
+    [+] getSueldo => Money{
+        return sueldo;
+    }
+}
+
+crearPersona => Persona :: Money sueldo -> String nombre{
+    Persona p = Persona(sueldo,nombre);
+    return p;
+}
+
+crearPersonas => Persona [10] :: Money sueldo -> String nombre{
+    Persona [10] personas;
+    String [10] strings = ["a","b","c","d","e","f","g","h","i","k"];
+    for i in [0..9]{
+        Persona p = Persona(sueldo ^ i,nombre + " " + strings[i]);
+        personas[i] = p;
+    }
+    return personas;
+}
+                                                        
+main{
+    Persona p;
+    Persona [10] personas;
+    p = crearPersona(12.2,"Eduardo");
+    personas = crearPersonas(15.0,"Juan");
+    displayLn("Cool",p,personas);
+}

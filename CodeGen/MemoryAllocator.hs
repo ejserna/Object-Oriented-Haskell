@@ -70,6 +70,7 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
             (stateAfterConstants4,_) <- execRWST (fillFromExpression (ExpressionLitVar $ StringLiteral "") ) env stateAfterConstants3
             (stateAfterConstants5,_) <- execRWST (fillFromExpression (ExpressionLitVar $ BoolLiteral True) ) env stateAfterConstants4
             let constantAddressMap = (constTable stateAfterConstants5)
+
             (stateAfterVariablesInStatements,_) <- execRWST (prepareAddressMapsFromSymbolTable "_main_") env stateAfterConstants5
             let (idMap,constMap, objMap, funcMap, varCounters, litCounters) = getCurrentMemoryState stateAfterVariablesInStatements
             -- putStrLn $ ppShow $(sortBy (compare `on` fst) (Map.toList funcMap) ) 
@@ -332,7 +333,6 @@ fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statement
                                                         let funcMap = (funcMapMem memState)
                                                         if (Map.member (fromModule ++ identifier) funcMap) then fillIdentifierAddressMap rest fromModule
                                                             else do 
-  
                                                                     (stateAfterFuncConstants,_) <-  liftIO $ execRWST (prepareConstantAddressMap statements) (setEnvironment symTabFunc (classTabMem env)) 
                                                                                                                                                     (setMemoryState (Map.empty) (constTable memState) 
                                                                                                                                                                  (Map.empty) funcMap (startIntLocalMemory,startDecimalLocalMemory,startStringLocalMemory,startBoolLocalMemory, startObjectLocalMemory)
@@ -560,7 +560,8 @@ insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) fromModule =
 
                             
 fillFromExpression :: Expression -> MA
-fillFromExpression expression = fillFromExpressionAdaptee (reduceExpression expression)
+fillFromExpression expression = do 
+                                    fillFromExpressionAdaptee (reduceExpression expression)
 
 fillFromExpressionAdaptee :: Expression -> MA
 fillFromExpressionAdaptee (ExpressionMult exp1 exp2) = fillFromTwoExpressions exp1 exp2
@@ -598,7 +599,7 @@ fillFromExpressionAdaptee (ExpressionLitVar litOrVar) =
                                                             let newConsAddressMap = (Map.insert ("<dec>" ++ (show dec)) decLitC constantAddressMap)
                                                             modify $ \s -> (s { literalCounters = (intLitC, decLitC + 1,strLitC,boolLitC) }) 
                                                             modify $ \s -> (s { constTable = newConsAddressMap }) 
-                         StringLiteral str -> case (Map.lookup ("<str>" ++ (show str)) constantAddressMap) of
+                         StringLiteral str -> case (Map.lookup ("<str>" ++ str) constantAddressMap) of
                                                     Just _ -> return ()
                                                     _ -> do 
                                                             let newConsAddressMap = (Map.insert ("<str>" ++ str) strLitC constantAddressMap)
@@ -610,7 +611,7 @@ fillFromExpressionAdaptee (ExpressionLitVar litOrVar) =
                                                          let newConsAddressMap = (Map.insert ("<bool>" ++ (show bool)) boolLitC constantAddressMap)
                                                          modify $ \s -> (s { literalCounters = (intLitC, decLitC,strLitC,boolLitC + 1) }) 
                                                          modify $ \s -> (s { constTable = newConsAddressMap }) 
-                         _ -> return ()
+                         _ ->   return ()
 fillFromExpressionAdaptee  (ExpressionVarArray _ ((ArrayAccessExpression expression) : []))  = 
                             fillFromExpression expression
 fillFromExpressionAdaptee (ExpressionVarArray _ ((ArrayAccessExpression expression1) : (ArrayAccessExpression expression2) :[])) =
