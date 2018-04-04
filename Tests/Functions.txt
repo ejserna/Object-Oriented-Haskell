@@ -51,7 +51,8 @@ crearPersonas => Persona [10] :: Money sueldo -> String nombre{
 main{
     Persona p;
     Persona [10] personas;
-    p = crearPersona(12.2,"Eduardo");
+    p = crearPersona(12.2 * 100,"Eduardo");
+    displayLn(p);
     personas = crearPersonas(15.0,"Juan");
     personas[1] = p;
     p = personas[2];

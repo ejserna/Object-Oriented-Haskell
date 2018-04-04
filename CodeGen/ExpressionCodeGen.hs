@@ -11,6 +11,7 @@ import DataTypes
 import CodeGenDataTypes
 import Quadruple
 import SymbolTable
+import ExpressionOptimizer
 import ClassSymbolTable
 import Expression
 import Text.Show.Pretty
@@ -751,7 +752,8 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet 
                                                             let typesParams = (map (\f -> fst f) params)
                                                             let expressionsParams = (map (\f -> 
                                                                                                 let (ParamsExpression exp) = f 
-                                                                                                 in exp) 
+                                                                                                 in (reduceExpression exp)
+                                                                                          ) 
                                                                                     callParams)
                                                             (quadsParams,newCGState, quads) <- liftIO $ runRWST (generateCodeFromCallParams  paramsAddressesFunc typesParams expressionsParams) cgEnv cgState
                                                             tell $ quads
