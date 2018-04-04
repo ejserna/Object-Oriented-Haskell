@@ -45,7 +45,7 @@ puntos => Point [10] :: Point [10] n {
     Point pChido;
     pChido = n[2];
     pChido.x = 1.0 / 3.0;
-    pChido.y = 393393939.3;
+    pChido.y = 1222222222.3;
     n[2] = pChido;
     return n;
 }
@@ -71,7 +71,7 @@ main{
     i = fibo(2,i);
     displayLn(i);
     read(i);
-    display("Fibo de ",i," :");
+    display("Fibo de",i,":");
     i = fiboPerro(i);
     displayLn(i);
 
@@ -81,6 +81,7 @@ main{
     n = enteroMatriz(n);
     displayLn(n[9][9]);
     puntillos = ps;
+    displayLn(ps);
     Point p1,p2;
     p1 = ps[2];
     p2 = puntillos[2];

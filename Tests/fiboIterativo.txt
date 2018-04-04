@@ -25,7 +25,7 @@ main{
     Bool areEqual;
     areEqual = fiboIterativo1 == fiboIterativo2 || False;
     displayLn("Resultado de fibonacci iterativo hasta ",n,f1);
-    displayLn(areEqual);
+    displayLn(areEqual,False);
 }
 
 

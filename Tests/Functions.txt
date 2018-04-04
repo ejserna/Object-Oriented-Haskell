@@ -37,6 +37,7 @@ crearPersona => Persona :: Money sueldo -> String nombre{
     return p;
 }
 
+
 crearPersonas => Persona [10] :: Money sueldo -> String nombre{
     Persona [10] personas;
     String [10] strings = ["a","b","c","d","e","f","g","h","i","k"];

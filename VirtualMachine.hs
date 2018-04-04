@@ -490,12 +490,15 @@ doDisplay a1 nestFactor
                     Just (VMDecimal dec) -> do 
                             liftIO $ putStr $ color Green  $ (show $ dec) ++ " "
                             -- tell $ [show val]
+                    Just (VMBool bool) -> do 
+                            case bool of 
+                              True -> liftIO $ putStr $ color Cyan $ (show $ bool) ++ " "
+                              False ->  liftIO $ putStr $ color Red $ (show $ bool) ++ " "
+                            
+                            -- tell $ [show val]  
                     Just VMEmpty ->
                                 do liftIO $ putStr $ " " 
                                    return ()
-                    Just val -> do 
-                            liftIO $ putStr $ (show $ val) ++ " "
-                            -- tell $ [show val]
                     _ -> do 
                             return ()
                 return ()
