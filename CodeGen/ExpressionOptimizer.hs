@@ -123,4 +123,4 @@ functionConcatString :: (Expression -> Expression -> Expression) -> ([Char] -> [
 functionConcatString _ f  (ExpressionLitVar (StringLiteral str1)) (ExpressionLitVar (StringLiteral str2)) = (ExpressionLitVar (StringLiteral (f str1 str2)))
 functionConcatString f _ (ExpressionLitVar litOrVar) exp2 = (f (ExpressionLitVar litOrVar) (optimizeExpression exp2))
 functionConcatString f _ exp1 (ExpressionLitVar litOrVar) = (f (optimizeExpression exp1) (ExpressionLitVar litOrVar) )
-functionConcatString f _ exp1 exp2 = optimizeExpression (f (optimizeExpression exp1) (optimizeExpression exp2))
+functionConcatString f _ exp1 exp2 = (f (optimizeExpression exp1) (optimizeExpression exp2))
