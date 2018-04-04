@@ -30,9 +30,12 @@ expressionProcess scp (ExpressionMinus exp1 exp2) symTab classSymTab = expressio
 expressionProcess scp (ExpressionMod exp1 exp2) symTab classSymTab = expressionCheckMOD scp exp1 exp2 symTab classSymTab
 expressionProcess scp (ExpressionNot exp) symTab classSymTab = expressionCheckNOT scp exp symTab classSymTab
 expressionProcess scp (ExpressionLitVar litVar) symTab classSymTab = checkDataTypeOfLitVar scp litVar symTab
-expressionProcess scp (ExpressionFuncCall funcCall) symTab classSymTab = case functionCallType funcCall scp symTab classSymTab of
+expressionProcess scp (ExpressionFuncCall funcCall) symTab classSymTab = 
+                                                                    if (analyzeFunctionCall funcCall scp symTab classSymTab) then 
+                                                                        case functionCallType funcCall scp symTab classSymTab of
                                                                           Just (TypePrimitive prim []) -> Just prim
-                                                                          _ -> Nothing   
+                                                                          _ -> Nothing
+                                                                    else Nothing   
 
 expressionProcess scp (ExpressionVarArray identifier ((ArrayAccessExpression expression) : [])) symTab classSymTab = case (expressionProcess scp expression symTab classSymTab) of 
                                                                                                         Just PrimitiveInt -> checkArrayID scp identifier symTab 1
@@ -330,7 +333,7 @@ checkArrayAssignment scp (TypeClassId classIdentifier arrayDeclaration) (VarIden
                                     Just (SymbolVar (TypeClassId classId []) varScp _)  
                                         |  varScp >= scp ->  
                                                 classId == classIdentifier
-                                        | otherwise -> False
+                                        | otherwise -> False                                        
                                     _ -> False -- El identificador que se esta asignando no esta en ningun lado
 checkArrayAssignment scp dataType litOrVar symTab  = checkDataTypes scp dataType litOrVar symTab
 

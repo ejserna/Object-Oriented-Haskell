@@ -682,7 +682,9 @@ preProcessExpression scp (ExpressionLitVar (VarIdentifier identifier)) symTab _ 
                                         | otherwise -> Nothing
                                     _ -> Nothing
 
-preProcessExpression scp (ExpressionFuncCall functionCall) symTab classSymTab = functionCallType functionCall scp symTab classSymTab
+preProcessExpression scp (ExpressionFuncCall functionCall) symTab classSymTab = if (analyzeFunctionCall functionCall scp symTab classSymTab) then 
+                                                                                    functionCallType functionCall scp symTab classSymTab
+                                                                                else Nothing   
 preProcessExpression scp (ExpressionVarArray identifier ((ArrayAccessExpression expressionIndex) : [])) symTab classSymTab =
                                 -- Checamos que sea una matriz ese identificador
                                 case (Map.lookup identifier symTab) of
