@@ -253,7 +253,7 @@ generateCodeReturnFromFunction (ExpressionLitVar (VarIdentifier identifierExp)) 
                                                                                                         tell $ [(buildReturnFromFunction quadNum  addressesArray)]
                                                                                                         modify $ \s -> (s { currentQuadNum = quadNum + 1})
 generateCodeReturnFromFunction expression =  do 
-                                                (_,quads) <- listen $ expCodeGen expression
+                                                (_,quads) <- listen $ expCodeGen (reduceExpression expression)
                                                 cgState <- get
                                                 let (_,_,quadNum) = getCGState cgState
                                                 tell $ [(buildReturnFromFunction quadNum [(getLastAddress $ last $ quads)])]
@@ -612,7 +612,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray 
                                         Just addressBase -> case (Map.lookup identifier idTable) of
                                                                 Just addressIdentifier -> 
                                                                     do 
-                                                                        (_,quads) <- listen $ expCodeGen arrayIndexExp
+                                                                        (_,quads) <- listen $ expCodeGen (reduceExpression arrayIndexExp)
                                                                         cgEnvironment <- ask
                                                                         cgState <- get
                                                                         let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
@@ -926,7 +926,7 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                                         Just addressBase -> case (Map.lookup id idTable) of
                                                                                                 Just addressObject -> 
                                                                                                     do 
-                                                                                                        (_,quads) <- listen $ expCodeGen arrayIndexExp
+                                                                                                        (_,quads) <- listen $ expCodeGen (reduceExpression arrayIndexExp)
                                                                                                         cgEnvironment <- ask
                                                                                                         cgState <- get
                                                                                                         let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
@@ -944,7 +944,7 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                                         Just addressBase -> case (Map.lookup id idTable) of
                                                                                                 Just addressIdentifier -> 
                                                                                                     do 
-                                                                                                        (_,quads) <- listen $ expCodeGen arrayIndexExp
+                                                                                                        (_,quads) <- listen $ expCodeGen (reduceExpression arrayIndexExp)
                                                                                                         cgEnvironment <- ask
                                                                                                         cgState <- get
                                                                                                         let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment

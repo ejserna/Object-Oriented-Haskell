@@ -219,7 +219,18 @@ runInstruction (QuadrupleThreeAddresses quadNum EQ_ a1 a2 a3) |
 runInstruction (QuadrupleThreeAddresses quadNum NOTEQ_ a1 a2 a3) =  do doAbstractOperation (|!=|) a1 a2 a3 
 runInstruction (QuadrupleThreeAddresses quadNum AND_ a1 a2 a3) =  do doAbstractOperation (|&&|) a1 a2 a3 
 runInstruction (QuadrupleThreeAddresses quadNum OR_ a1 a2 a3) =  do doAbstractOperation (|-||-|) a1 a2 a3 
-runInstruction (QuadrupleTwoAddresses quadNum NOT_ a1 a2) =  do doAbstractUnaryOp (|!|) a1 a2 
+runInstruction (QuadrupleTwoAddresses quadNum NOT_ a1 a2) =  do doAbstractUnaryOp (|!|) a1 a2
+runInstruction (QuadrupleTwoAddresses quadNum NEG_ a1 a2) = do  cpuState <- get
+                                                                let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
+                                                                case (Map.lookup a1 (Map.union globalMemory localMemory)) of
+                                                                    Just (VMInteger int) -> 
+                                                                                              do 
+                                                                                                insertValueInAddress (VMInteger (negate int)) a2
+                                                                                                modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                    Just (VMDecimal dec) -> 
+                                                                                              do 
+                                                                                                insertValueInAddress (VMDecimal (negate dec)) a2
+                                                                                                modify $ \s -> (s { ip = (ip s) + 1 })
 runInstruction (QuadrupleTwoAddresses quadNum ASSIGNMENT a1 a2) =  do 
                                                                     doAssignment a1 a2 
                                                                     modify $ \s -> (s { ip = (ip s) + 1 })
@@ -458,7 +469,7 @@ doDisplay a1 nestFactor
         || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory  = do 
                                                                             cpuState <- get
                                                                             liftIO $ putStr $ take nestFactor $ cycle "\t"
-                                                                            liftIO $ putStrLn $ (color Magenta $ "<object>" ) ++ (color White $ "{")
+                                                                            liftIO $ putStrLn $ (color  Black . style Bold $ "<object>" ) ++ (color White $ "{")
                                                                             let (panic,currentIP,globalMemory,localMemory,objectMemory,_) = getCPUState cpuState
                                                                             case (Map.lookup a1 objectMemory) of
                                                                                 Just addressesFromObject -> do 
@@ -473,7 +484,12 @@ doDisplay a1 nestFactor
                 liftIO $ putStr $ take nestFactor $ cycle "\t"
                 case (Map.lookup a1 memories) of 
                     Just (VMString val) -> do 
-                            liftIO $ putStr $ (style Underline $ val)  ++ " "
+                            liftIO $ putStr $ color Yellow $ val  ++ " "
+                    Just (VMInteger int) -> do 
+                            liftIO $ putStr $ color Magenta  $ (show $ int) ++ " "
+                    Just (VMDecimal dec) -> do 
+                            liftIO $ putStr $ color Green  $ (show $ dec) ++ " "
+                            -- tell $ [show val]
                     Just VMEmpty ->
                                 do liftIO $ putStr $ " " 
                                    return ()
@@ -597,7 +613,7 @@ doDeepDisplay [] _ = do return ()
 doDeepDisplay (addr : addresses ) nestFactor = do 
 
                                         liftIO $ putStr $ take (nestFactor)  $ cycle "\t"
-                                        liftIO $ putStrLn $  (color Blue $ "<attribute>" ) ++ (color White $ "{")
+                                        liftIO $ putStrLn $  (color Blue . style Bold $ "<attribute>" ) ++ (color White $ "{")
                                         doDisplay addr (nestFactor + 1)
                                         liftIO $ putStrLn $ ""
                                         liftIO $ putStr $ take nestFactor $ cycle "\t"

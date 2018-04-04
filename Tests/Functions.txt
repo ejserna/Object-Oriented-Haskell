@@ -10,7 +10,7 @@ class Persona : Humano{
     Persona :: Money mSueldo -> String sNombre {
         sueldo = mSueldo;
         nombre = sNombre;
-        altura = 178.5;
+        altura = 178.5 / mSueldo;
         edad = 23;
     }
 
@@ -29,6 +29,7 @@ class Persona : Humano{
     [+] getSueldo => Money{
         return sueldo;
     }
+
 }
 
 crearPersona => Persona :: Money sueldo -> String nombre{
@@ -40,16 +41,19 @@ crearPersonas => Persona [10] :: Money sueldo -> String nombre{
     Persona [10] personas;
     String [10] strings = ["a","b","c","d","e","f","g","h","i","k"];
     for i in [0..9]{
-        Persona p = Persona(sueldo ^ i,nombre + " " + strings[i]);
+        Persona p = Persona(sueldo ^ i,nombre +" " + ">" +  strings[i] + "<");
         personas[i] = p;
     }
     return personas;
 }
-                                                        
+
+
 main{
     Persona p;
     Persona [10] personas;
     p = crearPersona(12.2,"Eduardo");
     personas = crearPersonas(15.0,"Juan");
-    displayLn("Cool",p,personas);
+    personas[1] = p;
+    p = personas[2];
+    displayLn(p,personas);
 }
