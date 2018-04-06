@@ -8,6 +8,7 @@ main{
     Money m1,m2;
     m1 = 1.222222;
     m2 = m1;
+    read(i);
     if (i == 100 || j == 100){
         displayLn("Es cien",i);
     }

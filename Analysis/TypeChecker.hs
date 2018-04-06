@@ -2,18 +2,50 @@ module TypeChecker where
 import Data.Decimal
 import DataTypes
 import Text.Show.Pretty
-
+import Control.Monad
+import Control.Monad.State
+import Control.Monad.Identity
+import Control.Monad.Trans.Class (lift)
+import Control.Concurrent
+import Control.Monad.Except
 import SymbolTable
 import ClassSymbolTable
 import Expression
 import MemoryAllocator
 -- import qualified Data.Map.Strict as Map
 import qualified Data.HashMap.Strict as Map
-
+import  System.Console.Pretty (Color (..), Style (..), bgColor, color,
+                                        style, supportsPretty)
 import Data.List (intercalate, maximumBy, union)
 import Data.Ord (comparing)
 
-newtype ClassTypeChecker = State ClassSymbolTable
+data TCError a = IdentifierDeclared Identifier a
+             | IdentifierNotDeclared Identifier
+             | TypeUnmatchIdentifiers Identifier Identifier
+             | TypeExpectExpression Type Type
+             | TypeUnmatchExpression Type Type
+             -- Añadir más aquí
+
+type InheriteeMap = Map.HashMap ClassIdentifier [ClassIdentifier]
+
+instance (Show a) => Show (TCError a) where
+    show err = case err of 
+                 (IdentifierDeclared id a) -> (color Red . style Bold $ "error \n" 
+                                               ++ (color White . style Bold  $ "Variable " 
+                                               ++ (color Red . style Bold  $ id ) 
+                                               ++ (color White . style Bold $ " not declared in \n"))
+                                               ++ (color Green $ show $ a ))
+
+data TCState = TCState
+                {   tcSymTab :: SymbolTable, 
+                    tcClassSymTab :: ClassSymbolTable,
+                    tcInheriteeMap :: InheriteeMap
+                }
+                deriving (Show) 
+
+type TypeChecker α = StateT TCState (Except (TCError String)) α
+
+type TC = TypeChecker ()
 
 startSemanticAnalysis :: Program -> IO ()
 startSemanticAnalysis (Program classList functionList varsList (Block statements)) =  do 

@@ -1,17 +1,27 @@
 class Humano{
     [-] Decimal altura;
     [-] Int edad;
+
+    [+] setEdad => Nothing :: Int iEdad{
+        edad = iEdad;
+    }
 }
 
 class Persona : Humano{
     [-] Money sueldo;
     [-] String nombre;
 
+    
+
     Persona :: Money mSueldo -> String sNombre {
         sueldo = mSueldo;
         nombre = sNombre;
-        altura = 178.5 / mSueldo;
-        edad = 23;
+        altura = 178.5;
+        setEdad(23);
+    }
+
+    [+] setEdad => Nothing :: Int iEdad{
+        edad = iEdad + 1;
     }
 
     [+] setSueldo => Nothing :: Money mSueldo{
