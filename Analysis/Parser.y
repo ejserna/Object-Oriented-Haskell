@@ -420,7 +420,7 @@ parseError tokenList = let pos = tokenPosn(head(tokenList))
 startTypeChecker ::  String -> IO()
 startTypeChecker source = do
                             let parseTree = ooh (alexScanTokens2 source)
-                            putStrLn $ ppShow $ parseTree
+                            -- putStrLn $ ppShow $ parseTree
                             startSemanticAnalysis parseTree
 
 main = do 
