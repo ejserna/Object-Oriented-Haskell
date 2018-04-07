@@ -42,13 +42,4 @@ instance Show Symbol where
 emptySymbolTable :: SymbolTable
 emptySymbolTable = Map.empty 
 
--- insert :: Identifier -> Symbol -> SymbolTable -> SymbolTable
--- insert idn sym table = if Map.member idn table
---     then table 
---     else Map.insert idn (Map.singleton scp sym) table
---     where
---         inner scpTab = if Map.member scp scpTab
---             then error "SymbolTable.insert: inserting Symbol already in SymbolTable"
---             else Map.insert scp sym scpTab
---         scp = scope sym
 
