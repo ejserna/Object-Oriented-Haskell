@@ -123,18 +123,31 @@ main{
     p.setPoint(1.2,1.3);
     p2.setPoint(1.9,2.4);
     Decimal [2][2] res = [[3948400990.1]];
-    res1 = res[0][0];
+    Integer [5][5] ints = [[0,2,3,4,5]];
+    String s = "lol";
+    s = s + s;
+    Int is = 1;
+    is = 1 / 5;
+    displayLn(s,is);
+    res1 = res[ints[0][0] + 1 - 1][0];
     displayLn("RES",res1);
     res1 = p3d.getDistance();
     displayLn(res1);
     p.x = 1.2;
     p.y = 1.3;
-    p2.x = 1.9;
-    p2.y = 2.4;
+    p2.x = 1.2;
+    p2.y = 1.3;
     Line l = Line(p,p2);
     res1 = l.getLength();
     displayLn(l);
 
     displayLn("Distancia eucladiana",res1);
+
+    if ((s + "e") == (s + "e") && (p == p2)){
+        displayLn("Son iguales");
+    }
+    else{
+        displayLn("No son iguales");
+    }
 
 }

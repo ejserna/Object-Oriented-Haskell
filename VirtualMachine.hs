@@ -212,11 +212,19 @@ runInstruction (QuadrupleThreeAddresses quadNum EQ_ a1 a2 a3) |
                     a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
                     || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory = do
                                                                                         insertValueInAddress (VMBool True) a3
-                                                                                        doDeepEqualityOperation (|==|) a1 a2 a3
+                                                                                        doDeepEqualityOperation (|==|) (|&&|) a1 a2 a3
                                                                                         modify $ \s -> (s { ip = (ip s) + 1 }) 
                    | otherwise = do 
                                   doAbstractOperation (|==|) a1 a2 a3 
-runInstruction (QuadrupleThreeAddresses quadNum NOTEQ_ a1 a2 a3) =  do doAbstractOperation (|!=|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum NOTEQ_ a1 a2 a3) | 
+                    a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
+                    || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory = do
+                                                                                        insertValueInAddress (VMBool False) a3
+                                                                                        doDeepEqualityOperation (|!=|) (|-||-|) a1 a2 a3
+                                                                                        modify $ \s -> (s { ip = (ip s) + 1 }) 
+                   | otherwise = do 
+                                  do doAbstractOperation (|!=|) a1 a2 a3 
+
 runInstruction (QuadrupleThreeAddresses quadNum AND_ a1 a2 a3) =  do doAbstractOperation (|&&|) a1 a2 a3 
 runInstruction (QuadrupleThreeAddresses quadNum OR_ a1 a2 a3) =  do doAbstractOperation (|-||-|) a1 a2 a3 
 runInstruction (QuadrupleTwoAddresses quadNum NOT_ a1 a2) =  do doAbstractUnaryOp (|!|) a1 a2
@@ -503,8 +511,8 @@ doDisplay a1 nestFactor
                             return ()
                 return ()
 
-doDeepEqualityOperation :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM
-doDeepEqualityOperation f a1 a2 a3 
+doDeepEqualityOperation :: (VMValue -> VMValue -> VMValue) -> (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM
+doDeepEqualityOperation f f2 a1 a2 a3 
         -- Si es un objeto, la asignacion debe hacerse considerando todos sus atributos
      | a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
         || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory  = do
@@ -518,7 +526,7 @@ doDeepEqualityOperation f a1 a2 a3
                                                                                      Just addresses2 -> do 
                                                                                         -- liftIO $ putStrLn.show $ addresses1
                                                                                         -- liftIO $ putStrLn.show $ addresses2
-                                                                                        doDeepEqualityOperation2 f addresses1 addresses2 a3
+                                                                                        doDeepEqualityOperation2 f f2 addresses1 addresses2 a3
      | otherwise = do 
                 cpuState <- get
                 let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
@@ -529,19 +537,19 @@ doDeepEqualityOperation f a1 a2 a3
                               Just val2 -> 
                                 case (Map.lookup a3 memories) of 
                                   Just val3 -> do 
-                                                  let val = (f val1 val2) |&&| val3
+                                                  let val = (f2 (f val1 val2) val3)
                                                   insertValueInAddress val a3
                                                   
                     _ -> do 
                             return ()
                 return ()
 
-doDeepEqualityOperation2 :: (VMValue -> VMValue -> VMValue) -> [Address] -> [Address] -> Address -> VM
-doDeepEqualityOperation2 f [] [] a3 = return ()
-doDeepEqualityOperation2 f (a1:a1s) (a2:a2s) a3 = 
+doDeepEqualityOperation2 :: (VMValue -> VMValue -> VMValue) -> (VMValue -> VMValue -> VMValue) -> [Address] -> [Address] -> Address -> VM
+doDeepEqualityOperation2 f f2 [] [] a3 = return ()
+doDeepEqualityOperation2 f f2 (a1:a1s) (a2:a2s) a3 = 
                                       do 
-                                        doDeepEqualityOperation f a1 a2 a3
-                                        doDeepEqualityOperation2 f a1s a2s a3
+                                        doDeepEqualityOperation f f2 a1 a2 a3
+                                        doDeepEqualityOperation2 f f2 a1s a2s a3
 
 
 

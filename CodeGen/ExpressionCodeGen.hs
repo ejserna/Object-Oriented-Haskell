@@ -185,25 +185,25 @@ expCodeGen (ExpressionNeg exp1) =
                                     cgState <- get
                                     let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
-                                    let typeExp1 = (expressionProcess (-100000000000000) exp1 symTab classSymTab)
+                                    let typeExp1 = (expressionTypeChecker (-100000000000000) exp1 symTab classSymTab)
                                     expCodeGen exp1
                                     cgEnvironment <- ask
                                     cgState <- get
                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                     case (typeExp1) of
-                                        Just PrimitiveDouble -> do 
+                                        Right (TypePrimitive PrimitiveDouble []) -> do 
                                                                     tell $ [(buildQuadrupleTwoAddresses quadNum NEG_ (decGC - 1, decGC))]
                                                                     modify $ \s -> (s { varCounters = (intGC, decGC + 1, strGC, boolGC,objGC)})
                                                                     modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                        Just PrimitiveMoney -> do 
+                                        Right (TypePrimitive PrimitiveMoney []) -> do 
                                                                     tell $ [(buildQuadrupleTwoAddresses quadNum NEG_ (decGC - 1, decGC))]
                                                                     modify $ \s -> (s { varCounters = (intGC, decGC + 1, strGC, boolGC,objGC)})
                                                                     modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                        Just PrimitiveInt ->  do 
+                                        Right (TypePrimitive PrimitiveInt []) ->  do 
                                                                     tell $ [(buildQuadrupleTwoAddresses quadNum NEG_ (intGC - 1, intGC))]
                                                                     modify $ \s -> (s { varCounters = (intGC + 1, decGC, strGC, boolGC,objGC)})
                                                                     modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                        Just PrimitiveInteger -> do 
+                                        Right (TypePrimitive PrimitiveInteger []) -> do 
                                                                     tell $ [(buildQuadrupleTwoAddresses quadNum NEG_ (intGC - 1, intGC))]
                                                                     modify $ \s -> (s { varCounters = (intGC + 1, decGC, strGC, boolGC,objGC)})
                                                                     modify $ \s -> (s { currentQuadNum = quadNum + 1})
@@ -430,8 +430,8 @@ genQuadrupleArithmetic exp1 exp2 op =
                         cgState <- get
                         let (classSymTab,_,_,_,_,_) = getCGEnvironment cgEnvironment
                         let (symTab,_,_) = getCGState cgState
-                        let typeExp1 = (expressionProcess (-100000000000000) exp1 symTab classSymTab)
-                        let typeExp2 = (expressionProcess (-100000000000000) exp2 symTab classSymTab)
+                        let typeExp1 = (expressionTypeChecker (-100000000000000) exp1 symTab classSymTab)
+                        let typeExp2 = (expressionTypeChecker (-100000000000000) exp2 symTab classSymTab)
                         (_,quadsExp1) <- listen $ expCodeGen exp1
                         cgState <- get
                         let (_,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
@@ -440,42 +440,42 @@ genQuadrupleArithmetic exp1 exp2 op =
                         let (_,(intGC2, decGC2, strGC2, boolGC2,objGC2),quadNum2) = getCGState cgState
                         if (typeExp2 == typeExp1) then do
                             case (typeExp1) of 
-                                Just PrimitiveDouble -> do 
+                                Right (TypePrimitive PrimitiveDouble []) -> do 
                                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, decGC2 - 1, (decGC2)))]
                                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                             modify $ \s -> (s { varCounters = (intGC2, decGC2 + 1, strGC2, boolGC2,objGC2)})
-                                Just PrimitiveMoney -> do 
+                                Right (TypePrimitive PrimitiveMoney []) -> do 
                                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, decGC2 - 1, (decGC2)))]
                                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                             modify $ \s -> (s { varCounters = (intGC2, decGC2 + 1, strGC2, boolGC2,objGC2)})
-                                Just PrimitiveInt -> do 
+                                Right (TypePrimitive PrimitiveInt []) -> do 
                                                         tell $ [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, intGC2 - 1, (intGC2)))]
                                                         modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                         modify $ \s -> (s { varCounters = (intGC2 + 1, decGC2, strGC2, boolGC2,objGC2)})
-                                Just PrimitiveInteger -> do 
+                                Right (TypePrimitive PrimitiveInteger []) -> do 
                                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, intGC2 - 1, (intGC2)))]
                                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                             modify $ \s -> (s { varCounters = (intGC2 + 1, decGC2, strGC2, boolGC2,objGC2)})
-                                Just PrimitiveString -> do 
+                                Right (TypePrimitive PrimitiveString []) -> do 
                                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (strGC - 1, strGC2 - 1, (strGC2)))]
                                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2 + 1, boolGC2,objGC2)})
                             -- Aqui hay un else porque nuestro lenguaje permite hacer mezclas de tipos enteros y decimales en operaciones
                             else do
                                 case (typeExp1) of 
-                                    Just PrimitiveDouble -> do 
+                                    Right (TypePrimitive PrimitiveDouble []) -> do 
                                                                 tell $ [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, intGC2 - 1, (decGC2)))]
                                                                 modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                                 modify $ \s -> (s { varCounters = (intGC2, decGC2 + 1, strGC2, boolGC2,objGC2)})
-                                    Just PrimitiveMoney -> do 
+                                    Right (TypePrimitive PrimitiveMoney []) -> do 
                                                                 tell $  [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, intGC2 - 1, (decGC2)))]
                                                                 modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                                 modify $ \s -> (s { varCounters = (intGC2, decGC2 + 1, strGC2, boolGC2,objGC2)})
-                                    Just PrimitiveInt -> do 
+                                    Right (TypePrimitive PrimitiveInt []) -> do 
                                                                 tell $ [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, decGC2 - 1, (decGC2)))]
                                                                 modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                                 modify $ \s -> (s { varCounters = (intGC2, decGC2 + 1, strGC2, boolGC2,objGC2)})
-                                    Just PrimitiveInteger -> do 
+                                    Right (TypePrimitive PrimitiveInteger []) -> do 
                                                                 tell $ [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, decGC2 - 1, (decGC2)))]
                                                                 modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                                 modify $ \s -> (s { varCounters = (intGC2, decGC2 + 1, strGC2, boolGC2,objGC2)})
@@ -489,8 +489,8 @@ genQuadrupleRelational exp1 exp2 op =
         cgState <- get
         let (classSymTab,_,_,_,_,_) = getCGEnvironment cgEnvironment
         let (symTab,_,_) = getCGState cgState
-        let typeExp1 = (expressionProcess (-100000000000000) exp1 symTab classSymTab)
-        let typeExp2 = (expressionProcess (-100000000000000) exp2 symTab classSymTab)
+        let typeExp1 = (expressionTypeChecker (-100000000000000) exp1 symTab classSymTab)
+        let typeExp2 = (expressionTypeChecker (-100000000000000) exp2 symTab classSymTab)
         (_,quadsExp1) <- listen $ expCodeGen exp1
         cgState <- get
         let (_,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
@@ -499,31 +499,31 @@ genQuadrupleRelational exp1 exp2 op =
         let (_,(intGC2, decGC2, strGC2, boolGC2,objGC2),quadNum2) = getCGState cgState
         if (typeExp2 == typeExp1) then do 
             case (typeExp1) of 
-                Just PrimitiveDouble -> do
+                Right (TypePrimitive PrimitiveDouble []) -> do
                                             tell $  [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, decGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
                      -- ((intGC2, decGC2, strGC2, boolGC2 + 1,objGC2), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, decGC2 - 1, boolGC2))], quadNum2 + 1)
-                Just PrimitiveMoney -> do
+                Right (TypePrimitive PrimitiveMoney []) -> do
                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, decGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
-                Just PrimitiveInt -> do
+                Right (TypePrimitive PrimitiveInt []) -> do
                                             tell $  [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, intGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
 
                 -- ((intGC2, decGC2, strGC2, boolGC2 + 1,objGC2), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, intGC2 - 1, boolGC2))], quadNum2 + 1)
-                Just PrimitiveInteger -> do
+                Right (TypePrimitive PrimitiveInteger []) -> do
                                             tell $  [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, intGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
 
-                Just PrimitiveString -> do
+                Right (TypePrimitive PrimitiveString []) -> do
                                             tell $  [(buildQuadrupleThreeAddresses quadNum2 op (strGC - 1, strGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
-                Just PrimitiveBool -> do
+                Right (TypePrimitive PrimitiveBool []) -> do
                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (boolGC - 1, boolGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})

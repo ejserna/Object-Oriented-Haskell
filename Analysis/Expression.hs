@@ -8,203 +8,204 @@ import qualified Data.HashMap.Strict as Map
 import Data.List (intercalate, maximumBy)
 import Data.Ord (comparing)
 
-data ExpResult = ResDecimal Decimal
-                 | ResBool Bool
-                 
+instance TypeSemant Type where
+    -- OPERATIONS: +
+    (TypePrimitive PrimitiveInt []) `semantadd` (TypePrimitive PrimitiveMoney []) = (Right (TypePrimitive PrimitiveMoney []))
+    (TypePrimitive PrimitiveMoney []) `semantadd` (TypePrimitive PrimitiveInt []) = (Right (TypePrimitive PrimitiveMoney []))
+    (TypePrimitive PrimitiveInt []) `semantadd` (TypePrimitive PrimitiveDouble []) = (Right (TypePrimitive PrimitiveDouble []))
+    (TypePrimitive PrimitiveDouble []) `semantadd` (TypePrimitive PrimitiveInt []) = (Right (TypePrimitive PrimitiveDouble []))
 
-expressionProcess :: Scope -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive  
-expressionProcess scp (ExpressionMult exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionDiv exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionPow exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionPars exp) symTab classSymTab = expressionProcess scp exp symTab classSymTab
-expressionProcess scp (ExpressionGreater exp1 exp2) symTab classSymTab = expressionCheckRel2 scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionLower exp1 exp2) symTab classSymTab = expressionCheckRel2 scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionGreaterEq exp1 exp2) symTab classSymTab = expressionCheckRel2 scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionLowerEq exp1 exp2) symTab classSymTab = expressionCheckRel2 scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionEqEq exp1 exp2) symTab classSymTab = expressionCheckRel1 scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionNotEq exp1 exp2) symTab classSymTab = expressionCheckRel1 scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionAnd exp1 exp2) symTab classSymTab = expressionCheckRel3 scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionOr exp1 exp2) symTab classSymTab = expressionCheckRel3 scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionPlus exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionMinus exp1 exp2) symTab classSymTab = expressionCheckOp scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionMod exp1 exp2) symTab classSymTab = expressionCheckMOD scp exp1 exp2 symTab classSymTab
-expressionProcess scp (ExpressionNot exp) symTab classSymTab = expressionCheckNOT scp exp symTab classSymTab
-expressionProcess scp (ExpressionLitVar litVar) symTab classSymTab = checkDataTypeOfLitVar scp litVar symTab
-expressionProcess scp (ExpressionFuncCall funcCall) symTab classSymTab = 
+    (TypePrimitive PrimitiveInteger []) `semantadd` (TypePrimitive PrimitiveMoney []) = (Right (TypePrimitive PrimitiveMoney []))
+    (TypePrimitive PrimitiveMoney []) `semantadd` (TypePrimitive PrimitiveInteger []) = (Right (TypePrimitive PrimitiveMoney []))
+    (TypePrimitive PrimitiveInteger []) `semantadd` (TypePrimitive PrimitiveDouble []) = (Right (TypePrimitive PrimitiveDouble []))
+    (TypePrimitive PrimitiveDouble []) `semantadd` (TypePrimitive PrimitiveInteger []) = (Right (TypePrimitive PrimitiveDouble []))
+    (TypePrimitive (PrimitiveString) []) `semantadd` (TypePrimitive (PrimitiveString) []) = (Right (TypePrimitive (PrimitiveString) []))
+    (TypePrimitive PrimitiveBool []) `semantadd` (TypePrimitive PrimitiveBool []) = (Left (("Addition operation not supported between booleans ")))
+    (TypePrimitive prim1 []) `semantadd` (TypePrimitive prim2 []) = if (prim1 /= prim2) then (Left (("Addition operation not supported between primitive ") ++ (show prim1) ++ (" and primitive ") ++ (show prim2)))
+                                                                     else (Right (TypePrimitive prim1 []))
+    type1 `semantadd` type2 = (Left (("Addition operation not supported between type ") ++ (show type1) ++ (" and type ") ++ (show type2)))
+
+    -- OPERATIONS: / * - ^
+    (TypePrimitive PrimitiveInt []) `semantarithmetic` (TypePrimitive PrimitiveMoney []) = (Right (TypePrimitive PrimitiveMoney []))
+    (TypePrimitive PrimitiveMoney []) `semantarithmetic` (TypePrimitive PrimitiveInt []) = (Right (TypePrimitive PrimitiveMoney []))
+    (TypePrimitive PrimitiveInt []) `semantarithmetic` (TypePrimitive PrimitiveDouble []) = (Right (TypePrimitive PrimitiveDouble []))
+    (TypePrimitive PrimitiveDouble []) `semantarithmetic` (TypePrimitive PrimitiveInt []) = (Right (TypePrimitive PrimitiveDouble []))
+
+    (TypePrimitive PrimitiveInteger []) `semantarithmetic` (TypePrimitive PrimitiveMoney []) = (Right (TypePrimitive PrimitiveMoney []))
+    (TypePrimitive PrimitiveMoney []) `semantarithmetic` (TypePrimitive PrimitiveInteger []) = (Right (TypePrimitive PrimitiveMoney []))
+    (TypePrimitive PrimitiveInteger []) `semantarithmetic` (TypePrimitive PrimitiveDouble []) = (Right (TypePrimitive PrimitiveDouble []))
+    (TypePrimitive PrimitiveDouble []) `semantarithmetic` (TypePrimitive PrimitiveInteger []) = (Right (TypePrimitive PrimitiveDouble []))
+    (TypePrimitive PrimitiveBool []) `semantarithmetic` (TypePrimitive PrimitiveBool []) = (Left (("Arithmetic operation not supported between booleans ")))
+    (TypePrimitive PrimitiveString []) `semantarithmetic` (TypePrimitive PrimitiveString []) = (Left (("Arithmetic operation not supported between strings ")))
+    (TypePrimitive prim1 []) `semantarithmetic` (TypePrimitive prim2 []) = if (prim1 /= prim2) then (Left (("Arithmetic operation not supported between primitive ") ++ (show prim1) ++ (" and primitive ") ++ (show prim2)))
+                                                                     else (Right (TypePrimitive prim1 []))
+    type1 `semantarithmetic` type2 = (Left (("Arithmetic operation not supported between type ") ++ (show type1) ++ (" and type ") ++ (show type2)))
+
+
+    -- OPERATIONS: == !=
+    (TypePrimitive prim1 []) `semantequivalence` (TypePrimitive prim2 []) = if (prim1 /= prim2) then (Left (("Equivalence operation not supported between primitive ") ++ (show prim1) ++ (" and primitive ") ++ (show prim2)))
+                                                                     else (Right (TypePrimitive (PrimitiveBool) []))
+    (TypeClassId classId1 []) `semantequivalence` (TypeClassId classId2 []) = if (classId1 /= classId2) then (Left (("Object equivalence operation not supported for objects of different classes ") ++ classId1 ++ (" and ") ++ classId2))
+                                                                                else (Right (TypePrimitive (PrimitiveBool) []))
+    type1 `semantequivalence` type2 = (Left (("Equivalence operation not supported between type ") ++ (show type1) ++ (" and type ") ++ (show type2)))
+
+
+    -- OPERATIONS: > < <= >=
+    (TypePrimitive PrimitiveBool []) `semantrelational` (TypePrimitive PrimitiveBool []) = (Left (("Relational operation not supported between booleans ")))
+    (TypePrimitive PrimitiveString []) `semantrelational` (TypePrimitive PrimitiveString []) = (Left (("Relational operation not supported between strings ")))
+    (TypePrimitive prim1 []) `semantrelational` (TypePrimitive prim2 []) = if (prim1 /= prim2) then (Left (("Relational operation not valid between ") ++ (show prim1) ++ (" and primitive ") ++ (show prim2)))
+                                                                     else (Right (TypePrimitive (PrimitiveBool) []))
+    type1 `semantrelational` type2 = (Left (("Relational operation not supported between type ") ++ (show type1) ++ (" and type ") ++ (show type2)))
+
+    -- OPERATIONS: && ||
+    (TypePrimitive PrimitiveBool []) `semantbooleanrelational` (TypePrimitive PrimitiveBool []) = (Right (TypePrimitive (PrimitiveBool) [])) 
+    type1 `semantbooleanrelational` type2 = (Left (("Boolean relational operation is only supported for boolean primitives ")))
+
+    -- OPERATIONS: not 
+    semantnot (TypePrimitive PrimitiveBool []) = (Right (TypePrimitive (PrimitiveBool) [])) 
+    semantnot type1 = (Left (("Boolean not operation is only supported for boolean primitives ")))
+
+    -- OPERATIONS: neg
+    semantneg (TypePrimitive PrimitiveInt []) = (Right (TypePrimitive (PrimitiveInt) []))
+    semantneg (TypePrimitive PrimitiveInteger []) = (Right (TypePrimitive (PrimitiveInteger) []))
+    semantneg (TypePrimitive PrimitiveMoney []) = (Right (TypePrimitive (PrimitiveMoney) []))
+    semantneg (TypePrimitive PrimitiveDouble []) = (Right (TypePrimitive (PrimitiveDouble) [])) 
+    semantneg type1 = (Left (("Negation operation is only supported for integer,int,money and double primitives ")))
+
+    -- OPERATIONS: mod
+    (TypePrimitive PrimitiveInteger []) `semantmod` (TypePrimitive PrimitiveInteger []) = (Right (TypePrimitive PrimitiveInteger []))
+    (TypePrimitive PrimitiveInt []) `semantmod` (TypePrimitive PrimitiveInt []) = (Right (TypePrimitive PrimitiveInt []))
+    (TypePrimitive PrimitiveInteger []) `semantmod` (TypePrimitive PrimitiveInt []) = (Right (TypePrimitive PrimitiveInteger []))
+    (TypePrimitive PrimitiveInt []) `semantmod` (TypePrimitive PrimitiveInteger []) = (Right (TypePrimitive PrimitiveInt []))
+    type1 `semantmod` type2 = (Left (("Mod operation not supported between type ") ++ (show type1) ++ (" and type ") ++ (show type2)))
+
+
+expressionTypeChecker :: Scope  -> Expression -> SymbolTable -> ClassSymbolTable ->  (Either String Type)
+expressionTypeChecker scp (ExpressionMult exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                in checkBinaryOperation semantarithmetic typeExp1 typeExp2 
+                                                              
+
+expressionTypeChecker scp (ExpressionDiv exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                in checkBinaryOperation semantarithmetic typeExp1 typeExp2 
+expressionTypeChecker scp (ExpressionPow exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                in checkBinaryOperation semantarithmetic typeExp1 typeExp2 
+expressionTypeChecker scp (ExpressionPars exp) symTab classSymTab = expressionTypeChecker scp exp symTab classSymTab
+expressionTypeChecker scp (ExpressionGreater exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                    in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                    in checkBinaryOperation semantrelational typeExp1 typeExp2 
+expressionTypeChecker scp (ExpressionLower exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                    in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                    in checkBinaryOperation semantrelational typeExp1 typeExp2 
+expressionTypeChecker scp (ExpressionGreaterEq exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                    in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                    in checkBinaryOperation semantrelational typeExp1 typeExp2 
+expressionTypeChecker scp (ExpressionLowerEq exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                    in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                    in checkBinaryOperation semantrelational typeExp1 typeExp2 
+expressionTypeChecker scp (ExpressionEqEq exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                    in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                    in checkBinaryOperation semantequivalence typeExp1 typeExp2 
+expressionTypeChecker scp (ExpressionNotEq exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                    in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                    in checkBinaryOperation semantequivalence typeExp1 typeExp2 
+expressionTypeChecker scp (ExpressionAnd exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                    in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                    in checkBinaryOperation semantbooleanrelational typeExp1 typeExp2 
+expressionTypeChecker scp (ExpressionOr exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                    in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                    in checkBinaryOperation semantbooleanrelational typeExp1 typeExp2 
+expressionTypeChecker scp (ExpressionPlus exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                in checkBinaryOperation semantadd typeExp1 typeExp2
+expressionTypeChecker scp (ExpressionMinus exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                in checkBinaryOperation semantarithmetic typeExp1 typeExp2 
+expressionTypeChecker scp (ExpressionMod exp1 exp2) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp1 symTab classSymTab
+                                                                in let typeExp2 = expressionTypeChecker scp exp2 symTab classSymTab
+                                                                in checkBinaryOperation semantarithmetic typeExp1 typeExp2 
+expressionTypeChecker scp (ExpressionNot exp) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp symTab classSymTab
+                                                                in checkUnaryOperation semantnot typeExp1 
+expressionTypeChecker scp (ExpressionNeg exp) symTab classSymTab = let typeExp1 = expressionTypeChecker scp exp symTab classSymTab
+                                                                in checkUnaryOperation semantneg typeExp1 
+expressionTypeChecker scp (ExpressionLitVar litVar) symTab classSymTab = checkDataTypeOfLitVar scp litVar symTab
+expressionTypeChecker scp (ExpressionFuncCall funcCall) symTab classSymTab = 
                                                                     if (analyzeFunctionCall funcCall scp symTab classSymTab) then 
                                                                         case functionCallType funcCall scp symTab classSymTab of
-                                                                          Just (TypePrimitive prim []) -> Just prim
-                                                                          _ -> Nothing
-                                                                    else Nothing   
+                                                                          Just (TypePrimitive prim []) -> (Right (TypePrimitive prim []))
+                                                                          Just (TypeClassId classId []) -> (Right (TypeClassId classId []))
+                                                                          _ -> (Left (("Function call return type in expression not supported "))) 
+                                                                    else  (Left (("Function identifier is not known"))) 
 
-expressionProcess scp (ExpressionVarArray identifier ((ArrayAccessExpression expression) : [])) symTab classSymTab = case (expressionProcess scp expression symTab classSymTab) of 
-                                                                                                        Just PrimitiveInt -> checkArrayID scp identifier symTab 1
-                                                                                                        Just PrimitiveInteger -> checkArrayID scp identifier symTab 1
-                                                                                                        _ -> Nothing
-expressionProcess scp (ExpressionVarArray identifier ((ArrayAccessExpression expression1) : (ArrayAccessExpression expression2) :[])) symTab classSymTab = 
-                                                  case (expressionProcess scp expression1 symTab classSymTab) of 
-                                                     Just PrimitiveInt -> 
-                                                            case (expressionProcess scp expression2 symTab classSymTab) of
-                                                              Just PrimitiveInt -> checkArrayID scp identifier symTab 2
-                                                              Just PrimitiveInteger -> checkArrayID scp identifier symTab 2
-                                                              _ -> Nothing  
-                                                     Just PrimitiveInteger -> 
-                                                            case (expressionProcess scp expression2 symTab classSymTab) of
-                                                              Just PrimitiveInteger -> checkArrayID scp identifier symTab 2
-                                                              Just PrimitiveInt -> checkArrayID scp identifier symTab 2
-                                                              _ -> Nothing
-                                                     _ -> Nothing
-expressionProcess scp (ExpressionNeg exp) symTab classSymTab = expressionCheckNEG scp exp symTab classSymTab
+expressionTypeChecker scp (ExpressionVarArray identifier ((ArrayAccessExpression expression) : [])) symTab classSymTab = case (expressionTypeChecker scp expression symTab classSymTab) of 
+                                                                                                        Right (TypePrimitive PrimitiveInt []) -> checkArrayID scp identifier symTab 1
+                                                                                                        Right (TypePrimitive PrimitiveInteger []) -> checkArrayID scp identifier symTab 1
+                                                                                                        _ -> (Left (("Was expecting an integer in expression" ++ identifier))) 
+expressionTypeChecker scp (ExpressionVarArray identifier ((ArrayAccessExpression expression1) : (ArrayAccessExpression expression2) :[])) symTab classSymTab = 
+                                                  case (expressionTypeChecker scp expression1 symTab classSymTab) of 
+                                                     Right (TypePrimitive PrimitiveInt []) -> 
+                                                            case (expressionTypeChecker scp expression2 symTab classSymTab) of
+                                                              Right (TypePrimitive PrimitiveInt []) -> checkArrayID scp identifier symTab 2
+                                                              Right (TypePrimitive PrimitiveInteger []) -> checkArrayID scp identifier symTab 2
+                                                              _ -> (Left (("Was expecting an integer in column expression in " ++ identifier))) 
+                                                     Right (TypePrimitive PrimitiveInteger []) -> 
+                                                            case (expressionTypeChecker scp expression2 symTab classSymTab) of
+                                                              Right (TypePrimitive PrimitiveInteger []) -> checkArrayID scp identifier symTab 2
+                                                              Right (TypePrimitive PrimitiveInt []) -> checkArrayID scp identifier symTab 2
+                                                              _ -> (Left (("Was expecting an integer in column expression" ++ identifier) )) 
+                                                     _ -> (Left (("Was expecting an integer in row expression" ++ identifier))) 
 
 
-checkArrayID :: Scope -> Identifier -> SymbolTable -> Int -> Maybe Primitive
+checkBinaryOperation :: (Type -> Type -> (Either String Type)) -> (Either String Type) -> (Either String Type) -> (Either String Type)
+checkBinaryOperation f dt1 dt2 = case dt1 of 
+                                            Left err -> dt1
+                                            Right type1 -> case dt2 of 
+                                                              Left err2 -> dt2
+                                                              Right type2 -> (f type1 type2)
+
+checkUnaryOperation :: (Type -> (Either String Type)) -> (Either String Type) -> (Either String Type)
+checkUnaryOperation f dt1 = case dt1 of 
+                                            Left err -> dt1
+                                            Right type1 -> (f type1)
+
+
+checkArrayID :: Scope -> Identifier -> SymbolTable -> Int -> (Either String Type)
 checkArrayID scp identifier symTab dimension= case (Map.lookup identifier symTab) of
                              Just (SymbolVar dataType varScp _) 
                                | varScp >= scp -> 
                                    case dataType of 
-                                     TypePrimitive prim arrayDeclaration | (length arrayDeclaration) == dimension -> Just prim
-                                                       | otherwise -> Nothing
-                                     _ -> Nothing
-                               | otherwise -> Nothing
-                             _ -> Nothing
+                                     TypePrimitive prim arrayDeclaration | (length arrayDeclaration) == dimension -> (Right (TypePrimitive prim []))
+                                                                         | otherwise -> (Left (("Wrong dimension for array" ++ identifier) )) 
+                                     TypeClassId classId arrayDeclaration | (length arrayDeclaration) == dimension -> (Right (TypeClassId classId []))
+                                                                         | otherwise -> (Left (("Wrong dimension for array" ++ identifier) )) 
+                                     
+                               | otherwise -> (Left (("Out of scope " ++ identifier) )) 
+                             _ -> (Left (("Variable not declared" ++ identifier) )) 
 
 
 
-checkDataTypeOfLitVar :: Scope -> LiteralOrVariable -> SymbolTable -> Maybe Primitive
+checkDataTypeOfLitVar :: Scope -> LiteralOrVariable -> SymbolTable -> (Either String Type)
 checkDataTypeOfLitVar scp (VarIdentifier identifier) symTab = 
                                   case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypePrimitive prim []) varScp _)
-                                      | varScp >= scp -> (Just prim)
-                                      | otherwise -> Nothing
-                                    _ -> Nothing
+                                      | varScp >= scp -> (Right (TypePrimitive prim []))
+                                      | otherwise -> (Left (("Variable " ++ identifier) ++ "Out of scope"))
+                                    Just (SymbolVar (TypeClassId classId []) varScp _)
+                                      | varScp >= scp -> (Right (TypeClassId classId []))
+                                      | otherwise -> (Left (("Variable " ++ identifier) ++ "Out of scope"))
+                                    _ -> (Left ("Variable not found " ++ identifier))
 
-checkDataTypeOfLitVar scp (IntegerLiteral int) symTab = (Just PrimitiveInt)
-checkDataTypeOfLitVar scp (DecimalLiteral dec) symTab = (Just PrimitiveDouble)
-checkDataTypeOfLitVar scp (StringLiteral int) symTab = (Just PrimitiveString)
-checkDataTypeOfLitVar scp (BoolLiteral _) symTab = (Just PrimitiveBool)
+checkDataTypeOfLitVar scp (IntegerLiteral int) symTab = (Right (TypePrimitive PrimitiveInteger []))
+checkDataTypeOfLitVar scp (DecimalLiteral dec) symTab = (Right (TypePrimitive PrimitiveMoney []))
+checkDataTypeOfLitVar scp (StringLiteral int) symTab = (Right (TypePrimitive PrimitiveString []))
+checkDataTypeOfLitVar scp (BoolLiteral _) symTab = (Right (TypePrimitive PrimitiveBool []))
 
 checkDataTypeOfVar ::  LiteralOrVariable -> SymbolTable -> Type
 checkDataTypeOfVar  (VarIdentifier identifier) symTab = 
                                   case (Map.lookup identifier symTab) of
                                     Just (SymbolVar dataType varScp _) -> dataType
-
-expressionCheckOp :: Scope -> Expression -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
-expressionCheckOp scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab classSymTab = checkDataTypesMult (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
-expressionCheckOp scp (ExpressionLitVar litVar1) exp symTab classSymTab = checkDataTypesMult (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab classSymTab) symTab
-expressionCheckOp scp exp (ExpressionLitVar litVar1) symTab classSymTab = expressionCheckOp scp (ExpressionLitVar litVar1) exp symTab classSymTab
-expressionCheckOp scp exp1 exp2 symTab classSymTab = checkDataTypesMult (expressionProcess scp exp1 symTab classSymTab) (expressionProcess scp exp2 symTab classSymTab) symTab
-
-expressionCheckMOD :: Scope -> Expression -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
-expressionCheckMOD scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab classSymTab = checkDataTypesMOD  (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
-expressionCheckMOD scp (ExpressionLitVar litVar1) exp symTab classSymTab = checkDataTypesMOD (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab classSymTab) symTab
-expressionCheckMOD scp exp (ExpressionLitVar litVar1) symTab classSymTab = expressionCheckMOD scp (ExpressionLitVar litVar1) exp symTab classSymTab
-expressionCheckMOD scp exp1 exp2 symTab classSymTab = checkDataTypesMOD (expressionProcess scp exp1 symTab classSymTab) (expressionProcess scp exp2 symTab classSymTab) symTab
-
-expressionCheckNOT :: Scope -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
-expressionCheckNOT scp (ExpressionLitVar litVar1) symTab classSymTab = checkDataTypesNOT (checkDataTypeOfLitVar scp litVar1 symTab) symTab
-expressionCheckNOT scp exp symTab classSymTab = checkDataTypesNOT  (expressionProcess scp exp symTab classSymTab) symTab
-
-expressionCheckNEG :: Scope -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
-expressionCheckNEG scp (ExpressionLitVar litVar1) symTab classSymTab = checkDataTypesNEG (checkDataTypeOfLitVar scp litVar1 symTab) symTab
-expressionCheckNEG scp exp symTab classSymTab = checkDataTypesNEG (expressionProcess scp exp symTab classSymTab) symTab
-
-expressionCheckRel1 :: Scope -> Expression -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
-expressionCheckRel1 scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab classSymTab = checkDataTypesRel1 (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
-expressionCheckRel1 scp (ExpressionLitVar litVar1) exp symTab classSymTab = checkDataTypesRel1 (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab classSymTab) symTab
-expressionCheckRel1 scp exp (ExpressionLitVar litVar1) symTab classSymTab = expressionCheckRel1 scp (ExpressionLitVar litVar1) exp symTab classSymTab
-expressionCheckRel1 scp exp1 exp2 symTab classSymTab = checkDataTypesRel1 (expressionProcess scp exp1 symTab classSymTab) (expressionProcess scp exp2 symTab classSymTab) symTab
-
-expressionCheckRel2 :: Scope -> Expression -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
-expressionCheckRel2 scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab classSymTab = checkDataTypesRel2 (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
-expressionCheckRel2 scp (ExpressionLitVar litVar1) exp symTab classSymTab = checkDataTypesRel2 (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab classSymTab) symTab
-expressionCheckRel2 scp exp (ExpressionLitVar litVar1) symTab classSymTab = expressionCheckRel2 scp (ExpressionLitVar litVar1) exp symTab classSymTab
-expressionCheckRel2 scp exp1 exp2 symTab classSymTab = checkDataTypesRel2 (expressionProcess scp exp1 symTab classSymTab) (expressionProcess scp exp2 symTab classSymTab) symTab
-
-expressionCheckRel3 :: Scope -> Expression -> Expression -> SymbolTable -> ClassSymbolTable -> Maybe Primitive
-expressionCheckRel3 scp (ExpressionLitVar litVar1) (ExpressionLitVar litVar2) symTab classSymTab = checkDataTypesRel3 (checkDataTypeOfLitVar scp litVar1 symTab) (checkDataTypeOfLitVar scp litVar2 symTab) symTab
-expressionCheckRel3 scp (ExpressionLitVar litVar1) exp symTab classSymTab = checkDataTypesRel3 (checkDataTypeOfLitVar scp litVar1 symTab) (expressionProcess scp exp symTab classSymTab) symTab
-expressionCheckRel3 scp exp (ExpressionLitVar litVar1) symTab classSymTab = expressionCheckRel3 scp (ExpressionLitVar litVar1) exp symTab classSymTab
-expressionCheckRel3 scp exp1 exp2 symTab classSymTab = checkDataTypesRel3 (expressionProcess scp exp1 symTab classSymTab) (expressionProcess scp exp2 symTab classSymTab) symTab
-
-checkDataTypesNOT :: Maybe Primitive -> SymbolTable -> Maybe Primitive
-checkDataTypesNOT (Just PrimitiveBool) symTab = (Just PrimitiveBool)
-checkDataTypesNOT _ _ = Nothing
-
-checkDataTypesNEG :: Maybe Primitive -> SymbolTable -> Maybe Primitive
-checkDataTypesNEG (Just PrimitiveBool) symTab = Nothing
-checkDataTypesNEG (Just PrimitiveString) symTab = Nothing
-checkDataTypesNEG (Just prim) symTab = (Just prim)
-checkDataTypesNEG Nothing symTab = Nothing
-
-checkDataTypesMult :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive
-checkDataTypesMult Nothing Nothing _ = Nothing -- Todo lo demas, falso
-checkDataTypesMult _ Nothing _ = Nothing -- Todo lo demas, falso
-checkDataTypesMult Nothing _ _ = Nothing -- Todo lo demas, falso
-checkDataTypesMult (Just PrimitiveBool) _ _ = Nothing
-checkDataTypesMult _ (Just PrimitiveBool) _ = Nothing 
-checkDataTypesMult (Just PrimitiveInt) (Just PrimitiveInt) _  = (Just PrimitiveInt)
-checkDataTypesMult (Just PrimitiveInteger) (Just PrimitiveInteger) _ = (Just PrimitiveInteger)
-checkDataTypesMult (Just PrimitiveInt) (Just PrimitiveInteger) _ = (Just PrimitiveInteger)
-checkDataTypesMult (Just PrimitiveInteger) (Just PrimitiveInt) _ = (Just PrimitiveInteger)
-checkDataTypesMult (Just PrimitiveMoney) (Just PrimitiveDouble) _ = (Just PrimitiveMoney)
-checkDataTypesMult (Just PrimitiveDouble) (Just PrimitiveMoney) _ = (Just PrimitiveMoney)
-checkDataTypesMult (Just PrimitiveMoney) _ _ = (Just PrimitiveMoney)
-checkDataTypesMult _ (Just PrimitiveMoney) _ = (Just PrimitiveMoney)
-checkDataTypesMult (Just PrimitiveDouble) _ _ = (Just PrimitiveDouble)
-checkDataTypesMult _ (Just PrimitiveDouble) _ = (Just PrimitiveDouble)
-checkDataTypesMult (Just PrimitiveString) (Just PrimitiveString) _ = Just PrimitiveString 
-checkDataTypesMult _ _ _ = Nothing -- Todo lo demas, falso
-
-
-checkDataTypesRel1 :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive 
-checkDataTypesRel1 Nothing Nothing _ = Nothing -- Todo lo demas, falso
-checkDataTypesRel1 _ Nothing _ = Nothing -- Todo lo demas, falso
-checkDataTypesRel1 Nothing _ _ = Nothing -- Todo lo demas, falso
-checkDataTypesRel1 (Just PrimitiveBool) (Just PrimitiveBool) _ = (Just PrimitiveBool)
-checkDataTypesRel1 (Just PrimitiveString) (Just PrimitiveString) _ = (Just PrimitiveBool)
-checkDataTypesRel1 (Just PrimitiveBool) _ _  = Nothing
-checkDataTypesRel1 _ (Just PrimitiveBool) _ = Nothing
-checkDataTypesRel1 (Just PrimitiveMoney) (Just PrimitiveInteger) _ = Nothing
-checkDataTypesRel1 (Just PrimitiveDouble) (Just PrimitiveInteger) _ = Nothing
-checkDataTypesRel1 (Just PrimitiveMoney) (Just PrimitiveInt) _ = Nothing
-checkDataTypesRel1 (Just PrimitiveDouble) (Just PrimitiveInt) _ = Nothing
-checkDataTypesRel1 (Just PrimitiveInteger) (Just PrimitiveMoney) _ = Nothing
-checkDataTypesRel1 (Just PrimitiveInteger) (Just PrimitiveDouble) _ = Nothing
-checkDataTypesRel1 (Just PrimitiveInt) (Just PrimitiveMoney) _ = Nothing
-checkDataTypesRel1 (Just PrimitiveInt) (Just PrimitiveDouble) _ = Nothing
-checkDataTypesRel1 _ _ _ = (Just PrimitiveBool)
-
-checkDataTypesRel2 :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive 
-checkDataTypesRel2 Nothing Nothing _ = Nothing -- Todo lo demas, falso
-checkDataTypesRel2 _ Nothing _ = Nothing -- Todo lo demas, falso
-checkDataTypesRel2 Nothing _ _ = Nothing -- Todo lo demas, falso
-checkDataTypesRel2 (Just PrimitiveBool) _ _  = Nothing
-checkDataTypesRel2 _ (Just PrimitiveBool) _ = Nothing
-checkDataTypesRel2 (Just PrimitiveString) _ _ = Nothing
-checkDataTypesRel2 _ (Just PrimitiveString) _ = Nothing
-checkDataTypesRel2 (Just PrimitiveMoney) (Just PrimitiveInteger) _ = Nothing
-checkDataTypesRel2 (Just PrimitiveDouble) (Just PrimitiveInteger) _ = Nothing
-checkDataTypesRel2 (Just PrimitiveMoney) (Just PrimitiveInt) _ = Nothing
-checkDataTypesRel2 (Just PrimitiveDouble) (Just PrimitiveInt) _ = Nothing
-checkDataTypesRel2 (Just PrimitiveInteger) (Just PrimitiveMoney) _ = Nothing
-checkDataTypesRel2 (Just PrimitiveInteger) (Just PrimitiveDouble) _ = Nothing
-checkDataTypesRel2 (Just PrimitiveInt) (Just PrimitiveMoney) _ = Nothing
-checkDataTypesRel2 (Just PrimitiveInt) (Just PrimitiveDouble) _ = Nothing
-checkDataTypesRel2 _ _ _ = (Just PrimitiveBool)
-
-checkDataTypesRel3 :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive
-checkDataTypesRel3 Nothing Nothing _ = Nothing -- Todo lo demas, falso
-checkDataTypesRel3 _ Nothing _ = Nothing -- Todo lo demas, falso
-checkDataTypesRel3 Nothing _ _ = Nothing -- Todo lo demas, falso
-checkDataTypesRel3 (Just PrimitiveBool) (Just PrimitiveBool) _ = (Just PrimitiveBool)
-checkDataTypesRel3 _ _ _ = Nothing
-
-checkDataTypesMOD :: Maybe Primitive -> Maybe Primitive -> SymbolTable -> Maybe Primitive 
-checkDataTypesMOD (Just PrimitiveInt) (Just PrimitiveInt) _  = (Just PrimitiveInt)
-checkDataTypesMOD (Just PrimitiveInteger) (Just PrimitiveInteger) _ = (Just PrimitiveInteger)
-checkDataTypesMOD (Just PrimitiveInteger) (Just PrimitiveInt) _ = (Just PrimitiveInteger)
-checkDataTypesMOD (Just PrimitiveInt) (Just PrimitiveInteger) _ = (Just PrimitiveInteger)
-checkDataTypesMOD _ _ _ = Nothing -- Todo lo demas, falso
 
 
 compareListOfTypesWithFuncCall :: Scope -> [Type] -> [Params] -> SymbolTable -> ClassSymbolTable -> Bool
@@ -218,20 +219,20 @@ compareListOfTypesWithFuncCall scp (rpType : rps) (sp : sps) symTab classSymTab 
                                 case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypePrimitive prim (("[",size,"]") : []) ) varScp _) 
                                        | varScp >= scp -> 
-                                            case (expressionProcess scp innerExp symTab classSymTab) of 
-                                                Just PrimitiveInt ->  (TypePrimitive prim []) == rpType 
+                                            case (expressionTypeChecker scp innerExp symTab classSymTab) of 
+                                                Right (TypePrimitive PrimitiveInt []) ->  (TypePrimitive prim []) == rpType 
                                                             && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
-                                                Just PrimitiveInteger ->  (TypePrimitive prim []) == rpType
+                                                Right (TypePrimitive PrimitiveInteger []) ->  (TypePrimitive prim []) == rpType
                                                             && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                                                 _ -> False
                                             
                                        | otherwise -> False
                                     Just (SymbolVar (TypeClassId classId (("[",size,"]") : []) ) varScp _) 
                                        | varScp >= scp -> 
-                                                case (expressionProcess scp innerExp symTab classSymTab) of 
-                                                    Just PrimitiveInt -> (TypeClassId classId []) == rpType 
+                                                case (expressionTypeChecker scp innerExp symTab classSymTab) of 
+                                                    Right (TypePrimitive PrimitiveInt []) -> (TypeClassId classId []) == rpType 
                                                         && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
-                                                    Just PrimitiveInteger -> (TypeClassId classId []) == rpType 
+                                                    Right (TypePrimitive PrimitiveInteger []) -> (TypeClassId classId []) == rpType 
                                                         && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                                                     _ -> False
                                        | otherwise -> False
@@ -241,26 +242,26 @@ compareListOfTypesWithFuncCall scp (rpType : rps) (sp : sps) symTab classSymTab 
                                 case (Map.lookup identifier symTab) of
                                     Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]") : [])) varScp _)
                                         | varScp >= scp -> 
-                                            let rowExpType = expressionProcess scp rowExp symTab classSymTab
-                                                colExpType = expressionProcess scp colExp symTab classSymTab
+                                            let rowExpType = expressionTypeChecker scp rowExp symTab classSymTab
+                                                colExpType = expressionTypeChecker scp colExp symTab classSymTab
                                             in if(rowExpType == colExpType) 
                                                 then case rowExpType of 
-                                                    Just PrimitiveInt -> (TypePrimitive prim []) == rpType
+                                                    Right (TypePrimitive PrimitiveInt []) -> (TypePrimitive prim []) == rpType
                                                             && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
-                                                    Just PrimitiveInteger -> (TypePrimitive prim []) == rpType
+                                                    Right (TypePrimitive PrimitiveInteger []) -> (TypePrimitive prim []) == rpType
                                                             && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                                                     _ -> False
                                                 else False
                                         | otherwise -> False
                                     Just (SymbolVar (TypeClassId classId (("[",rows,"]") : ("[",cols,"]") : [])) varScp _)
                                         | varScp >= scp -> 
-                                            let rowExpType = expressionProcess scp rowExp symTab classSymTab
-                                                colExpType = expressionProcess scp colExp symTab classSymTab
+                                            let rowExpType = expressionTypeChecker scp rowExp symTab classSymTab
+                                                colExpType = expressionTypeChecker scp colExp symTab classSymTab
                                             in if(rowExpType == colExpType) 
                                                 then case rowExpType of 
-                                                    Just PrimitiveInt -> (TypeClassId classId []) == rpType 
+                                                    Right (TypePrimitive PrimitiveInt []) -> (TypeClassId classId []) == rpType 
                                                             && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
-                                                    Just PrimitiveInteger -> (TypeClassId classId []) == rpType 
+                                                    Right (TypePrimitive PrimitiveInteger []) -> (TypeClassId classId []) == rpType 
                                                             && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                                                     _ -> False
                                                 else False
@@ -270,9 +271,9 @@ compareListOfTypesWithFuncCall scp (rpType : rps) (sp : sps) symTab classSymTab 
                                             checkDataTypes scp rpType (VarIdentifier identifier) symTab 
                                             && compareListOfTypesWithFuncCall scp rps sps symTab classSymTab
                             (ParamsExpression expression) -> 
-                                case (expressionProcess scp expression symTab classSymTab) of
-                                    Just expType -> (TypePrimitive expType []) == rpType && (compareListOfTypesWithFuncCall scp rps sps symTab classSymTab)
-                                    Nothing -> False 
+                                case (expressionTypeChecker scp expression symTab classSymTab) of
+                                    (Right expType) -> expType == rpType && (compareListOfTypesWithFuncCall scp rps sps symTab classSymTab)
+                                    Left err -> False
 
 analyzeFunctionCall :: FunctionCall -> Scope -> SymbolTable -> ClassSymbolTable -> Bool
 analyzeFunctionCall (FunctionCallVar funcIdentifier callParams) scp symTab classTab = 

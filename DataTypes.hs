@@ -210,7 +210,15 @@ class ExpressionOperation a where
    (|>=|) :: a -> a -> a
    (|<=|) :: a -> a -> a
 
-
+class TypeSemant a where
+   semantarithmetic :: a -> a -> (Either String Type)
+   semantadd :: a -> a -> (Either String Type)
+   semantmod :: a -> a -> (Either String Type)
+   semantneg :: a -> (Either String Type)
+   semantequivalence :: a -> a -> (Either String Type)
+   semantbooleanrelational :: a -> a -> (Either String Type)
+   semantrelational :: a -> a -> (Either String Type)
+   semantnot :: a -> (Either String Type)
 
 instance ExpressionOperation Expression where
    a |+| b = (ExpressionPlus a b)
