@@ -142,8 +142,8 @@ main{
     displayLn(l);
 
     displayLn("Distancia eucladiana",res1);
-
-    if ((s + "e") == (s + "e") && (p == p2)){
+    Point p4,p5;
+    if ((p4 == p5)){
         displayLn("Son iguales");
     }
     else{

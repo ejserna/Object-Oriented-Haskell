@@ -22,6 +22,7 @@ import Control.Exception
 import Data.Stack as Stack
 import Quadruple
 import DataTypes
+import MemoryLimits
 import CodeGenDataTypes
 import Data.Decimal
 import Text.Show.Pretty
@@ -81,11 +82,29 @@ instance ExpressionOperation VMValue where
    (VMDecimal dec1) |==| (VMDecimal dec2) = (VMBool (dec1 == dec2))
    (VMBool bool1)   |==| (VMBool bool2) = (VMBool (bool1 == bool2))
    (VMString str1) |==| (VMString str2) = (VMBool (str1 == str2))
+   (VMInteger _) |==| VMEmpty = (VMBool False)
+   (VMDecimal _) |==| VMEmpty = (VMBool False)
+   (VMString _) |==| VMEmpty = (VMBool False)
+   (VMBool _) |==| VMEmpty = (VMBool False)
+   VMEmpty  |==| (VMInteger _)  = (VMBool False)
+   VMEmpty  |==| (VMDecimal _) = (VMBool False)
+   VMEmpty |==| (VMString _)  = (VMBool False)
+   VMEmpty  |==| (VMBool _) = (VMBool False)
+   (VMEmpty) |==| (VMEmpty) = (VMBool (True))
 
    (VMInteger int1) |!=| (VMInteger int2) = (VMBool (int1 /= int2))
    (VMDecimal dec1) |!=| (VMDecimal dec2) = (VMBool (dec1 /= dec2))
    (VMBool bool1)   |!=| (VMBool bool2) = (VMBool (bool1 /= bool2))
    (VMString str1)  |!=| (VMString str2) = (VMBool (str1 /= str2))
+   (VMInteger _) |!=| VMEmpty = (VMBool True)
+   (VMDecimal _) |!=| VMEmpty = (VMBool True)
+   (VMString _) |!=| VMEmpty = (VMBool True)
+   (VMBool _) |!=| VMEmpty = (VMBool True)
+   VMEmpty  |!=| (VMInteger _)  = (VMBool True)
+   VMEmpty  |!=| (VMDecimal _) = (VMBool True)
+   VMEmpty |!=| (VMString _)  = (VMBool True)
+   VMEmpty  |!=| (VMBool _) = (VMBool True)
+   (VMEmpty) |!=| (VMEmpty) = (VMBool (False))
 
    (VMBool bool1)   |&&| (VMBool bool2) = (VMBool (bool1 && bool2))
 
@@ -401,6 +420,7 @@ runInstruction (QuadrupleFunctionCall quadNum GO_SUB addressesObjParams addresse
                                                                                     context <-  ask
                                                                                     cpuState <- get
                                                                                     let funcMap = (functionDirectory context)
+                                                                                    -- Buscar aqui que tipo de objeto es el de objParams
                                                                                     case (Map.lookup funcName funcMap) of 
                                                                                       Just (FunctionMemory funcInstructions funcIdMem funcObjMem) ->
                                                                                           do 
@@ -505,7 +525,7 @@ doDisplay a1 nestFactor
                             
                             -- tell $ [show val]  
                     Just VMEmpty ->
-                                do liftIO $ putStr $ " " 
+                                -- do liftIO $ putStr $ " " 
                                    return ()
                     _ -> do 
                             return ()
@@ -588,6 +608,8 @@ doAssignment a1 a2
                   
 doDeepAssignment :: [Address] -> [Address] -> VM
 doDeepAssignment [] [] = do return ()
+doDeepAssignment a [] = do return ()
+doDeepAssignment [] a = do return ()
 doDeepAssignment (addrGiver : addressesGiver ) (addrReceiver : addressesReceiver ) = do 
                                                                                     doAssignment addrGiver addrReceiver
                                                                                     doDeepAssignment addressesGiver addressesReceiver
@@ -614,6 +636,8 @@ doAssignmentMemories memBase memDestiny objMemBase objMemDestiny a1 a2
                   
 doDeepAssignmentMemories :: Memory -> Memory -> ObjectMemory -> ObjectMemory -> [Address] -> [Address] -> Memory
 doDeepAssignmentMemories _ memoryDestiny _ _ [] [] = memoryDestiny
+doDeepAssignmentMemories _ memoryDestiny _ _ a [] = memoryDestiny
+doDeepAssignmentMemories _ memoryDestiny _ _ [] a = memoryDestiny
 doDeepAssignmentMemories memBase memDestiny objMemBase objMemDestiny (addrGiver : addressesGiver ) (addrReceiver : addressesReceiver ) =
                                                                                     let memDestinyNew = doAssignmentMemories memBase memDestiny objMemBase objMemDestiny addrGiver addrReceiver
                                                                                     in doDeepAssignmentMemories memBase memDestinyNew objMemBase objMemDestiny addressesGiver addressesReceiver

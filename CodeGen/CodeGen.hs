@@ -5,6 +5,7 @@ import SymbolTable
 import ClassSymbolTable
 import ExpressionCodeGen
 import ExpressionOptimizer
+import MemoryLimits
 import Text.Show.Pretty
 import qualified Data.HashMap.Strict as Map
 import VirtualMachine
@@ -52,13 +53,6 @@ startCodeGen (Program classes functions variables (Block statements)) symTab cla
             -- putStrLn $ ppShow $ (Map.union  memoryFromAttributes (prepareMemory idTable constTable))
             startVM quads (Map.union  memoryFromAttributes (prepareMemory idTable constTable)) (Map.empty) objMem funcMem
 
--- generateQuadruplesFromInput :: [Statement] -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> FunctionMap -> String -> CodeGen [Quadruple]
--- generateQuadruplesFromInput  statements symTab classSymTab varCounters1 idTable constTable objMap funcMap currModule =
---             do 
---                 let cgState = (setCGState symTab varCounters1 0)
---                 let cgEnv = setCGEnvironment classSymTab objMap idTable constTable funcMap currModule
---                 (_,quads) <-  liftIO $ execRWST (generateCodeFromStatements statements) cgEnv cgState
---                 return quads
 
 prepareMemory :: IdentifierAddressMap -> ConstantAddressMap -> Memory
 prepareMemory idTable constTable = (Map.union 

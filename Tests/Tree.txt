@@ -1,0 +1,85 @@
+class Node{
+    [-] Node left;
+    [-] Node right;
+    [+] Integer val;
+
+    [+] setLeftNode => Nothing :: Node l{
+        left = l;
+    }
+    [+] setRightNode => Nothing :: Node r{
+        right = r;
+    }
+
+    [+] getLeftNode => Node {
+        return left;
+    }
+    [+] getRightNode => Node {
+        return right;
+    }
+
+
+}
+
+class Tree{
+    [-] Node root;
+    [-] Node null;
+    Tree :: Node n{
+        root = n;
+    }
+
+    [+] setRoot => Nothing :: Node r{
+        root = r;
+    }
+
+    [-] preorder => Nothing :: Node n{
+        if (n != null){
+            Node l,r;
+            l = n.getLeftNode();
+            r = n.getRightNode();
+            displayLn(n.val);
+            preorder(l);
+            preorder(r);
+        }
+
+        
+    }   
+
+    [+] printPreorder => Nothing {
+        preorder(root);
+        displayLn("Finished preorder");
+    }
+}
+
+main{
+    Node n,n1l,n1r;
+    Node n2,n3,n4,n5;
+    n.val = 300;
+    n1l.val = 200;
+    n1r.val = 500;
+    n2.val = 150;
+    n3.val = 250;
+    n4.val = 400;
+    n5.val = 550; 
+    
+    
+    Node n6,n7;
+    n6.val = 110;
+    n7.val = 190;
+
+    n2.setLeftNode(n6);
+    n2.setRightNode(n7);
+
+    n1l.setLeftNode(n2);
+    n1l.setRightNode(n3);
+    n1r.setLeftNode(n4);
+    n1r.setRightNode(n5);
+
+
+    n.setLeftNode(n1l);
+    n.setRightNode(n1r);
+    Tree t;
+
+    t.setRoot(n);
+    t.printPreorder();
+    
+}

@@ -137,6 +137,15 @@ exitIfFailure state = do
                                                 putStrLn.show $ e
                                                 exitFailure
                                         )
+
+updatedSymTabOfClass  :: ClassIdentifier -> TC
+updatedSymTabOfClass classIdentifier = 
+                          do
+                            tcState <- get
+                            let (symTab,classSymTab,aMap) = getTCState tcState
+                            let updatedSymTabOfClass = (Map.insert classIdentifier symTab classSymTab) 
+                            modify $ \s -> (s { tcClassSymTab = updatedSymTabOfClass})
+
 startSemanticAnalysis :: Program -> IO ()
 startSemanticAnalysis (Program classList functionList varsList (Block statements)) =  do 
             do 
@@ -188,6 +197,10 @@ deepFilter ((identifier,(SymbolFunction params p1 (Block statements) p2 p3 p4 sy
 
 deepFilter (sym : rest) identifierParent = [sym] ++ (deepFilter rest identifierParent)
 
+getClassName :: Class -> ClassIdentifier
+getClassName (ClassInheritance classIdentifier _ _) = classIdentifier
+getClassName (ClassNormal classIdentifier _) = classIdentifier
+
 -- Analyze classes regresa una tabla de simbolos de clase y un booleano. Si es true, significa que hubo errores, si es false, no hubo errores
 analyzeClasses :: [Class] -> TC 
 analyzeClasses [] = do return ()
@@ -195,11 +208,17 @@ analyzeClasses (cl : classes)  =
                                 do 
                                     tcState <- get
                                     let (_,classSymTab,aMap) = getTCState tcState
-                                    let classStateAfterBlock = runTypeChecker (analyzeClassBlock cl) (setTCState emptySymbolTable classSymTab aMap)
-                                    whenLeft classStateAfterBlock (lift.throwError)
-                                    whenRight classStateAfterBlock (modifyTCState)
-                                    analyzeClass cl
-                                    analyzeClasses classes 
+                                    let classIdentifier = getClassName cl
+                                    if Map.member classIdentifier classSymTab
+                                        then lift $ throwError (ClassDeclared classIdentifier "")
+                                    else do 
+                                      let classSymTabWithOwnClass = (Map.insert classIdentifier Map.empty classSymTab)
+                                      let classStateAfterBlock = runTypeChecker (analyzeClassBlock cl) (setTCState emptySymbolTable classSymTabWithOwnClass aMap)
+                                      whenLeft classStateAfterBlock (lift.throwError)
+                                      whenRight classStateAfterBlock (modifyTCState)
+                                      analyzeClass cl
+                                      analyzeClasses classes
+                                     
 
 
 analyzeClassBlock :: Class -> TC 
@@ -219,6 +238,7 @@ analyzeClassBlock (ClassInheritance classIdentifier parentClass classBlock) =
                                                                 let newAncestorMap = (Map.insert classIdentifier ancestorsForCurrentClass aMap) 
                                                                 modify $ \s -> (s { tcAncestors = newAncestorMap}) 
                                                                 analyzeMembersOfClassBlock classBlock classIdentifier globalScope
+                                                                updatedSymTabOfClass classIdentifier
                                     
 
                                 
@@ -234,9 +254,12 @@ analyzeClassBlock (ClassNormal classIdentifier classBlock) = do
                                                                 let newAncestorMap = (Map.insert classIdentifier [] aMap) 
                                                                 modify $ \s -> (s { tcAncestors = newAncestorMap}) 
                                                                 analyzeMembersOfClassBlock classBlock classIdentifier globalScope
+                                                                updatedSymTabOfClass classIdentifier
 
 analyzeMembersOfClassBlock :: ClassBlock -> ClassIdentifier -> Scope -> TC
-analyzeMembersOfClassBlock (ClassBlockNoConstructor classMembers) classIdentifier scp = analyzeClassMembers classMembers classIdentifier scp
+analyzeMembersOfClassBlock (ClassBlockNoConstructor classMembers) classIdentifier scp = do 
+                                                                                          analyzeClassMembers classMembers classIdentifier scp
+                                                                                          updatedSymTabOfClass classIdentifier
 analyzeMembersOfClassBlock (ClassBlock classMembers (ClassConstructor classIdConstructor params block)) classIdentifier scp  = 
                                         do 
                                             if (classIdConstructor /= classIdentifier) 
@@ -246,13 +269,16 @@ analyzeMembersOfClassBlock (ClassBlock classMembers (ClassConstructor classIdCon
                                                 do 
                                                     analyzeClassMembers classMembers classIdentifier scp
                                                     analyzeFunction (Function (classIdentifier ++ "_constructor") TypeFuncReturnNothing params block) scp (Just True)
+                                                    updatedSymTabOfClass classIdentifier
 
 analyzeClassMembers :: [ClassMember] -> ClassIdentifier -> Scope -> TC
 analyzeClassMembers [] _ _ = return ()
 analyzeClassMembers (cm : cms) classIdentifier scp = 
                                                     do 
                                                         analyzeClassMember cm classIdentifier scp
+                                                        updatedSymTabOfClass classIdentifier
                                                         analyzeClassMembers cms classIdentifier scp
+                                                        updatedSymTabOfClass classIdentifier
 
 
 analyzeClassMember :: ClassMember -> ClassIdentifier -> Scope -> TC
@@ -267,10 +293,7 @@ analyzeClass (ClassInheritance subClass parentClass classBlock)  =
                                                                         tcState <- get
                                                                         let (symTab,classSymTab,aMap) = getTCState tcState
                                                                         let s =  (ClassInheritance subClass parentClass classBlock)
-                                                                        if Map.member subClass classSymTab
-                                                                            then do 
-                                                                                    lift $ throwError (ClassDeclared subClass (show s)) -- La clase ya existe
-                                                                        else if Map.member parentClass classSymTab  
+                                                                        if Map.member parentClass classSymTab  
                                                                             then do 
                                                                                     let newClassSymTable = Map.insert subClass symTab classSymTab -- Si si es miembro, entonces si se puede heredar
                                                                                     modify $ \s -> (s { tcClassSymTab = newClassSymTable}) 
@@ -280,12 +303,14 @@ analyzeClass (ClassNormal classIdentifier classBlock)  = do
                                                             tcState <- get
                                                             let (symTab,classSymTab,aMap) = getTCState tcState
                                                             let s =  (ClassNormal classIdentifier classBlock)
-                                                            if Map.member classIdentifier classSymTab
-                                                                    then lift $ throwError (ClassDeclared classIdentifier (show s))
-                                                                    else 
-                                                                        do 
-                                                                            let newClassSymTable = Map.insert classIdentifier symTab classSymTab
-                                                                            modify $ \s -> (s { tcClassSymTab = newClassSymTable}) 
+                                                            let newClassSymTable = Map.insert classIdentifier symTab classSymTab
+                                                            modify $ \s -> (s { tcClassSymTab = newClassSymTable}) 
+                                                            -- if Map.member classIdentifier classSymTab
+                                                            --         then lift $ throwError (ClassDeclared classIdentifier (show s))
+                                                            --         else 
+                                                            --             do 
+                                                            --                 let newClassSymTable = Map.insert classIdentifier symTab classSymTab
+                                                            --                 modify $ \s -> (s { tcClassSymTab = newClassSymTable}) 
 
 analyzeFunctions :: [Function] -> Scope -> Maybe Bool -> TC
 analyzeFunctions [] _ _  = return ()

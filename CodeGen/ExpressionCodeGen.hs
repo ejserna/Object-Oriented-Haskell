@@ -9,6 +9,7 @@ import Control.Monad.Trans
 import Control.Monad
 import DataTypes
 import CodeGenDataTypes
+import MemoryLimits
 import Quadruple
 import SymbolTable
 import ExpressionOptimizer

@@ -10,6 +10,7 @@ class Humano{
 class Persona : Humano{
     [-] Money sueldo;
     [-] String nombre;
+    [-] Humano h;
 
     
 
