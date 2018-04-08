@@ -23,13 +23,20 @@ class Node{
 class Tree{
     [-] Node root;
     [-] Node null;
+    [+] Integer sum;
     Tree :: Node n{
         root = n;
+        sum = 0;
     }
 
     [+] setRoot => Nothing :: Node r{
+        sum = 0;
         root = r;
     }
+
+    [-] updateSum => Nothing :: Integer val{
+        sum = sum + val;
+    } 
 
     [-] preorder => Nothing :: Node n{
         if (n != null){
@@ -37,12 +44,15 @@ class Tree{
             l = n.getLeftNode();
             r = n.getRightNode();
             displayLn(n.val);
+            Integer val;
+            val = n.val;
+            updateSum(val);
             preorder(l);
             preorder(r);
         }
+    }
 
-        
-    }   
+
 
     [+] printPreorder => Nothing {
         preorder(root);
@@ -78,8 +88,11 @@ main{
     n.setLeftNode(n1l);
     n.setRightNode(n1r);
     Tree t;
-
+    Integer sum,sumBefore;
+    sumBefore = t.sum;
     t.setRoot(n);
     t.printPreorder();
+    sum = t.sum;
+    displayLn(sumBefore,sum);
     
 }

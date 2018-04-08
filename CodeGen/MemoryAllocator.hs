@@ -362,7 +362,6 @@ fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statement
                                                                     let newFuncMap = (Map.insert (fromModule ++ identifier) (FunctionData [] [] idMapFromFunc funcObjMap) funcMap)
                                                                     modify $ \s -> (s { funcMapMem = newFuncMap })
                                                                     (stateAfterDependencies,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable (fromModule)) (setEnvironment functionDependenciesMap (classTabMem env) 1) (setMemoryState idMapFromFunc newConstTable funcObjMap newFuncMap varCountersFromFunc newLiteralCounters)
-                                                                    liftIO $ putStrLn.show $ (deepness env)
                                                                     (stateAfterVariablesFromFunc,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable (fromModule)) (setEnvironment functionSymTabWithNewAttributes (classTabMem env) 1) stateAfterDependencies
                                                                     let (idMapFromFunc, newConstTable, funcObjMap,funcMap,varCountersFromFunc,newLiteralCounters) = getCurrentMemoryState stateAfterVariablesFromFunc
                                                                     let paramsAddresses = fillParamsFromFunction params idMapFromFunc
