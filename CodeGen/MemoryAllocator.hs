@@ -67,7 +67,7 @@ setEnvironment symTab classSymTab deepness = SymbolEnvironment symTab classSymTa
 startMemoryAllocation :: Program -> SymbolTable -> ClassSymbolTable -> IO()
 startMemoryAllocation (Program classes functions variables (Block statements)) symTab classSymTab =
            do 
-            let env = (setEnvironment symTab classSymTab 1)
+            let env = (setEnvironment symTab classSymTab 0)
             let memState = setMemoryState Map.empty Map.empty Map.empty Map.empty (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory) (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory)
             (stateAfterConstants1,_) <-  execRWST (prepareConstantAddressMap statements) env memState
             (stateAfterConstants2,_) <- execRWST (fillFromExpression (ExpressionLitVar $ DecimalLiteral 0.0) ) env stateAfterConstants1 
@@ -361,8 +361,8 @@ fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statement
                                                                     let (idMapFromFunc, newConstTable, funcObjMap,funcMap,varCountersFromFunc,newLiteralCounters) = getCurrentMemoryState stateAfterFuncConstants
                                                                     let newFuncMap = (Map.insert (fromModule ++ identifier) (FunctionData [] [] idMapFromFunc funcObjMap) funcMap)
                                                                     modify $ \s -> (s { funcMapMem = newFuncMap })
-                                                                    (stateAfterDependencies,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable (fromModule)) (setEnvironment functionDependenciesMap (classTabMem env) 1) (setMemoryState idMapFromFunc newConstTable funcObjMap newFuncMap varCountersFromFunc newLiteralCounters)
-                                                                    (stateAfterVariablesFromFunc,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable (fromModule)) (setEnvironment functionSymTabWithNewAttributes (classTabMem env) 1) stateAfterDependencies
+                                                                    (stateAfterDependencies,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable (fromModule)) (setEnvironment functionDependenciesMap (classTabMem env) 0) (setMemoryState idMapFromFunc newConstTable funcObjMap newFuncMap varCountersFromFunc newLiteralCounters)
+                                                                    (stateAfterVariablesFromFunc,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable (fromModule)) (setEnvironment functionSymTabWithNewAttributes (classTabMem env) 0) stateAfterDependencies
                                                                     let (idMapFromFunc, newConstTable, funcObjMap,funcMap,varCountersFromFunc,newLiteralCounters) = getCurrentMemoryState stateAfterVariablesFromFunc
                                                                     let paramsAddresses = fillParamsFromFunction params idMapFromFunc
                                                                     -- Se inserta un funcData vacio para funciones recursivas
