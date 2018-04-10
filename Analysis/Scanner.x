@@ -25,6 +25,7 @@ tokens :-
   "if"                              { \p s -> TIf p }
   "else"                            { \p s -> TElse p }
   "case"                            { \p s -> TCase p }
+  "end"                            { \p s -> TEnd p }
   "of"                              { \p s -> TOf p }
   "otherwise"                       { \p s -> TOtherwise p }
   "for"                             { \p s -> TFor p }
@@ -95,6 +96,7 @@ data Token =
       TIf AlexPosn                  |
       TElse AlexPosn                |
       TCase AlexPosn                |
+      TEnd AlexPosn                 |
       TOf AlexPosn                  |
       TOtherwise AlexPosn           |
       TFor AlexPosn                 |
@@ -162,6 +164,7 @@ tokenPosn (TComma p) = p
 tokenPosn (TIf p) = p
 tokenPosn (TElse p) = p
 tokenPosn (TCase p) = p
+tokenPosn (TEnd p) = p
 tokenPosn (TOf p) = p
 tokenPosn (TOtherwise p) = p
 tokenPosn (TFor p) = p

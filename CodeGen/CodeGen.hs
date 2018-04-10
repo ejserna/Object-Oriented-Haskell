@@ -47,9 +47,9 @@ startCodeGen (Program classes functions variables (Block statements)) symTab cla
             mapM_ (putStrLn.show) quads
             let funcMem = prepareMemoryFromFunctions (Map.toList funcMap) (Map.empty) 
             -- mapM_ (putStrLn.show) $ (sortBy (compare `on` fst) (Map.toList funcMem) )
-            -- putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList constTable) )
+            putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList constTable) )
 
-            -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList idTable) )
+            putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList idTable) )
             -- putStrLn $ ppShow $ (Map.union  memoryFromAttributes (prepareMemory idTable constTable))
             startVM quads (Map.union  memoryFromAttributes (prepareMemory idTable constTable)) (Map.empty) objMem funcMem
 
@@ -96,6 +96,62 @@ makeMemory ((str,address) : addresses ) mem =
                         in (makeMemory addresses mem1)
                     else let mem1 = (Map.insert address VMEmpty mem)
                         in (makeMemory addresses mem1)
+
+
+generateCodeFromCaseStatements :: [[Statement]] -> CodeGen [[Quadruple]]
+generateCodeFromCaseStatements  [] = return []
+generateCodeFromCaseStatements (statements : caseStatements)  = 
+                        do 
+                            cgEnv <- ask
+                            cgState <- get
+                            (stateAfterCurrentStatements,quadsAfterCurrentStatements) <- liftIO $ execRWST (generateCodeFromStatements statements) cgEnv cgState
+                            -- Aqui es importante reservar el quad num que va al final de cada lista de statements. Este es el que nos llevara al final del case
+                            let (symTab,varCounters,quadNumAfterSt) = getCGState stateAfterCurrentStatements
+                            (quadsAfterAllStatements,stateAfterAllStatements,_) <- liftIO $ runRWST (generateCodeFromCaseStatements caseStatements) cgEnv (setCGState symTab varCounters (quadNumAfterSt + 1))
+                            modify $ \s -> stateAfterAllStatements
+                            return ([quadsAfterCurrentStatements] ++ quadsAfterAllStatements)
+
+generateCodeFromCaseExpressions :: Address -> [Expression] -> CodeGen [[Quadruple]]
+generateCodeFromCaseExpressions _ [] = do
+                                            -- Aqui tenemos que hacer el quad para el goto que ira al final de todos los goto if true, este nos llevara al otherwise
+                                            cgEnv <- ask
+                                            cgState <- get
+                                            let (symTab,varCounters,quadNumAfterExps) = getCGState cgState
+                                            modify $ \s -> (s { currentQuadNum = quadNumAfterExps + 1 })
+                                            return []
+generateCodeFromCaseExpressions addressOfResultToMatch (e : exps)  = 
+                        do 
+                            cgEnv <- ask
+                            cgState <- get
+                            (stateAfterCurrentExpression,quadsAfterCurrentExpression) <- liftIO $ execRWST (expCodeGen (reduceExpression e)) cgEnv cgState
+                            let lastAddressOfExpression = (getLastAddress $ last $ quadsAfterCurrentExpression)
+                            let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNumAfterExp) = getCGState stateAfterCurrentExpression
+                            let equalityQuad = [(buildQuadrupleThreeAddresses quadNumAfterExp EQ_ (addressOfResultToMatch, lastAddressOfExpression, (boolGC)))]
+                            -- Aqui es importante reservar el quad num que va al final de cada lista de statements. Este sera el GOTO_V que nos llevara a los statements
+                            -- de esa expresion, en caso de match
+                            (quadsAfterAllExps,stateAfterAllExps,_) <- liftIO $ runRWST (generateCodeFromCaseExpressions addressOfResultToMatch  exps) cgEnv (setCGState symTab (intGC, decGC, strGC, boolGC + 1,objGC) (quadNumAfterExp + 2))
+                            modify $ \s -> stateAfterAllExps
+                            return ([(quadsAfterCurrentExpression ++ equalityQuad)] ++ quadsAfterAllExps)
+
+-- Si tengo cuadruplos de las expresiones del case, junto con sus respectivos cuadruplos de statements, ya podemos generar los gotos de cada expresion a su respectivo inicio de statements
+-- Entonces, se regresan los cuadruplos de cada expresion con su respectivo goto_if_true
+generateCodeForGotosCase :: [[Quadruple]] -> [[Quadruple]] -> [[Quadruple]]
+generateCodeForGotosCase [] [] = []
+generateCodeForGotosCase (expQ : expQs) (stQ : stQs) = 
+                                            let addressOfEquality = (getLastAddress $ last $ expQ)
+                                            in let quadNumOfGoTo = (getQuadNum $ last $ expQ) + 1
+                                            in let quadNumToJump = (getQuadNum $ head $ stQ)
+                                            in let quadGotoIfTrue = [(buildQuadForConditions quadNumOfGoTo (GOTO_IF_TRUE) addressOfEquality quadNumToJump)]
+                                            in let quadsOfNextExps = generateCodeForGotosCase expQs stQs
+                                            in ([(expQ ++  quadGotoIfTrue)] ++ quadsOfNextExps)
+
+generateCodeForGotosOutOfCase :: [[Quadruple]] -> QuadNum -> [[Quadruple]]
+generateCodeForGotosOutOfCase [] _ = []
+generateCodeForGotosOutOfCase (stQ : stQs) quadNumToJump = 
+                                            let quadNumOfGoTo = (getQuadNum $ last $ stQ) + 1
+                                            in let gotoQuad = [buildGoto quadNumOfGoTo quadNumToJump]
+                                            in let quadsOfNextSts = generateCodeForGotosOutOfCase stQs quadNumToJump
+                                            in ([(stQ ++  gotoQuad)] ++ quadsOfNextSts)
 
 
 generateCodeFromStatements :: [Statement] -> CG
@@ -152,6 +208,35 @@ generateCodeFromStatements ((ConditionStatement (IfElse expression (Block trueSt
                 modify $ \s -> (s { varCounters = varCounters})
                 modify $ \s -> (s { currentQuadNum = quadNumEndSts})
                 tell $ quadsExp ++ [gotoFQuad] ++ quadsTrueStatements ++ [gotoOutOfTrue] ++ quadsElseStatements ++ quadsStatements
+generateCodeFromStatements ((CaseStatement (Case expressionToMatch expAndStatements otherwiseStatements)) : sts) = 
+            do 
+                cgEnv <- ask
+                cgState <- get
+                let caseExpressions = (map (\f -> fst f) expAndStatements )
+                let caseStatements = (map (\f -> snd f) expAndStatements )
+                (stateQuadsExp,quadsExp) <- liftIO $ execRWST (expCodeGen (reduceExpression expressionToMatch)) cgEnv cgState
+                -- let (symTab,varCounters,quadNumAfterExp) = getCGState stateQuadsExp
+                -- liftIO $ putStrLn.ppShow $ quadsExp
+
+                (quadsAfterCaseExpressions,stateAfterCaseExpressions,_) <- liftIO $ runRWST (generateCodeFromCaseExpressions (getLastAddress  $ last $ quadsExp) caseExpressions) cgEnv stateQuadsExp
+                (quadsAfterCaseStatements,stateAfterCaseStatements,_) <- liftIO $ runRWST (generateCodeFromCaseStatements caseStatements) cgEnv stateAfterCaseExpressions
+                (stateAfterOtherwise,quadsOtherwise) <- liftIO $ execRWST (generateCodeFromStatements otherwiseStatements) cgEnv stateAfterCaseStatements
+                (stateQuadsSts,quadsStatements) <- liftIO $ execRWST (generateCodeFromStatements sts)
+                                                                               cgEnv stateAfterOtherwise
+                -- liftIO $ putStrLn.ppShow $ quadsAfterCaseExpressions
+                -- liftIO $ putStrLn.ppShow $ quadsAfterCaseStatements
+
+                let quadsExpsWithGoTosIfTrue = generateCodeForGotosCase quadsAfterCaseExpressions quadsAfterCaseStatements
+                let quadGotoOtherwise = [buildGoto ((getQuadNum $ last $ last $ quadsAfterCaseExpressions) + 2) ((getQuadNum $ head $ quadsOtherwise))]
+                let quadNumNextStatement = (getQuadNum $ head $ quadsStatements)
+                let quadsStatementsWithGotos = generateCodeForGotosOutOfCase quadsAfterCaseStatements quadNumNextStatement
+                tell $ quadsExp
+                mapM_ (\f -> tell $ f) quadsExpsWithGoTosIfTrue
+                tell $ quadGotoOtherwise
+                mapM_ (\f -> tell $ f) quadsStatementsWithGotos
+                tell $ quadsOtherwise
+                tell $ quadsStatements
+                modify $ \s -> stateQuadsSts
 
 generateCodeFromStatements ((CycleStatement (CycleWhile (While expression (Block innerSts)))) : sts) =
 

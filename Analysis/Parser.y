@@ -27,6 +27,7 @@ import System.Environment
   "if"                { TIf _ }
   "else"              { TElse _ }
   "case"              { TCase _ }
+  "end"              { TEnd _ }
   "of"                { TOf _ }
   "otherwise"         { TOtherwise _ }
   "for"               { TFor _ }
@@ -230,11 +231,11 @@ LiteralOrVariable :
       | "True" {BoolLiteral True}
 
 Block:
-    "{" BlockStatement "}" {Block $2}
+    "{" Statements "}" {Block $2}
 
-BlockStatement :
+Statements :
         {- empty -} { [] }
-      | Statement BlockStatement {$1 : $2}
+      | Statement Statements {$1 : $2}
 
 Statement :
         Assignment ";" {AssignStatement $1}
@@ -246,6 +247,7 @@ Statement :
       | Variable   {VariableStatement $1}
       | If  {ConditionStatement $1}
       | Cycle      {CycleStatement $1}
+      | Case {CaseStatement $1 }
 
 Assignment :
         var_identifier "=" Expression        {AssignmentExpression $1 $3}
@@ -317,16 +319,12 @@ If :
 --      {- empty -}  {NoElse}
 --    | "else" Block {Else $2}
 
-{-Case :
-    "case" var_identifier "of" "{" CaseBlock "otherwise" "=>" CaseStatement "end" ";" "}"
+Case :
+    "case" Expression "of" CaseBlock "otherwise" "=>" Statements "end" {Case $2 $4 $7}
 
 CaseBlock :
-
-  | LiteralOrVariable "=>" CaseStatement "end" ";" CaseBlock
-
-CaseStatement :
-    
-    | Statement CaseStatement -}
+   {- empty -} { [] }
+  | Expression "=>" Statements "end" CaseBlock { ($1,$3) : $5 }
 
 
 Cycle :

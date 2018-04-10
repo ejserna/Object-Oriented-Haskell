@@ -602,6 +602,18 @@ analyzeStatement (ConditionStatement (IfElse expression (Block statements) (Bloc
                                                                 analyzeStatements statements2 (scp - 1) 
                                                        -- De lo contrario, no se puede tener esa expresión en el if
                                                         _ -> lift $ throwError (ExpressionNotBoolean (show expression))
+
+analyzeStatement (CaseStatement (Case expressionToMatch expAndBlock otherwiseStatements)) scp =
+                                                do
+                                                    tcState <- get
+                                                    let (symTab,classSymTab,aMap) = getTCState tcState
+                                                    case (expressionTypeChecker scp expressionToMatch symTab classSymTab) of 
+                                                      Right dataTypeToMatch -> 
+                                                        do 
+                                                          analyzeCases scp expAndBlock dataTypeToMatch
+                                                          analyzeStatements otherwiseStatements (scp - 1)
+                                                      Left err -> lift $ throwError (GeneralError (show err))
+                                                
 analyzeStatement (CycleStatement (CycleWhile (While expression (Block statements)))) scp = 
                 do
                     tcState <- get
@@ -628,6 +640,21 @@ analyzeStatement (ReturnStatement (ReturnExp expression)) scp =
                 case (preProcessExpression scp expression symTab classSymTab) of
                     Just expType -> return ()
                     Nothing -> lift $ throwError (BadExpression (show expression))
+
+analyzeCases :: Scope -> [(Expression,[Statement])] -> Type -> TC
+analyzeCases scp [] _ = return ()
+analyzeCases scp ((e,statements) : es) dataTypeToMatch  = 
+      do
+        tcState <- get
+        let (symTab,classSymTab,aMap) = getTCState tcState 
+        case (expressionTypeChecker scp e symTab classSymTab) of
+          Right dataTypeOfExp -> 
+                      if (dataTypeOfExp == dataTypeToMatch) then 
+                        do 
+                          analyzeStatements statements (scp - 1)
+                          analyzeCases scp es dataTypeToMatch
+                      else lift $ throwError (GeneralError "Case head expression is different from expressions to match")
+          Left _ -> lift $ throwError (GeneralError "Case with a bad formed expression")
 
 analyzeDisplay :: Display -> Scope -> SymbolTable -> ClassSymbolTable -> Bool
 analyzeDisplay (DisplayLiteralOrVariable (VarIdentifier identifier) _) scp symTab classTab = 

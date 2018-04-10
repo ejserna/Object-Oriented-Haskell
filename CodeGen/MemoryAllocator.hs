@@ -53,7 +53,7 @@ type MemoryAllocator a =  RWST SymbolEnvironment () MemoryState IO a
 type MA =  MemoryAllocator ()
 
 maxDeepness :: Integer
-maxDeepness = 7
+maxDeepness = 6
 
 setMemoryState :: IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> FunctionMap -> VariableCounters -> LiteralCounters -> MemoryState
 setMemoryState idMap consMap objMap funcMap varCounters litCounters = MemoryState  idMap consMap objMap funcMap varCounters litCounters
@@ -100,6 +100,8 @@ fillFromStatement (ConditionStatement (IfElse expression (Block statements) (Blo
                                                                                                         fillFromExpression expression
                                                                                                         prepareConstantAddressMap statements
                                                                                                         prepareConstantAddressMap statements2
+fillFromStatement (CaseStatement (Case expressionToMatch expAndBlock otherwiseStatements)) = fillFromCase ([(expressionToMatch,otherwiseStatements)] ++ expAndBlock)
+
 fillFromStatement (CycleStatement (CycleWhile (While expression (Block statements)))) = do 
                                                                                           fillFromExpression expression
                                                                                           prepareConstantAddressMap statements
@@ -130,6 +132,14 @@ fillFromStatement (DisplayStatement displays) = fillFromDisplays displays
                                                                         fillFromExpression (ExpressionVarArray identifier arrayAccess)  
                                                                     fillFromDisplay _  = return ()
 fillFromStatement _  = return ()
+
+fillFromCase :: [(Expression,[Statement])] -> MA
+fillFromCase  [] = return ()
+fillFromCase ((e,statements) : es)  = do 
+                                        fillFromExpression e
+                                        prepareConstantAddressMap statements
+                                        fillFromCase es
+
 
 fillFromVariable :: Variable  -> MA
 fillFromVariable (VariableAssignmentLiteralOrVariable dataType identifier literalOrVariable)  =

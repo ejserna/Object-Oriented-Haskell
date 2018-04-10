@@ -140,6 +140,7 @@ data Statement
     | VariableStatement Variable
     | ConditionStatement If
     | CycleStatement Cycle
+    | CaseStatement Case
   deriving (Show,Eq)
 
 data Assignment
@@ -243,6 +244,9 @@ data If
     | IfElse Expression Block Block
   deriving(Show,Eq)
 
+data Case
+    = Case Expression [(Expression,[Statement])] [Statement]
+  deriving (Show,Eq)
 
 data Cycle
     = CycleWhile While

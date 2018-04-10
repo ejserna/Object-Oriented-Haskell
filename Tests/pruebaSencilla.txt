@@ -9,7 +9,7 @@ main{
     m1 = 1.222222;
     m2 = m1;
     read(i);
-    if (i == 100 || j == 100){
+    if (i == 100 && j == 100){
         displayLn("Es cien",i);
     }
     else{
@@ -22,7 +22,7 @@ main{
             }
         }
         else{
-            for counter in (1..100){
+            for counter in [1..100]{
                 if (counter == 99){
                     displayLn("counter es 10 ",counter);
                     read(i);

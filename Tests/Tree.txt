@@ -94,5 +94,20 @@ main{
     t.printPreorder();
     sum = t.sum;
     displayLn(sumBefore,sum);
+
+    case n of 
+        n =>  
+            displayLn("Same node");
+            case sum of 
+                2650 => 
+                    displayLn("Sum is equal to 2650");
+                end
+                otherwise => 
+                    displayLn("Sum not equal");
+                end
+        end  
+        otherwise =>  
+            displayLn("They are not the same node");
+        end    
     
 }

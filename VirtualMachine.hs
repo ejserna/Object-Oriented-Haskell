@@ -261,7 +261,8 @@ runInstruction (QuadrupleTwoAddresses quadNum NEG_ a1 a2) = do  cpuState <- get
 runInstruction (QuadrupleTwoAddresses quadNum ASSIGNMENT a1 a2) =  do 
                                                                     doAssignment a1 a2 
                                                                     modify $ \s -> (s { ip = (ip s) + 1 })
-runInstruction (QuadrupleOneAddressOneQuad quadNum GOTO_IF_FALSE a1 quadNumToJump) =  do doGotoIfFalse a1 quadNumToJump 
+runInstruction (QuadrupleOneAddressOneQuad quadNum GOTO_IF_FALSE a1 quadNumToJump) =  do doGotoIfCondition (not) a1 quadNumToJump 
+runInstruction (QuadrupleOneAddressOneQuad quadNum GOTO_IF_TRUE a1 quadNumToJump) =  do doGotoIfCondition (\l -> l == True) a1 quadNumToJump 
 runInstruction (QuadrupleOneQuad quadNum GOTO quadNumToJump) =  
                                                                 do
                                                                     cpuState <- get
@@ -699,15 +700,15 @@ insertValueInAddress val address = do
                                     tell $ [("Address " ++ show address  ++  " assignment underflow/overflow ")]
                             return ()
 
-doGotoIfFalse :: Address -> QuadNum -> VM
-doGotoIfFalse a1 quadNum = do 
+doGotoIfCondition ::(Bool -> Bool) -> Address -> QuadNum -> VM
+doGotoIfCondition f a1 quadNum = do 
                             cpuState <- get
                             let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
                             let memories = (Map.union globalMemory localMemory)
                             case (Map.lookup a1 memories) of 
                                 Just (VMBool bool) -> do
                                     -- Si es falso, entonces si hago el jump
-                                    if not bool then 
+                                    if (f bool) then 
                                         modify $ \s -> (cpuState { ip = fromIntegral quadNum })
                                     -- Si no solo sigo al siguiente cuadruplo
                                     else modify $ \s -> (cpuState { ip = currentIP + 1  })
