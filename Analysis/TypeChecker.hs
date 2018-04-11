@@ -490,13 +490,25 @@ areReturnTypesOk :: Scope -> Type -> [Statement] -> SymbolTable -> SymbolTable -
 areReturnTypesOk _ _ [] _ _ _  = False 
 areReturnTypesOk scp funcRetType ((ReturnStatement ret) : []) symTab ownFuncSymTab classTab = 
                                                 checkCorrectReturnTypes scp funcRetType ret symTab ownFuncSymTab classTab
+areReturnTypesOk scp funcRetType ((ConditionStatement (If _ (Block statements))) : []) symTab ownFuncSymTab classTab = 
+                                                areReturnTypesOk (scp - 1) funcRetType statements symTab ownFuncSymTab classTab
+areReturnTypesOk scp funcRetType ((ConditionStatement (IfElse _ (Block statements) (Block statementsElse))) : []) symTab ownFuncSymTab classTab = 
+                                                areReturnTypesOk (scp - 1) funcRetType statements symTab ownFuncSymTab classTab &&
+                                                areReturnTypesOk (scp - 1) funcRetType statementsElse symTab ownFuncSymTab classTab 
+areReturnTypesOk scp funcRetType ((CaseStatement (Case expressionToMatch expAndBlock otherwiseStatements)) : []) symTab ownFuncSymTab classTab = 
+                                                (foldl (\bool f -> (bool && (areReturnTypesOk (scp - 1) funcRetType (snd f) symTab ownFuncSymTab classTab))) True expAndBlock ) &&
+                                                (areReturnTypesOk (scp - 1) funcRetType otherwiseStatements symTab ownFuncSymTab classTab)
 areReturnTypesOk scp funcRetType ((ConditionStatement (If _ (Block statements))) : sts) symTab ownFuncSymTab classTab = 
                                                 areReturnTypesOk (scp - 1) funcRetType statements symTab ownFuncSymTab classTab &&
                                                 areReturnTypesOk (scp - 1) funcRetType sts symTab ownFuncSymTab classTab 
 areReturnTypesOk scp funcRetType ((ConditionStatement (IfElse _ (Block statements) (Block statementsElse))) : sts) symTab ownFuncSymTab classTab = 
                                                 areReturnTypesOk (scp - 1) funcRetType statements symTab ownFuncSymTab classTab &&
                                                 areReturnTypesOk (scp - 1) funcRetType statementsElse symTab ownFuncSymTab classTab &&
-                                                areReturnTypesOk (scp - 1) funcRetType sts symTab ownFuncSymTab classTab  
+                                                areReturnTypesOk (scp - 1) funcRetType sts symTab ownFuncSymTab classTab 
+areReturnTypesOk scp funcRetType ((CaseStatement (Case expressionToMatch expAndBlock otherwiseStatements)) : sts) symTab ownFuncSymTab classTab = 
+                                                (foldl (\bool f -> (bool && (areReturnTypesOk (scp - 1) funcRetType (snd f) symTab ownFuncSymTab classTab))) True expAndBlock ) &&
+                                                (areReturnTypesOk (scp - 1) funcRetType otherwiseStatements symTab ownFuncSymTab classTab)
+                                                && areReturnTypesOk (scp - 1) funcRetType sts symTab ownFuncSymTab classTab  
 areReturnTypesOk scp funcRetType (_ : sts) symTab ownFuncSymTab classTab =  areReturnTypesOk (scp - 1) funcRetType sts symTab ownFuncSymTab classTab 
 
 -- Aqui sacamos todos los returns que pueda haber, inclusive si estan en statements anidados
@@ -505,6 +517,7 @@ getReturnStatements [] = []
 getReturnStatements ((ReturnStatement returnExp) : sts) = (returnExp) : (getReturnStatements sts)
 getReturnStatements ((ConditionStatement (If _ (Block statements))) : sts) = (getReturnStatements statements) ++ (getReturnStatements sts)
 getReturnStatements ((ConditionStatement (IfElse _ (Block statements) (Block statementsElse))) : sts) = (getReturnStatements statements) ++ (getReturnStatements statementsElse) ++ (getReturnStatements sts)
+getReturnStatements ((CaseStatement (Case expressionToMatch expAndBlock otherwiseStatements)) : sts) = (foldl (\rets f -> (rets ++ (getReturnStatements (snd f)))) [] expAndBlock ) ++ (getReturnStatements otherwiseStatements) ++ (getReturnStatements sts)
 getReturnStatements ((CycleStatement (CycleWhile (While _ (Block statements)))) : sts) = (getReturnStatements statements) ++ (getReturnStatements sts)
 getReturnStatements ((CycleStatement (CycleFor (For _ _ (Block statements)))) : sts) = (getReturnStatements statements) ++ (getReturnStatements sts)
 getReturnStatements (_ : sts) =  (getReturnStatements sts)

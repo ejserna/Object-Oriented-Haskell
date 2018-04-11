@@ -12,6 +12,9 @@ main{
         j * 2 =>
             displayLn("weonazo");
         end
+        i =>
+            displayLn("weonazozozo");
+        end
         otherwise => 
             displayLn("noweon");
         end
