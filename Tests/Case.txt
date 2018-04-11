@@ -3,21 +3,11 @@ main{
     Integer j = 50;
     read(i);
     case i of 
-        1 => 
-            displayLn("weon");
-        end
-        2 + 2 => 
-            displayLn("weon2");
-        end
-        j * 2 =>
-            displayLn("weonazo");
-        end
-        i =>
-            displayLn("weonazozozo");
-        end
-        otherwise => 
-            displayLn("noweon");
-        end
+        1 => displayLn("weon");
+        2 + 2 => displayLn("weon2");
+        j * 2 => displayLn("weonazo");
+        i => displayLn("weonazozozo");
+        otherwise => displayLn("noweon");
     displayLn("siga la fiesta");
     if (j == (i / 2 ) && True){
         displayLn("vamo a darle");

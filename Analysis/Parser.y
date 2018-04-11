@@ -27,7 +27,6 @@ import System.Environment
   "if"                { TIf _ }
   "else"              { TElse _ }
   "case"              { TCase _ }
-  "end"              { TEnd _ }
   "of"                { TOf _ }
   "otherwise"         { TOtherwise _ }
   "for"               { TFor _ }
@@ -320,11 +319,13 @@ If :
 --    | "else" Block {Else $2}
 
 Case :
-    "case" Expression "of" CaseBlock "otherwise" "=>" Statements "end" {Case $2 $4 $7}
+      "case" Expression "of" CaseBlock "otherwise" "=>" "{" Statements "}" {Case $2 $4 $8}
+    | "case" Expression "of" CaseBlock "otherwise" "=>" Statement {Case $2 $4 [$7]}
 
 CaseBlock :
    {- empty -} { [] }
-  | Expression "=>" Statements "end" CaseBlock { ($1,$3) : $5 }
+  | Expression "=>" "{" Statements "}" CaseBlock { ($1,$4) : $6 }
+  | Expression "=>" Statement CaseBlock { ($1,[$3]) : $4 }
 
 
 Cycle :
