@@ -24,7 +24,7 @@ expCodeGen :: Expression -> CG
 expCodeGen (ExpressionLitVar (DecimalLiteral dec)) = do
                                                         cgEnvironment <- ask
                                                         cgState <- get
-                                                        let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                        let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                         let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                         case (Map.lookup ("<dec>" ++ (show (dec))) constTable) of
                                                             Just addressCons -> 
@@ -36,7 +36,7 @@ expCodeGen (ExpressionLitVar (DecimalLiteral dec)) = do
 expCodeGen (ExpressionLitVar (IntegerLiteral int)) = do
                                                         cgEnvironment <- ask
                                                         cgState <- get
-                                                        let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                        let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                         let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                         case (Map.lookup ("<int>" ++ (show (int))) constTable) of
                                                             Just addressCons -> 
@@ -49,7 +49,7 @@ expCodeGen (ExpressionLitVar (IntegerLiteral int)) = do
 expCodeGen (ExpressionLitVar (StringLiteral str)) = do 
                                                         cgEnvironment <- ask
                                                         cgState <- get
-                                                        let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                        let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                         let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                         case (Map.lookup ("<str>" ++ (str)) constTable) of
                                                             Just addressCons -> 
@@ -61,7 +61,7 @@ expCodeGen (ExpressionLitVar (StringLiteral str)) = do
 expCodeGen (ExpressionLitVar (BoolLiteral bool)) = do 
                                                     cgEnvironment <- ask
                                                     cgState <- get
-                                                    let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                    let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                     case (Map.lookup ("<bool>" ++ (show (bool))) constTable) of
                                                         Just addressCons -> 
@@ -74,7 +74,7 @@ expCodeGen (ExpressionLitVar (VarIdentifier id)) =
                                                 do 
                                                     cgEnvironment <- ask
                                                     cgState <- get
-                                                    let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                    let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                     case (checkDataTypeOfVar (VarIdentifier id) symTab) of
                                                         (TypePrimitive PrimitiveDouble []) -> case (Map.lookup id idTable) of
@@ -83,7 +83,7 @@ expCodeGen (ExpressionLitVar (VarIdentifier id)) =
                                                                                                                 do 
                                                                                                                     cgEnvironment <- ask
                                                                                                                     cgState <- get
-                                                                                                                    let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                                    let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                                     tell $ [(buildQuadrupleThreeAddresses quadNum ADD_ (address, addressCons, (decGC)))]
                                                                                                                     modify $ \s -> (s { varCounters = (intGC, decGC + 1, strGC, boolGC,objGC)})
@@ -94,7 +94,7 @@ expCodeGen (ExpressionLitVar (VarIdentifier id)) =
                                                                                                                 do 
                                                                                                                     cgEnvironment <- ask
                                                                                                                     cgState <- get
-                                                                                                                    let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                                    let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                                     tell $ [(buildQuadrupleThreeAddresses quadNum ADD_ (address, addressCons, (decGC)))]
                                                                                                                     modify $ \s -> (s { varCounters = (intGC, decGC + 1, strGC, boolGC,objGC)})
@@ -105,7 +105,7 @@ expCodeGen (ExpressionLitVar (VarIdentifier id)) =
                                                                                                             Just address -> do 
                                                                                                                                 cgEnvironment <- ask
                                                                                                                                 cgState <- get
-                                                                                                                                let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                                                let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                                                 let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                                                 tell $ [(buildQuadrupleThreeAddresses quadNum ADD_ (address, addressCons, (intGC)))]
                                                                                                                                 modify $ \s -> (s { varCounters = (intGC + 1, decGC, strGC, boolGC,objGC)})
@@ -115,7 +115,7 @@ expCodeGen (ExpressionLitVar (VarIdentifier id)) =
                                                                                                             Just address -> do 
                                                                                                                                 cgEnvironment <- ask
                                                                                                                                 cgState <- get
-                                                                                                                                let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                                                let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                                                 let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                                                 tell $ [(buildQuadrupleThreeAddresses quadNum ADD_ (address, addressCons, (intGC)))]
                                                                                                                                 modify $ \s -> (s { varCounters = (intGC + 1, decGC, strGC, boolGC,objGC)})
@@ -126,7 +126,7 @@ expCodeGen (ExpressionLitVar (VarIdentifier id)) =
                                                                                             Just address -> do 
                                                                                                                 cgEnvironment <- ask
                                                                                                                 cgState <- get
-                                                                                                                let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                                let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                                 let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                                 tell $ [(buildQuadrupleThreeAddresses quadNum ADD_ (address, addressCons, (strGC)))]
                                                                                                                 modify $ \s -> (s { varCounters = (intGC, decGC, strGC + 1, boolGC,objGC)})
@@ -137,7 +137,7 @@ expCodeGen (ExpressionLitVar (VarIdentifier id)) =
                                                                                         Just address -> do 
                                                                                                             cgEnvironment <- ask
                                                                                                             cgState <- get
-                                                                                                            let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                            let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                             let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                             tell $ [(buildQuadrupleThreeAddresses quadNum EQ_ (address, addressCons, (boolGC)))]
                                                                                                             modify $ \s -> (s { varCounters = (intGC, decGC, strGC, boolGC + 1,objGC)})
@@ -147,7 +147,7 @@ expCodeGen (ExpressionLitVar (VarIdentifier id)) =
                                                                                     do 
                                                                                         cgEnvironment <- ask
                                                                                         cgState <- get
-                                                                                        let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                        let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                         let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                         tell $ [(buildQuadrupleTwoAddresses quadNum ASSIGNMENT (addressCons, objGC ))]
                                                                                         modify $ \s -> (s { varCounters = (intGC, decGC, strGC, boolGC,objGC + 1)})
@@ -174,7 +174,7 @@ expCodeGen (ExpressionNot exp1) =
                                 expCodeGen exp1
                                 cgEnvironment <- ask
                                 cgState <- get
-                                let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                 let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                 tell $ [(buildQuadrupleTwoAddresses quadNum NOT_ (boolGC, boolGC))]
                                 modify $ \s -> (s { varCounters = (intGC, decGC, strGC, boolGC + 1,objGC)})
@@ -184,9 +184,9 @@ expCodeGen (ExpressionNeg exp1) =
                                 do 
                                     cgEnvironment <- ask
                                     cgState <- get
-                                    let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                    let (classSymTab,_,idTable,constTable,_,_,aMap) = getCGEnvironment cgEnvironment
                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
-                                    let typeExp1 = (expressionTypeChecker (-100000000000000) exp1 symTab classSymTab)
+                                    let typeExp1 = (expressionTypeChecker (-100000000000000) exp1 symTab classSymTab aMap)
                                     expCodeGen exp1
                                     cgEnvironment <- ask
                                     cgState <- get
@@ -212,7 +212,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) =
                                                                                     (_,quads) <- listen $ expCodeGen exp1
                                                                                     cgEnvironment <- ask
                                                                                     cgState <- get
-                                                                                    let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                    let (classSymTab,_,idTable,constTable,_,_,aMap) = getCGEnvironment cgEnvironment
                                                                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState 
                                                                                     case (Map.lookup identifier symTab) of
                                                                                         Just (SymbolVar (TypePrimitive PrimitiveString (("[",size,"]") : [] )) _ _) ->
@@ -299,7 +299,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression rowsIndexExp) 
                                                                                                 (_,quadsColExp) <- listen $ expCodeGen colsIndexExp  
                                                                                                 cgEnvironment <- ask
                                                                                                 cgState <- get
-                                                                                                let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                 let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState 
                                                                                                 case (Map.lookup identifier symTab) of
                                                                                                     Just (SymbolVar (TypePrimitive PrimitiveString (("[",rows,"]") : ("[",cols,"]") : [] )) _ _) ->
@@ -429,10 +429,10 @@ genQuadrupleArithmetic exp1 exp2 op =
                     do 
                         cgEnvironment <- ask
                         cgState <- get
-                        let (classSymTab,_,_,_,_,_) = getCGEnvironment cgEnvironment
+                        let (classSymTab,_,_,_,_,_,aMap) = getCGEnvironment cgEnvironment
                         let (symTab,_,_) = getCGState cgState
-                        let typeExp1 = (expressionTypeChecker (-100000000000000) exp1 symTab classSymTab)
-                        let typeExp2 = (expressionTypeChecker (-100000000000000) exp2 symTab classSymTab)
+                        let typeExp1 = (expressionTypeChecker (-100000000000000) exp1 symTab classSymTab aMap)
+                        let typeExp2 = (expressionTypeChecker (-100000000000000) exp2 symTab classSymTab aMap)
                         (_,quadsExp1) <- listen $ expCodeGen exp1
                         cgState <- get
                         let (_,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
@@ -488,10 +488,10 @@ genQuadrupleRelational exp1 exp2 op =
     do 
         cgEnvironment <- ask
         cgState <- get
-        let (classSymTab,_,_,_,_,_) = getCGEnvironment cgEnvironment
+        let (classSymTab,_,_,_,_,_,aMap) = getCGEnvironment cgEnvironment
         let (symTab,_,_) = getCGState cgState
-        let typeExp1 = (expressionTypeChecker (-100000000000000) exp1 symTab classSymTab)
-        let typeExp2 = (expressionTypeChecker (-100000000000000) exp2 symTab classSymTab)
+        let typeExp1 = (expressionTypeChecker (-100000000000000) exp1 symTab classSymTab aMap)
+        let typeExp2 = (expressionTypeChecker (-100000000000000) exp2 symTab classSymTab aMap)
         (_,quadsExp1) <- listen $ expCodeGen exp1
         cgState <- get
         let (_,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
@@ -543,7 +543,7 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                             do 
                                 cgEnv <- ask
                                 cgState <- get
-                                let (_,_,idTable,_,funcMap,currentModule) = getCGEnvironment cgEnv
+                                let (_,_,idTable,_,funcMap,currentModule,_) = getCGEnvironment cgEnv
                                 let (symTab,_,quadNum) = getCGState cgState 
                                 case t of
                                     (TypeClassId classId accessExpression) ->
@@ -618,7 +618,7 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                                                             -- tell $ quads
                                                             cgEnvironment <- ask
                                                             cgState <- get
-                                                            let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                            let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                             let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                             case prim of 
                                                                 PrimitiveDouble ->
@@ -739,7 +739,7 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet 
                             do 
                                 cgEnv <- ask
                                 cgState <- get
-                                let (classSymTab,_,idTable,_,funcMap,currentModule) = getCGEnvironment cgEnv
+                                let (classSymTab,_,idTable,_,funcMap,currentModule,_) = getCGEnvironment cgEnv
                                 let (symTab,_,_) = getCGState cgState
                                 -- liftIO $ putStrLn.ppShow $ funcMap
                                 -- liftIO $ putStrLn.ppShow $ currentModule ++ funcIdentifier
@@ -827,7 +827,7 @@ generateCodeFuncCall (FunctionCallObjMem (ObjectMember identifier funcIdentifier
                             do 
                                 cgEnv <- ask
                                 cgState <- get
-                                let (classSymTab,objMap,idTable,_,funcMap,_) = getCGEnvironment cgEnv
+                                let (classSymTab,objMap,idTable,_,funcMap,_,_) = getCGEnvironment cgEnv
                                 let (symTab,_,_) = getCGState cgState
                                 
                                 -- liftIO $ putStrLn.ppShow $ currentModule ++ funcIdentifier

@@ -25,12 +25,12 @@ import  System.Console.Pretty (Color (..), Style (..), bgColor, color,
                                         style, supportsPretty)
 
 
-startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> FunctionMap -> String -> IO()
-startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters1 idTable constTable objMap funcMap currModule =
+startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> FunctionMap -> String -> AncestorsMap -> IO()
+startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters1 idTable constTable objMap funcMap currModule aMap =
             do 
             let cgState = (setCGState symTab varCounters1 0)
             -- putStrLn.ppShow $ funcMap
-            let cgEnv = setCGEnvironment classSymTab objMap idTable constTable funcMap currModule
+            let cgEnv = setCGEnvironment classSymTab objMap idTable constTable funcMap currModule aMap
             (newCgState,quads) <-  execRWST (generateCodeFromStatements statements) cgEnv cgState
             let (int,dec,str,bool,obj) = (varCounters newCgState)
             -- let ((int,dec,str,bool,obj),quads,_,newObjMap) =  generateCodeFromStatements statements 0 symTab classSymTab varCounters idTable constTable objMap
@@ -48,7 +48,7 @@ startCodeGen (Program classes functions variables (Block statements)) symTab cla
             let funcMem = prepareMemoryFromFunctions (Map.toList funcMap) (Map.empty) 
             -- mapM_ (putStrLn.show) $ (sortBy (compare `on` fst) (Map.toList funcMem) )
             putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList constTable) )
-
+            -- putStrLn $ ppShow $ (Map.toList objMap)
             putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList idTable) )
             -- putStrLn $ ppShow $ (Map.union  memoryFromAttributes (prepareMemory idTable constTable))
             startVM quads (Map.union  memoryFromAttributes (prepareMemory idTable constTable)) (Map.empty) objMem funcMem
@@ -294,7 +294,7 @@ generateCodeReturnFromFunction (ExpressionLitVar (VarIdentifier identifierExp)) 
                                                  do 
                                                     cgEnv <- ask
                                                     cgState <- get
-                                                    let (_,_,idTable,_,funcMap,currentModule) = getCGEnvironment cgEnv
+                                                    let (_,_,idTable,_,funcMap,currentModule, aMap) = getCGEnvironment cgEnv
                                                     let (symTab,_,quadNum) = getCGState cgState 
                                                     case (Map.lookup identifierExp symTab) of 
                                                         Just (SymbolVar (TypePrimitive prim accessExpression) _ _) ->
@@ -351,7 +351,7 @@ generateCodeFromStatement (ReadStatement (Reading identifier))  =
     do 
         cgEnv <- ask
         cgState <- get
-        let (_,_,idTable,_,_,_) = getCGEnvironment cgEnv
+        let (_,_,idTable,_,_,_,_) = getCGEnvironment cgEnv
         let (symTab,_,quadNum) = getCGState cgState
         case (Map.lookup identifier idTable) of
             Just address ->
@@ -384,7 +384,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                             do 
                                                                                 cgEnv <- ask
                                                                                 cgState <- get
-                                                                                let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                                                                                let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
                                                                                 let (symTab,_,quadNum) = getCGState cgState
                                                                                 case (Map.lookup var symTab) of 
                                                                                     Just (SymbolVar (TypePrimitive prim accessExpression) _ _) ->
@@ -414,7 +414,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                             do 
                                                                                 cgEnv <- ask
                                                                                 cgState <- get
-                                                                                let (classSymTab,objMap,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                                                                                let (classSymTab,objMap,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
                                                                                 let (symTab,_,quadNum) = getCGState cgState
                                                                                 case (Map.lookup object symTab) of 
                                                                                     Just (SymbolVar (TypeClassId classId _) _ _) ->
@@ -469,7 +469,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                         do 
                                                                             cgEnv <- ask
                                                                             cgState <- get
-                                                                            let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                                                                            let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
                                                                             let (symTab,_,quadNum) = getCGState cgState
                                                                             case (Map.lookup identifierArray symTab) of 
                                                                                 Just (SymbolVar (TypeClassId classId (("[",size,"]") : []) ) _ _) ->
@@ -567,7 +567,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                         do 
                                                                             cgEnv <- ask
                                                                             cgState <- get
-                                                                            let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                                                                            let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
                                                                             let (symTab,_,quadNum) = getCGState cgState
                                                                             case (Map.lookup ("<str>" ++ str) constTable) of
                                                                                 Just address -> do
@@ -577,7 +577,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                         do 
                                                                             cgEnv <- ask
                                                                             cgState <- get
-                                                                            let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                                                                            let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
                                                                             let (symTab,_,quadNum) = getCGState cgState
                                                                             case ((Map.lookup ("<int>" ++ show(int)) constTable)) of
                                                                                 Just address -> do
@@ -587,7 +587,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                         do 
                                                                             cgEnv <- ask
                                                                             cgState <- get
-                                                                            let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                                                                            let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
                                                                             let (symTab,_,quadNum) = getCGState cgState
                                                                             case ((Map.lookup ("<dec>" ++ show(dec)) constTable)) of
                                                                                 Just address -> do 
@@ -597,7 +597,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                         do 
                                                                             cgEnv <- ask
                                                                             cgState <- get
-                                                                            let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                                                                            let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
                                                                             let (symTab,_,quadNum) = getCGState cgState
                                                                             case ((Map.lookup ("<bool>" ++ show(bool)) constTable)) of
                                                                                 Just address -> do 
@@ -638,7 +638,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionLitVar (V
         do 
             cgEnv <- ask
             cgState <- get
-            let (classSymTab,objMap,idTable,constTable,_,_) = getCGEnvironment cgEnv
+            let (classSymTab,objMap,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
             let (symTab,_,quadNum) = getCGState cgState
             case (Map.lookup identifier symTab) of 
                 Just (SymbolVar (TypeClassId classIdentifier []) _ _) -> 
@@ -681,7 +681,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray 
                 do 
                     cgEnv <- ask
                     cgState <- get
-                    let (classSymTab,objMap,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                    let (classSymTab,objMap,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
                     let (symTab,_,quadNum) = getCGState cgState
                     case (Map.lookup identifierArray symTab) of 
                         Just (SymbolVar (TypeClassId _ (("[",size,"]") : [] )) _ _) ->
@@ -694,7 +694,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray 
                                                                         (_,quads) <- listen $ expCodeGen (reduceExpression arrayIndexExp)
                                                                         cgEnvironment <- ask
                                                                         cgState <- get
-                                                                        let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                        let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                         let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState 
                                                                         let boundQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quads), address ))])
                                                                         let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quads), intGC))]
@@ -711,7 +711,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray 
                                                 (_,quadsExp) <- listen $ expCodeGen (reduceExpression (ExpressionVarArray identifierArray ((ArrayAccessExpression arrayIndexExp) : []))) 
                                                 cgEnv <- ask
                                                 cgState <- get
-                                                let (classSymTab,objMap,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                                                let (classSymTab,objMap,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
                                                 let (symTab,_,quadNum) = getCGState cgState
                                                 let quadAssignment = ([(buildQuadrupleTwoAddresses quadNum ASSIGNMENT ((getLastAddress $ last $ quadsExp),addressIdentifier))])
                                                 tell $ quadAssignment
@@ -721,7 +721,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray 
                 do 
                     cgEnv <- ask
                     cgState <- get
-                    let (classSymTab,objMap,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                    let (classSymTab,objMap,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
                     let (symTab,_,quadNum) = getCGState cgState
                     case (Map.lookup identifierArray symTab) of
                         Just (SymbolVar (TypeClassId _ (("[",rows,"]") : ("[",cols,"]") : [] )) _ _) ->
@@ -738,7 +738,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray 
                                                                     (_,quadsColExp) <- listen $ expCodeGen (reduceExpression colsIndexExp)  
                                                                     cgEnvironment <- ask
                                                                     cgState <- get
-                                                                    let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                    let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                     let boundRowQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsRowExp), addressRowsSize ))])
                                                                     let boundColQuad = ([(buildQuadrupleTwoAddresses (quadNum + 1) BOUNDS ((getLastAddress $ last $ quadsColExp), addressColsSize ))])
@@ -757,7 +757,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray 
                                             (_,quadsExp) <- listen $ expCodeGen (reduceExpression (ExpressionVarArray identifierArray ((ArrayAccessExpression rowsIndexExp) : (ArrayAccessExpression colsIndexExp) : []))) 
                                             cgEnv <- ask
                                             cgState <- get
-                                            let (classSymTab,objMap,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                                            let (classSymTab,objMap,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
                                             let (symTab,_,quadNum) = getCGState cgState
                                             let quadAssignment = ([(buildQuadrupleTwoAddresses quadNum ASSIGNMENT ((getLastAddress $ last $ quadsExp),addressIdentifier))])
                                             tell $ quadAssignment
@@ -768,7 +768,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionFuncCall 
                                                             do 
                                                                 cgEnv <- ask
                                                                 cgState <- get
-                                                                let (classSymTab,objMap,idTable,constTable,_,_) = getCGEnvironment cgEnv
+                                                                let (classSymTab,objMap,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
                                                                 let (symTab,_,quadNum) = getCGState cgState
                                                                 case (Map.lookup identifier symTab) of 
                                                                     Just (SymbolVar (TypeClassId classIdentifier []) _ _) -> 
@@ -810,7 +810,7 @@ generateCodeFromAssignment (AssignmentExpression identifier expression)  =
         (_,quadsExp) <- listen $ expCodeGen (reduceExpression expression) 
         cgEnv <- ask
         cgState <- get
-        let (classSymTab,objMap,idTable,constTable,_,_) = getCGEnvironment cgEnv
+        let (classSymTab,objMap,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
         let (symTab,_,quadNum) = getCGState cgState
         case (Map.lookup identifier idTable) of
             Just address -> case (Map.lookup identifier symTab) of
@@ -837,7 +837,7 @@ generateCodeFromAssignment (AssignmentObjectMember identifier (ObjectMember obje
             cgEnv <- ask
             cgState <- get
             let (symTab,varCounters,quadNum) = getCGState cgState
-            let (classSymTab,objMap,idTable,funcMap,currentModule,_) = getCGEnvironment cgEnv
+            let (classSymTab,objMap,idTable,funcMap,currentModule,_,_) = getCGEnvironment cgEnv
             case (Map.lookup identifier symTab) of
                 Just (SymbolVar (TypeClassId classIdentifier []) _ _) ->
                     case (Map.lookup objectIdentifier idTable) of 
@@ -902,7 +902,7 @@ generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objec
                                 cgEnv <- ask
                                 cgState <- get
                                 let (symTab,varCounters,quadNum) = getCGState cgState
-                                let (classSymTab,objMap,idTable,constTable,funcMap,currentModule) = getCGEnvironment cgEnv  
+                                let (classSymTab,objMap,idTable,constTable,funcMap,currentModule, aMap) = getCGEnvironment cgEnv  
                                 case (Map.lookup objectIdentifier idTable) of 
                                     Just objectAddress -> 
                                         case (Map.lookup objectAddress objMap) of 
@@ -929,7 +929,7 @@ generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objec
                                                                                                         let symbolVarAttr = (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic)
                                                                                                         let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
                                                                                                         (stateAfterAttributesInserted,quadruples) <- liftIO $ execRWST (generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression))
-                                                                                                                                                             (setCGEnvironment classSymTab objMap tempIdTable constTable funcMap currentModule)
+                                                                                                                                                             (setCGEnvironment classSymTab objMap tempIdTable constTable funcMap currentModule aMap)
                                                                                                                                                              (setCGState newSymTab varCounters quadNum)
                                                                                                         let (_,newVarCounters,newQuadNum) = getCGState stateAfterAttributesInserted
                                                                                                         modify $ \s -> (s { currentQuadNum = newQuadNum})
@@ -944,7 +944,7 @@ generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objec
                                                                                                         let symbolVarAttr = (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)
                                                                                                         let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
                                                                                                         (stateAfterAttributesInserted,quadruples) <- liftIO $ execRWST (generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression))
-                                                                                                                                                             (setCGEnvironment classSymTab objMap tempIdTable constTable funcMap currentModule)
+                                                                                                                                                             (setCGEnvironment classSymTab objMap tempIdTable constTable funcMap currentModule aMap)
                                                                                                                                                              (setCGState newSymTab varCounters quadNum)
                                                                                                         let (_,newVarCounters,newQuadNum) = getCGState stateAfterAttributesInserted
                                                                                                         modify $ \s -> (s { currentQuadNum = newQuadNum})
@@ -969,7 +969,7 @@ generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objec
                                                                                                             let symbolVarAttr = (SymbolVar (TypeClassId c (("[",size,"]") : [])) scp isPublic)
                                                                                                             let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
                                                                                                             (stateAfterAttributesInserted,quadruples) <- liftIO $ execRWST (generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression))
-                                                                                                                                                                 (setCGEnvironment classSymTab objMap tempIdTable constTable funcMap currentModule)
+                                                                                                                                                                 (setCGEnvironment classSymTab objMap tempIdTable constTable funcMap currentModule aMap)
                                                                                                                                                                  (setCGState newSymTab varCounters quadNum)
                                                                                                             let (_,newVarCounters,newQuadNum) = getCGState stateAfterAttributesInserted
                                                                                                             modify $ \s -> (s { currentQuadNum = newQuadNum})
@@ -984,7 +984,7 @@ generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objec
                                                                                                         let symbolVarAttr = (SymbolVar (TypeClassId c (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)
                                                                                                         let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
                                                                                                         (stateAfterAttributesInserted,quadruples) <- liftIO $ execRWST (generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression))
-                                                                                                                                                             (setCGEnvironment classSymTab objMap tempIdTable constTable funcMap currentModule)
+                                                                                                                                                             (setCGEnvironment classSymTab objMap tempIdTable constTable funcMap currentModule aMap)
                                                                                                                                                              (setCGState newSymTab varCounters quadNum)
                                                                                                         let (_,newVarCounters,newQuadNum) = getCGState stateAfterAttributesInserted
                                                                                                         modify $ \s -> (s { currentQuadNum = newQuadNum})
@@ -996,7 +996,7 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                     cgEnv <- ask
                                                     cgState <- get
                                                     let (symTab,varCounters,quadNum) = getCGState cgState
-                                                    let (classSymTab,objMap,idTable,constTable,funcMap,currentModule) = getCGEnvironment cgEnv 
+                                                    let (classSymTab,objMap,idTable,constTable,funcMap,currentModule, aMap) = getCGEnvironment cgEnv 
                                                     case (Map.lookup identifier symTab) of
                                                         Just (SymbolVar (TypeClassId _ (("[",size,"]") : [] )) _ _) ->
                                                             case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
@@ -1008,7 +1008,7 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                                                                         (_,quads) <- listen $ expCodeGen (reduceExpression arrayIndexExp)
                                                                                                         cgEnvironment <- ask
                                                                                                         cgState <- get
-                                                                                                        let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                        let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                         let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState 
                                                                                                         let boundQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quads), address ))])
                                                                                                         let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quads), intGC))]
@@ -1026,7 +1026,7 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                                                                         (_,quads) <- listen $ expCodeGen (reduceExpression arrayIndexExp)
                                                                                                         cgEnvironment <- ask
                                                                                                         cgState <- get
-                                                                                                        let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                        let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                         let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState 
                                                                                                         let boundQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quads), address ))])
                                                                                                         let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quads), intGC))]
@@ -1039,7 +1039,7 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                     cgEnv <- ask
                                                     cgState <- get
                                                     let (symTab,varCounters,quadNum) = getCGState cgState
-                                                    let (classSymTab,objMap,idTable,constTable,funcMap,currentModule) = getCGEnvironment cgEnv 
+                                                    let (classSymTab,objMap,idTable,constTable,funcMap,currentModule, aMap) = getCGEnvironment cgEnv 
                                                     case (Map.lookup identifier symTab) of
                                                         Just (SymbolVar (TypeClassId _ (("[",rows,"]") : ("[",cols,"]")  : [] )) _ _) ->
                                                             case (Map.lookup ("<int>" ++ (show $ rows)) constTable) of
@@ -1055,7 +1055,7 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                                                                     (_,quadsColExp) <- listen $ expCodeGen (reduceExpression colsIndexExp)  
                                                                                                     cgEnvironment <- ask
                                                                                                     cgState <- get
-                                                                                                    let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                    let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                     let boundRowQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsRowExp), addressRowsSize ))])
                                                                                                     let boundColQuad = ([(buildQuadrupleTwoAddresses (quadNum + 1) BOUNDS ((getLastAddress $ last $ quadsColExp), addressColsSize ))])
@@ -1082,7 +1082,7 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                                                                             (_,quadsColExp) <- listen $ expCodeGen (reduceExpression colsIndexExp)  
                                                                                                             cgEnvironment <- ask
                                                                                                             cgState <- get
-                                                                                                            let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                            let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                             let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                             let boundRowQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsRowExp), addressRowsSize ))])
                                                                                                             let boundColQuad = ([(buildQuadrupleTwoAddresses (quadNum + 1) BOUNDS ((getLastAddress $ last $ quadsColExp), addressColsSize ))])
@@ -1100,7 +1100,7 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                         cgEnv <- ask
                                                         cgState <- get
                                                         let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
-                                                        let (classSymTab,objMap,idTable,constTable,funcMap,currentModule) = getCGEnvironment cgEnv
+                                                        let (classSymTab,objMap,idTable,constTable,funcMap,currentModule, aMap) = getCGEnvironment cgEnv
                                                         case (Map.lookup identifier symTab) of 
                                                                 Just (SymbolVar (TypeClassId classId (("[",size,"]") : []) ) _ _) ->
                                                                     case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
@@ -1143,7 +1143,7 @@ generateCodeFromAssignment (AssignmentArrayExpression identifier ((ArrayAccessEx
                                                         cgEnv <- ask
                                                         cgState <- get
                                                         let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
-                                                        let (classSymTab,objMap,idTable,constTable,funcMap,currentModule) = getCGEnvironment cgEnv
+                                                        let (classSymTab,objMap,idTable,constTable,funcMap,currentModule, aMap) = getCGEnvironment cgEnv
                                                         case (Map.lookup identifier symTab) of
                                                             Just (SymbolVar (TypePrimitive _ (("[",rows,"]") : ("[",cols,"]")  : [] )) _ _) ->
                                                                 case (Map.lookup ("<int>" ++ (show $ rows)) constTable) of
@@ -1210,7 +1210,7 @@ generateQuadruplesAssignmentClasses identifier1 identifier2  =
                                             cgEnv <- ask
                                             cgState <- get
                                             let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
-                                            let (classSymTab,objMap,idTable,constTable,funcMap,currentModule) = getCGEnvironment cgEnv
+                                            let (classSymTab,objMap,idTable,constTable,funcMap,currentModule, aMap) = getCGEnvironment cgEnv
                                             case (Map.lookup identifier1 idTable) of 
                                                 Just addressReceiver -> 
                                                     case (Map.lookup identifier2 idTable) of
@@ -1248,14 +1248,14 @@ generateCodeFromVariableStatement (VariableAssignmentLiteralOrVariable _ identif
 generateCodeFromVariableStatement (VariableAssignment1D _ identifier literalOrVariables) = 
         do 
             cgEnv <- ask
-            let (_,_,idTable,_,_,_) = getCGEnvironment cgEnv
+            let (_,_,idTable,_,_,_,_) = getCGEnvironment cgEnv
             case (Map.lookup (identifier ++ "[0]") idTable) of
                 Just address -> generateAssignmentArray1D literalOrVariables address
 generateCodeFromVariableStatement (VariableAssignment2D _ identifier listLiteralOrVariables) = 
         do 
             cgEnv <- ask
             cgState <- get
-            let (_,_,idTable,_,_,_) = getCGEnvironment cgEnv
+            let (_,_,idTable,_,_,_,_) = getCGEnvironment cgEnv
             let (symTab,_,_) = getCGState cgState
             case (Map.lookup (identifier ++ "[0][0]") idTable) of
                 Just address ->
@@ -1275,7 +1275,7 @@ generateAssignmentArray1D  (litOrVar : litOrVars) address =
         do 
             cgEnv <- ask
             cgState <- get
-            let (_,_,idTable,_,_,_) = getCGEnvironment cgEnv
+            let (_,_,idTable,_,_,_,_) = getCGEnvironment cgEnv
             let (symTab,_,quadNum) = getCGState cgState
             case litOrVar of
                 (VarIdentifier identifier) ->

@@ -49,8 +49,8 @@ data CGEnvironment = CGEnvironment
                     idAddressMap :: IdentifierAddressMap, 
                     constAddressMap :: ConstantAddressMap,
                     funcMap :: FunctionMap,
-                    currentModule :: String -- Nos dice cuál es el módulo actual. Main, class Humano, etc...
-                    
+                    currentModule :: String,
+                    cgAMap :: AncestorsMap -- Nos dice cuál es el módulo actual. Main, class Humano, etc...
                 }
                 deriving (Show)
 
@@ -65,14 +65,14 @@ data CGState = CGState
 setCGState :: SymbolTable -> VariableCounters -> QuadNum -> CGState
 setCGState s v q = CGState s v q
 
-setCGEnvironment :: ClassSymbolTable -> ObjectAddressMap -> IdentifierAddressMap -> ConstantAddressMap -> FunctionMap -> String -> CGEnvironment
-setCGEnvironment c om im cm fm m = CGEnvironment c om im cm fm m
+setCGEnvironment :: ClassSymbolTable -> ObjectAddressMap -> IdentifierAddressMap -> ConstantAddressMap -> FunctionMap -> String -> AncestorsMap -> CGEnvironment
+setCGEnvironment c om im cm fm m a = CGEnvironment c om im cm fm m a
 
 getCGState :: CGState -> (SymbolTable,VariableCounters,QuadNum)
 getCGState (CGState s v q) = (s,v,q) 
 
-getCGEnvironment :: CGEnvironment -> (ClassSymbolTable,ObjectAddressMap,IdentifierAddressMap,ConstantAddressMap,FunctionMap,String)
-getCGEnvironment (CGEnvironment c om im cm fm m) = (c,om,im,cm,fm,m)
+getCGEnvironment :: CGEnvironment -> (ClassSymbolTable,ObjectAddressMap,IdentifierAddressMap,ConstantAddressMap,FunctionMap,String,AncestorsMap)
+getCGEnvironment (CGEnvironment c om im cm fm m a) = (c,om,im,cm,fm,m,a)
 
 type CodeGen a =  RWST CGEnvironment [Quadruple] CGState IO a
 

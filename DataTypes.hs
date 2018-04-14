@@ -7,6 +7,7 @@ import Quadruple
 -- Esta sección tiene las producciones semánticas para producir el árbol abstracto de sintaxis 
 type Identifier = String
 type ClassIdentifier = String
+type AncestorsMap = Map.HashMap ClassIdentifier [ClassIdentifier]
 
 data Program 
     = Program [Class] [Function] [Variable] Block

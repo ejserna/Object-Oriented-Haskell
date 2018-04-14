@@ -1,0 +1,54 @@
+class Humano{
+    [+] Integer edad;
+    [+] Integer z;
+    [+] Integer z3;
+    [+] Integer z1;
+    [+] Integer z2;
+    [+] speak => Nothing{
+        displayLn("Human");
+    }
+}
+
+class Persona : Humano{
+    [+] Integer hijos;
+    [+] Integer hijos1;
+    [+] Integer hijos2;
+    [+] Integer hijos3;
+    [+] speak => Nothing{
+        displayLn("Person");
+    }
+}
+
+class Estudiante : Persona{
+    [+] Integer materias;
+    [+] Integer materias2;
+    [+] Integer materias5;
+    [+] Integer materias4;
+    [+] Integer materias3;
+    [+] speak => Nothing{
+        displayLn("Estudiante");
+    }
+}
+
+
+
+
+
+main{
+    Humano h;
+    Persona p;
+    Estudiante e;
+    e.hijos = 2;
+    e.materias = 3;
+    e.edad = 100;
+    e.z = 21111;
+    e.z2 = 921111;
+    p = e;
+    p.z = 11111;
+    h = e;
+    h.speak();
+    p.speak();
+    e.speak();
+    displayLn(p,h.z2);
+    
+}

@@ -33,7 +33,7 @@ data Symbol = SymbolVar
                 , isPublic :: Maybe Bool
                 , symbolTable :: SymbolTable
                 }
-
+                
 instance Show Symbol where
     show sym = case sym of
         SymbolVar dt scope isPublic  -> "SYMVAR  " ++ intercalate ", " [ppShow dt, show scope, show isPublic]
