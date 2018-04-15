@@ -745,7 +745,7 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet 
                                 -- liftIO $ putStrLn.ppShow $ currentModule ++ funcIdentifier
 
                                 case (Map.lookup (currentModule ++ funcIdentifier) funcMap) of 
-                                    Just (FunctionData _ paramsAddressesFunc idMapFunc objMapFunc) -> 
+                                    Just (FunctionData _ paramsAddressesFunc idMapFunc objMapFunc typeMap) -> 
                                             do 
                                                 case (Map.lookup funcIdentifier symTab) of 
                                                     Just (SymbolFunction params returnType _ _ _ _ _) ->
@@ -835,7 +835,7 @@ generateCodeFuncCall (FunctionCallObjMem (ObjectMember identifier funcIdentifier
                                 case (Map.lookup identifier symTab) of 
                                     Just (SymbolVar (TypeClassId classId []) _ _) ->
                                         case (Map.lookup (("_" ++ classId ++ "_") ++ funcIdentifier) funcMap) of 
-                                            Just (FunctionData _ paramsAddressesFunc idMapFunc objMapFunc) -> 
+                                            Just (FunctionData _ paramsAddressesFunc idMapFunc objMapFunc typeMap) -> 
                                                     do 
                                                         case (Map.lookup classId classSymTab) of 
                                                             Just symTabOfClass ->
@@ -858,7 +858,8 @@ generateCodeFuncCall (FunctionCallObjMem (ObjectMember identifier funcIdentifier
                                                                             let addressesAttributesOfCaller = getAddressesOfAttributesInObjMap identifier ("_" ++ classId ++ "_") idTable objMap classSymTab
                                                                             let addressesAttributesOfCallingFunction = getAddressesOfAttributesInClassFunction ("_" ++ classId ++ "_") idMapFunc classSymTab
                                                                             let zippedAddresses = zip addressesAttributesOfCaller addressesAttributesOfCallingFunction
-                                                                            let funcCallQuad = buildFuncCall quadNum zippedAddresses quadsParams (("_" ++ classId ++ "_") ++ funcIdentifier)
+                                                                            let addressOfObject = (fromJust (Map.lookup identifier idTable))
+                                                                            let funcCallQuad = buildFuncCall quadNum zippedAddresses quadsParams ((show addressOfObject) ++ ("_" ++ classId ++ "_") ++ funcIdentifier)
                                                                             tell $ [funcCallQuad]
                                                                             case addressesToSet of 
                                                                                 [] -> do 

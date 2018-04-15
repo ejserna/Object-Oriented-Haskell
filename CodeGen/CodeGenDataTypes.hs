@@ -30,18 +30,22 @@ type IdentifierAddressMap = Map.HashMap Identifier Address
 type ConstantAddressMap = Map.HashMap String Address
 type ObjectAddressMap = Map.HashMap Address IdentifierAddressMap
 type FunctionMap = Map.HashMap String FunctionData
+-- El typemap sirve para saber qué dirección de objeto es qué tipo. Esto sirve para tener
+-- polimorfismo en ejecución
+type TypeMap = Map.HashMap Address String
 
 data FunctionData = FunctionData
                 {   instructions :: [Quadruple], 
                     paramsAddresses :: [Address], -- Params tiene una lista de direcciones que corresponden a direcciones locales de la funcion. Es decir
                                                   -- Nos dicen cómo están representados internamente en la función
                     funcIdMap :: IdentifierAddressMap,
-                    funcObjMap :: ObjectAddressMap              
+                    funcObjMap :: ObjectAddressMap,
+                    funcTypeMap :: TypeMap              
                 }
 
 instance Show FunctionData where
     show fd = case fd of
-        FunctionData instructions paramsAddresses funcIdMap funcObjMap  -> "Function Data  "  ++ intercalate ", " [ppShow instructions, ppShow paramsAddresses, ppShow funcIdMap, ppShow funcObjMap] ++ "\n\n\n"
+        FunctionData instructions paramsAddresses funcIdMap funcObjMap funcTypeMap  -> "Function Data  "  ++ intercalate ", " [ppShow instructions, ppShow paramsAddresses, ppShow funcIdMap, ppShow funcObjMap, ppShow funcTypeMap] ++ "\n\n\n"
 
 data CGEnvironment = CGEnvironment
                 {   classTab :: ClassSymbolTable,
@@ -49,8 +53,8 @@ data CGEnvironment = CGEnvironment
                     idAddressMap :: IdentifierAddressMap, 
                     constAddressMap :: ConstantAddressMap,
                     funcMap :: FunctionMap,
-                    currentModule :: String,
-                    cgAMap :: AncestorsMap -- Nos dice cuál es el módulo actual. Main, class Humano, etc...
+                    currentModule :: String, -- Nos dice cuál es el módulo actual. Main, class Humano, etc...
+                    cgAMap :: AncestorsMap 
                 }
                 deriving (Show)
 

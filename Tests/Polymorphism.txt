@@ -30,25 +30,50 @@ class Estudiante : Persona{
     }
 }
 
+factorial => Integer :: Integer n{
+    case n of 
+        0 => return 1;
+        1 => return 1;
+        otherwise => 
+        {
+            return (n * factorial(n - 1));
+        }
+}
 
-
-
-
+polyFunc => Nothing :: Humano h1 -> Humano h2 -> Humano h3{
+    h1.speak();
+    h2.speak();
+    h3.speak();
+}
 main{
     Humano h;
     Persona p;
     Estudiante e;
+    polyFunc(h,p,e);
+    Integer i;
+    displayLn(factorial(5));
     e.hijos = 2;
     e.materias = 3;
     e.edad = 100;
-    e.z = 21111;
     e.z2 = 921111;
-    p = e;
-    p.z = 11111;
-    h = e;
+    e.z = 21111;
     h.speak();
     p.speak();
     e.speak();
+    displayLn("-------------------");
+    p.z = 11111;
+    h = p;
+    h.speak();
+    h = e;
+    displayLn(222222222222222222222222222222222222222222222222);
+    h.speak();
+    p.speak();
+    e.speak();
+    displayLn(111111111111111111111111111111111111111111111111);
+    polyFunc(h,p,e);
     displayLn(p,h.z2);
+    Humano [3] humanos = [h,p,e];
+    h = humanos[0];
+    h.speak();
     
 }

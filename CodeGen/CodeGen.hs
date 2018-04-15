@@ -25,8 +25,8 @@ import  System.Console.Pretty (Color (..), Style (..), bgColor, color,
                                         style, supportsPretty)
 
 
-startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> FunctionMap -> String -> AncestorsMap -> IO()
-startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters1 idTable constTable objMap funcMap currModule aMap =
+startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> FunctionMap -> String -> AncestorsMap -> TypeMap -> IO()
+startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters1 idTable constTable objMap funcMap currModule aMap typeMap =
             do 
             let cgState = (setCGState symTab varCounters1 0)
             -- putStrLn.ppShow $ funcMap
@@ -47,11 +47,12 @@ startCodeGen (Program classes functions variables (Block statements)) symTab cla
             mapM_ (putStrLn.show) quads
             let funcMem = prepareMemoryFromFunctions (Map.toList funcMap) (Map.empty) 
             -- mapM_ (putStrLn.show) $ (sortBy (compare `on` fst) (Map.toList funcMem) )
-            putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList constTable) )
+            -- putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList constTable) )
             -- putStrLn $ ppShow $ (Map.toList objMap)
-            putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList idTable) )
+            -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList idTable) )
             -- putStrLn $ ppShow $ (Map.union  memoryFromAttributes (prepareMemory idTable constTable))
-            startVM quads (Map.union  memoryFromAttributes (prepareMemory idTable constTable)) (Map.empty) objMem funcMem
+            startVM quads (Map.union  memoryFromAttributes (prepareMemory idTable constTable)) (Map.empty) objMem funcMem typeMap
+
 
 
 prepareMemory :: IdentifierAddressMap -> ConstantAddressMap -> Memory
@@ -63,10 +64,10 @@ prepareMemory idTable constTable = (Map.union
 prepareMemoryFromFunctions :: [(String,FunctionData)] -> FunctionMemoryMap -> FunctionMemoryMap
 prepareMemoryFromFunctions []  fmem = fmem
 prepareMemoryFromFunctions ((funcID,funcData) : funcs) fmem =
-                                        let (FunctionData instructions _ fIdMap fObjMap) = funcData
+                                        let (FunctionData instructions _ fIdMap fObjMap typeMap) = funcData
                                         in let memFunc = prepareMemory fIdMap (Map.empty)
                                         in let (objMemFunc,objMemAttributes) = prepareMemoryFromObjects (Map.toList fObjMap) Map.empty Map.empty
-                                        in let funcMem = (FunctionMemory instructions (Map.union memFunc objMemAttributes) objMemFunc)
+                                        in let funcMem = (FunctionMemory instructions (Map.union memFunc objMemAttributes) objMemFunc typeMap)
                                         in let fMemNew = (Map.insert funcID funcMem fmem)
                                         in let fMems = prepareMemoryFromFunctions funcs fMemNew 
                                         in fMems
