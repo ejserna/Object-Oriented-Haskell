@@ -1,6 +1,6 @@
 class Humano{
-    [-] Decimal altura;
-    [-] Int edad;
+    [+] Decimal altura;
+    [+] Integer edad;
 
     [+] setEdad => Nothing :: Int iEdad{
         edad = iEdad;
@@ -8,10 +8,9 @@ class Humano{
 }
 
 class Persona : Humano{
-    [-] Money sueldo;
-    [-] String nombre;
-    [-] Humano h;
-
+    [+] Money sueldo;
+    [+] String nombre;
+    [+] Humano h;
     
 
     Persona :: Money mSueldo -> String sNombre {
@@ -43,6 +42,10 @@ class Persona : Humano{
 
 }
 
+class Profesor : Persona{
+    [+] String isElda; 
+}
+
 crearPersona => Persona :: Money sueldo -> String nombre{
     Persona p = Persona(sueldo,nombre);
     return p;
@@ -52,8 +55,15 @@ crearPersona => Persona :: Money sueldo -> String nombre{
 crearPersonas => Persona [10] :: Money sueldo -> String nombre{
     Persona [10] personas;
     String [10] strings = ["a","b","c","d","e","f","g","h","i","k"];
+    Profesor p2;
+    p2.isElda = "Elda";
+    p2.altura = 12.2;
+    p2.edad = 35;
+    p2.sueldo = 1000.0;
+    p2.nombre = "Juancho";
+    displayLn(p2);
     for i in [0..9]{
-        Persona p = Persona(sueldo ^ i,nombre +" " + ">" +  strings[i] + "<");
+        Profesor p = Persona(sueldo ^ i,nombre +" " + ">" +  strings[i] + "<");
         personas[i] = p;
     }
     return personas;

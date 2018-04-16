@@ -2,6 +2,7 @@ module CodeGenDataTypes where
 import Data.Decimal
 import Data.Maybe
 import qualified Data.HashMap.Strict as Map
+import qualified Data.Map.Ordered as OMap
 import Data.List (intercalate,findIndex)
 import DataTypes
 import SymbolTable
@@ -26,13 +27,15 @@ type LiteralCounters = (Address,Address,Address,Address)
 type TypeIdentifier = String -- Integer, Decimal, String, Bool
 
 -- Estos tipos le sirven a ExpressionCodeGen saber qué Identifiador/Constante están mappeados en memorias con qué dirección
-type IdentifierAddressMap = Map.HashMap Identifier Address
+type IdentifierAddressMap = OMap.OMap Identifier Address
 type ConstantAddressMap = Map.HashMap String Address
 type ObjectAddressMap = Map.HashMap Address IdentifierAddressMap
 type FunctionMap = Map.HashMap String FunctionData
 -- El typemap sirve para saber qué dirección de objeto es qué tipo. Esto sirve para tener
 -- polimorfismo en ejecución
 type TypeMap = Map.HashMap Address String
+
+
 
 data FunctionData = FunctionData
                 {   instructions :: [Quadruple], 

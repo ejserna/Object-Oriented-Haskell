@@ -28,6 +28,9 @@ import Data.List (sortBy)
 import Data.Ord (comparing)
 import Data.Function (on)
 import Data.Maybe
+import qualified OrderedMap as OMap
+import  System.Console.Pretty (Color (..), Style (..), bgColor, color,
+                                        style, supportsPretty)
 
 
 data SymbolEnvironment = SymbolEnvironment
@@ -70,7 +73,7 @@ startMemoryAllocation :: Program -> SymbolTable -> ClassSymbolTable -> Ancestors
 startMemoryAllocation (Program classes functions variables (Block statements)) symTab classSymTab aMap =
            do 
             let env = (setEnvironment symTab classSymTab 0 aMap)
-            let memState = setMemoryState Map.empty Map.empty Map.empty Map.empty (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory) (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory) Map.empty
+            let memState = setMemoryState OMap.empty Map.empty Map.empty Map.empty (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory) (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory) Map.empty
             (stateAfterConstants1,_) <-  execRWST (prepareConstantAddressMap statements) env memState
             (stateAfterConstants2,_) <- execRWST (fillFromExpression (ExpressionLitVar $ DecimalLiteral 0.0) ) env stateAfterConstants1 
             (stateAfterConstants3,_) <- execRWST (fillFromExpression (ExpressionLitVar $ IntegerLiteral 0 ) ) env stateAfterConstants2
@@ -265,37 +268,57 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim []) _ _)) 
                             case prim of
                                 PrimitiveBool -> 
                                                 do 
-                                                    let newIdMap = (Map.insert identifier boolGC identifierAddressMap)
-                                                    modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC,boolGC + 1,objGC) }) 
-                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
-                                                    fillIdentifierAddressMap rest fromModule
+                                                    case (OMap.lookup identifier identifierAddressMap) of 
+                                                        Just _ -> fillIdentifierAddressMap rest fromModule
+                                                        _ -> do 
+                                                                 let newIdMap = (OMap.insert identifier boolGC identifierAddressMap)
+                                                                 modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC,boolGC + 1,objGC) }) 
+                                                                 modify $ \s -> (s { idAddressMapMem = newIdMap })
+                                                                 fillIdentifierAddressMap rest fromModule
+                                                    
                                 PrimitiveInt ->
                                                 do 
-                                                    let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                    modify $ \s -> (s { varCountersMem = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
-                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
-                                                    fillIdentifierAddressMap rest fromModule
+                                                    case (OMap.lookup identifier identifierAddressMap) of 
+                                                        Just _ -> fillIdentifierAddressMap rest fromModule
+                                                        _ -> do
+                                                                let newIdMap = (OMap.insert identifier intGC identifierAddressMap)
+                                                                modify $ \s -> (s { varCountersMem = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
+                                                                modify $ \s -> (s { idAddressMapMem = newIdMap })
+                                                                fillIdentifierAddressMap rest fromModule
 
                                 PrimitiveInteger -> do 
-                                                        let newIdMap = (Map.insert identifier intGC identifierAddressMap)
-                                                        modify $ \s -> (s { varCountersMem = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
-                                                        modify $ \s -> (s { idAddressMapMem = newIdMap })
-                                                        fillIdentifierAddressMap rest fromModule
+                                                        case (OMap.lookup identifier identifierAddressMap) of 
+                                                            Just _ -> fillIdentifierAddressMap rest fromModule
+                                                            _ -> do
+                                                                    let newIdMap = (OMap.insert identifier intGC identifierAddressMap)
+                                                                    modify $ \s -> (s { varCountersMem = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
+                                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
+                                                                    fillIdentifierAddressMap rest fromModule
                                 PrimitiveString -> do 
-                                                    let newIdMap = (Map.insert identifier strGC identifierAddressMap)
-                                                    modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC + 1,boolGC,objGC) }) 
-                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
-                                                    fillIdentifierAddressMap rest fromModule
+                                                        case (OMap.lookup identifier identifierAddressMap) of 
+                                                            Just _ -> fillIdentifierAddressMap rest fromModule
+                                                            _ -> do 
+                                                                    let newIdMap = (OMap.insert identifier strGC identifierAddressMap)
+                                                                    modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC + 1,boolGC,objGC) }) 
+                                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
+                                                                    fillIdentifierAddressMap rest fromModule
                                 PrimitiveMoney -> do 
-                                                    let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                    modify $ \s -> (s { varCountersMem = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
-                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
-                                                    fillIdentifierAddressMap rest fromModule
+                                                        case (OMap.lookup identifier identifierAddressMap) of 
+                                                            Just _ -> fillIdentifierAddressMap rest fromModule
+                                                            _ -> do
+                                                                    let newIdMap = (OMap.insert identifier decGC identifierAddressMap)
+                                                                    modify $ \s -> (s { varCountersMem = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
+                                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
+                                                                    fillIdentifierAddressMap rest fromModule
                                 PrimitiveDouble -> do 
-                                                    let newIdMap = (Map.insert identifier decGC identifierAddressMap)
-                                                    modify $ \s -> (s { varCountersMem = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
-                                                    modify $ \s -> (s { idAddressMapMem = newIdMap })
-                                                    fillIdentifierAddressMap rest fromModule
+                                                        case (OMap.lookup identifier identifierAddressMap) of 
+                                                            Just _ -> fillIdentifierAddressMap rest fromModule
+                                                            _ -> do 
+
+                                                                let newIdMap = (OMap.insert identifier decGC identifierAddressMap)
+                                                                modify $ \s -> (s { varCountersMem = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
+                                                                modify $ \s -> (s { idAddressMapMem = newIdMap })
+                                                                fillIdentifierAddressMap rest fromModule
 fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAccess) scp isPublic)) : rest ) fromModule = 
                             do
                                 -- Aqui podemos añadir un check de que si ese classId es igual al modulo actual, se pueden parar en la 10000 iteracion
@@ -316,7 +339,7 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAcce
                                                 let newObjAddressMap = (objAddressMapMem newMemState)
                                                 let identifierAddressMap = (idAddressMapMem newMemState)
                                                 let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem newMemState)
-                                                let newIdMap = (Map.insert identifier objGC identifierAddressMap)
+                                                let newIdMap = (OMap.insert identifier objGC identifierAddressMap)
                                                 let addressTypeMap = (typeMapMem newMemState)
                                                 -- Tambien metemos que tipo es ese objeto, esto para polimorfismo
                                                 let newAddressTypeMap = (Map.insert objGC ("_" ++ classId ++ "_") addressTypeMap) 
@@ -359,7 +382,7 @@ fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statement
                                                         if ((Map.member (fromModule ++ identifier) funcMap) || ((deepness env) == maxDeepness))  then fillIdentifierAddressMap rest fromModule
                                                             else do 
                                                                     (stateAfterFuncConstants,_) <-  liftIO $ execRWST (prepareConstantAddressMap statements) (setEnvironment symTabFunc (classTabMem env) (deepness env) (aMapMem env)) 
-                                                                                                                                                    (setMemoryState (Map.empty) (constTable memState) 
+                                                                                                                                                    (setMemoryState (OMap.empty) (constTable memState) 
                                                                                                                                                                  (Map.empty) funcMap (startIntLocalMemory,startDecimalLocalMemory,startStringLocalMemory,startBoolLocalMemory, startObjectLocalMemory)
                                                                                                                                                                  (literalCounters memState)
                                                                                                                                                                  (Map.empty)
@@ -426,25 +449,25 @@ fillParamsFromFunction [] _ = []
 fillParamsFromFunction ((dt,id) : ids) idMapFunc = 
                                                     case dt of
                                                         (TypePrimitive prim []) ->
-                                                            case (Map.lookup id idMapFunc) of 
+                                                            case (OMap.lookup id idMapFunc) of 
                                                                 Just address -> [address] ++ (fillParamsFromFunction ids idMapFunc)
                                                         (TypePrimitive prim (("[",size,"]") : [])) ->
-                                                            case (Map.lookup (id ++ "[0]") idMapFunc) of
+                                                            case (OMap.lookup (id ++ "[0]") idMapFunc) of
                                                                 Just addressBase ->
                                                                     ( fillArrayParam  addressBase size) ++ (fillParamsFromFunction ids idMapFunc)
                                                         (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]") : [])) ->
-                                                            case (Map.lookup (id ++ "[0][0]") idMapFunc) of
+                                                            case (OMap.lookup (id ++ "[0][0]") idMapFunc) of
                                                                 Just addressBase ->
                                                                     (fillArrayParam  addressBase (rows * cols)) ++ (fillParamsFromFunction ids idMapFunc)
                                                         (TypeClassId _ []) ->
-                                                            case (Map.lookup id idMapFunc) of 
+                                                            case (OMap.lookup id idMapFunc) of 
                                                                 Just address -> [address] ++ (fillParamsFromFunction ids idMapFunc)
                                                         (TypeClassId _ (("[",size,"]") : [])) ->
-                                                            case (Map.lookup (id ++ "[0]") idMapFunc) of 
+                                                            case (OMap.lookup (id ++ "[0]") idMapFunc) of 
                                                                 Just addressBase ->
                                                                     ( fillArrayParam  addressBase size) ++ (fillParamsFromFunction ids idMapFunc)
                                                         (TypeClassId _ (("[",rows,"]") : ("[",cols,"]") : [])) ->
-                                                            case (Map.lookup (id ++ "[0][0]") idMapFunc) of
+                                                            case (OMap.lookup (id ++ "[0][0]") idMapFunc) of
                                                                 Just addressBase ->
                                                                     (fillArrayParam  addressBase (rows * cols)) ++ (fillParamsFromFunction ids idMapFunc)
 
@@ -459,7 +482,7 @@ updateArrayClasses limit size strToAppend ( (identifier,(SymbolVar (TypeClassId 
                             do 
                                 memState <- get
                                 let identifierAddressMap = (idAddressMapMem memState)
-                                case (Map.lookup (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) identifierAddressMap) of
+                                case (OMap.lookup (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) identifierAddressMap) of
                                     Just address -> 
                                         do
                                             env <- ask
@@ -493,10 +516,10 @@ fillArray limit size strToAppend ( (identifier,(SymbolVar (TypeClassId classId a
                                     let currentObjAddressMap = (objAddressMapMem currentMemState)
                                     let identifierAddressMap = (idAddressMapMem currentMemState)
                                     let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
-                                    let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) objGC identifierAddressMap) 
+                                    let newIdMap = (OMap.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) objGC identifierAddressMap) 
                                     -- Como es un arreglo de objetos, es importante asignarle su propio identifier address map a cada
                                     -- celda, y por el momento, estan vacios. Esto es necesario para asegurar que se guarden de manera contigua.
-                                    let newObjMap = (Map.insert objGC (Map.empty) currentObjAddressMap)
+                                    let newObjMap = (Map.insert objGC (OMap.empty) currentObjAddressMap)
                                     modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC,boolGC,objGC + 1) }) 
                                     modify $ \s -> (s { idAddressMapMem = newIdMap })
                                     modify $ \s -> (s { objAddressMapMem = newObjMap }) 
@@ -507,7 +530,7 @@ fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive Primitiv
                                                                             currentMemState <- get
                                                                             let identifierAddressMap = (idAddressMapMem currentMemState)
                                                                             let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
-                                                                            let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) boolGC identifierAddressMap)
+                                                                            let newIdMap = (OMap.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) boolGC identifierAddressMap)
                                                                             modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC,boolGC + 1,objGC) }) 
                                                                             modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                                             fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveBool arrayAccess) scp isPublic))) 
@@ -517,7 +540,7 @@ fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive Primitiv
                                                                             currentMemState <- get
                                                                             let identifierAddressMap = (idAddressMapMem currentMemState)
                                                                             let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
-                                                                            let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) strGC identifierAddressMap)
+                                                                            let newIdMap = (OMap.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) strGC identifierAddressMap)
                                                                             modify $ \s -> (s { varCountersMem = (intGC,decGC,strGC + 1,boolGC,objGC) }) 
                                                                             modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                                             fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveString arrayAccess) scp isPublic))) 
@@ -526,7 +549,7 @@ fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive Primitiv
                                                                             currentMemState <- get
                                                                             let identifierAddressMap = (idAddressMapMem currentMemState)
                                                                             let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
-                                                                            let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) intGC identifierAddressMap)
+                                                                            let newIdMap = (OMap.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) intGC identifierAddressMap)
                                                                             modify $ \s -> (s { varCountersMem = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
                                                                             modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                                             fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInteger arrayAccess) scp isPublic))) 
@@ -535,7 +558,7 @@ fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive Primitiv
                                                                             currentMemState <- get
                                                                             let identifierAddressMap = (idAddressMapMem currentMemState)
                                                                             let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
-                                                                            let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) intGC identifierAddressMap)
+                                                                            let newIdMap = (OMap.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) intGC identifierAddressMap)
                                                                             modify $ \s -> (s { varCountersMem = (intGC + 1,decGC,strGC,boolGC,objGC) }) 
                                                                             modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                                             fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveInt arrayAccess) scp isPublic)))
@@ -545,7 +568,7 @@ fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive Primitiv
                                                                             currentMemState <- get
                                                                             let identifierAddressMap = (idAddressMapMem currentMemState)
                                                                             let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
-                                                                            let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) decGC identifierAddressMap)
+                                                                            let newIdMap = (OMap.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) decGC identifierAddressMap)
                                                                             modify $ \s -> (s { varCountersMem = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
                                                                             modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                                             fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveMoney arrayAccess) scp isPublic)))
@@ -554,7 +577,7 @@ fillArray limit size strToAppend ((identifier,(SymbolVar (TypePrimitive Primitiv
                                                                             currentMemState <- get
                                                                             let identifierAddressMap = (idAddressMapMem currentMemState)
                                                                             let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem currentMemState)
-                                                                            let newIdMap = (Map.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) decGC identifierAddressMap)
+                                                                            let newIdMap = (OMap.insert (identifier ++ strToAppend ++ "[" ++ (show (size - limit) ++ "]")) decGC identifierAddressMap)
                                                                             modify $ \s -> (s { varCountersMem = (intGC,decGC + 1,strGC,boolGC,objGC) }) 
                                                                             modify $ \s -> (s { idAddressMapMem = newIdMap })
                                                                             fillArray (limit - 1) size strToAppend ((identifier,(SymbolVar (TypePrimitive PrimitiveDouble arrayAccess) scp isPublic)))
@@ -584,7 +607,7 @@ insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) fromModule =
                                                                                                                                                                                       (setEnvironment symbolTableOfClass classSymTab (deepness env) (aMapMem env)) 
                                                                                                                                                                                       -- La mandamos vacia porque lo que obtendremos es una IDMap llena con los
                                                                                                                                                                                       -- atributos de esa clase!
-                                                                                                                                                                                      (setMemoryState (Map.empty) constMap objMap funcMap varCounters litCounters typeMap)
+                                                                                                                                                                                      (setMemoryState (OMap.empty) constMap objMap funcMap varCounters litCounters typeMap)
 
                                                                     -- Tenemos que obtener el IdentifierAddressMap de los atributos de esta clase
                                                                     let (idMapObject,constMap2, objMap2, funcMap2, varCounters2, litCounters2, typeMap) = getCurrentMemoryState stateAfterUniqueAttributes
@@ -597,14 +620,15 @@ insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) fromModule =
                                                                                                       (setEnvironment symbolTableOfClass classSymTab (deepness env) (aMapMem env)) 
                                                                                                       -- La mandamos vacia porque lo que obtendremos es una IDMap llena con los
                                                                                                       -- atributos de esa clase!
-                                                                                                      (setMemoryState (Map.empty) constMap objMap funcMap varCounters litCounters typeMap)
+                                                                                                      (setMemoryState (OMap.empty) constMap objMap funcMap varCounters litCounters typeMap)
                                                                                 
                                                                                 let nearestParent = head $ listOfParents
                                                                                 -- Si sacamos la diferencia del nearest parent y la clase actual, nos dara los atributos que son unicos de esa clase
                                                                                 -- Esos son los que tenemos que ahora generar
                                                                                 let symTabOfParent =  (fromJust (Map.lookup nearestParent classSymTab))
                                                                                 let symTabUniqueAttributes = (Map.difference symbolTableOfClass symTabOfParent)
-
+                                                                                -- liftIO $ putStrLn $ classId
+                                                                                -- liftIO $ putStrLn.ppShow $ (idAddressMapMem stateAfterSharedAttributesInserted)
                                                                                 (stateAfterUniqueAttributes,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable ("_" ++ classId ++ "_")) 
                                                                                                                                                                                       (setEnvironment symTabUniqueAttributes classSymTab (deepness env) (aMapMem env)) 
                                                                                                                                                                                       -- La mandamos vacia porque lo que obtendremos es una IDMap llena con los
@@ -613,6 +637,8 @@ insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) fromModule =
 
                                                                                 -- Tenemos que obtener el IdentifierAddressMap de los atributos de esta clase
                                                                                 let (idMapObject,constMap2, objMap2, funcMap2, varCounters2, litCounters2, typeMap) = getCurrentMemoryState stateAfterUniqueAttributes
+                                                                                
+                                                                                -- liftIO $ putStrLn.show $ idMapObject 
                                                                                 let updatedState = (setMemoryState idMap constMap2 objMap2 funcMap2 varCounters2 litCounters2 typeMap)
                                                                                 modify $ \s -> updatedState -- Usamos el nuevo estado con los nuevos contadores!!
                                                                                 return idMapObject
@@ -648,6 +674,7 @@ fillFirstFromParents classId (parentClassId : ps) =   do
                                                                                               -- La mandamos vacia porque lo que obtendremos es una IDMap llena con los
                                                                                               -- atributos de esa clase!
                                                                                               (setMemoryState idMapObject constMap objMap funcMap varCounters litCounters typeMap)
+                                                                    -- liftIO $ putStrLn $ color White $ ppShow  $ (idAddressMapMem stateAfterAttributesInserted)
                                                                     modify $ \s -> stateAfterAttributesInserted
                                                                     fillFirstFromParents classId ps
                             

@@ -4,6 +4,7 @@ class Humano{
     [+] Integer z3;
     [+] Integer z1;
     [+] Integer z2;
+    [+] String z99;
     [+] speak => Nothing{
         displayLn("Human");
     }
@@ -14,6 +15,7 @@ class Persona : Humano{
     [+] Integer hijos1;
     [+] Integer hijos2;
     [+] Integer hijos3;
+    [+] String hijos4;
     [+] speak => Nothing{
         displayLn("Person");
     }
@@ -25,6 +27,7 @@ class Estudiante : Persona{
     [+] Integer materias5;
     [+] Integer materias4;
     [+] Integer materias3;
+    [+] Decimal materias9494;
     [+] speak => Nothing{
         displayLn("Estudiante");
     }
@@ -38,6 +41,15 @@ factorial => Integer :: Integer n{
         {
             return (n * factorial(n - 1));
         }
+}
+
+polyChange => Humano :: Humano h1{
+    Humano h;
+    Estudiante e;
+    h = e;
+    e.z3 = 1000;
+    h.speak();
+    return e;
 }
 
 polyFunc => Nothing :: Humano h1 -> Humano h2 -> Humano h3{
@@ -73,7 +85,14 @@ main{
     polyFunc(h,p,e);
     displayLn(p,h.z2);
     Humano [3] humanos = [h,p,e];
-    h = humanos[0];
+    h = humanos[1];
+    Humano h2 = p;
     h.speak();
+    h = polyChange(h);
+    h.speak();
+    displayLn(h.z3);
+    if (h == h2){
+        displayLn("Op");
+    }
     
 }

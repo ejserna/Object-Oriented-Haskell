@@ -197,7 +197,7 @@ runVM = do
         context <-  ask
         let quadruples = (currentInstructions context)
         cpuState <-  get
-        let (exitState,currentInstructionPointer,_,_,_,_,_) = getCPUState cpuState
+        let (exitState,currentInstructionPointer,globalMemory,localMemory,objectMemory,_,_) = getCPUState cpuState
         if (exitState == PANIC) 
             then do 
                 tell $ [("Ended execution with an error at quadruple number " ++ (style Bold (show currentInstructionPointer)) )]
@@ -207,6 +207,9 @@ runVM = do
         else do
             if currentInstructionPointer < (length quadruples) then do
                 let currentInstruction = quadruples !! currentInstructionPointer
+                -- liftIO $ putStrLn $ "MEMO"
+                -- liftIO $ putStrLn.ppShow $ globalMemory
+                -- liftIO $ putStrLn.ppShow $ currentInstruction
                 (runInstruction currentInstruction)
                 runVM 
                 return ()
@@ -398,7 +401,10 @@ runInstruction (QuadrupleTwoAddresses quadNum PUT_INDEX a1 addressThatHasIndex) 
                                                             cpuState <- get
                                                             let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                                                             case (Map.lookup addressThatHasIndex (Map.union globalMemory localMemory)) of
-                                                              Just (VMInteger addressFromArray) -> doAssignment a1 addressFromArray
+                                                              Just (VMInteger addressFromArray) -> 
+                                                                                do 
+                                                                                  -- liftIO $ putStrLn.show $ addressFromArray
+                                                                                    doAssignment a1 addressFromArray
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
 runInstruction (QuadrupleTwoAddresses quadNum BOUNDS a1 a2) = do 
                                                               cpuState <- get
@@ -446,59 +452,65 @@ runInstruction (QuadrupleFunctionCall quadNum GO_SUB addressesObjParams addresse
                                                                                             let (newTypeMapFunc,localMemFunc) = doDeepAssignmentMemories (Map.union globalMemory currentLocalMem) funcIdMem currentObjMem funcObjMem currentTypeMap typeMapFunc addressesCurrentContext addressesFuncContext
                                                                                             let (finalTypeMapFunc,localMemFuncNew) = doDeepAssignmentMemories (Map.union globalMemory currentLocalMem) localMemFunc currentObjMem funcObjMem currentTypeMap newTypeMapFunc addressesObjParamsCurrentContext addressesObjFuncContext   
                                                             
-                                                                                            (stateAfterFunc,_) <- liftIO $ execRWST (runVM) (CPUContext funcInstructions funcMap False classTypeOfCallingObj) (setInitialCPUState globalMemory localMemFuncNew funcObjMem finalTypeMapFunc [])
-                                                                                            let (_,_,_,localMemAfterFunc,objMemAfterFunc,typeMapAfterFunc,returnAddresses) = getCPUState stateAfterFunc
-                                                                                            -- Se sustituyen
-                                                                                            if (currentIP + 1) < (length (currentInstructions context)) then do
-                                                                                                let returnInstruction = (currentInstructions context) !! (currentIP + 1)
-                                                                                                case returnInstruction of 
-                                                                                                  (QuadrupleReturnSet quadNum RETURN_SET addressesCurrentContext) ->
-                                                                                                        if ((isMainContext context)) then 
-                                                                                                          do
-                                                                                                            -- El orden es MUUUY importante, porque primero se deben actualizar los atributos de los objetos, y hasta el final
-                                                                                                            -- los return addresses, porque puede darse el caso que se este asignando un atributo de un objeto a la llamada de funcion
-                                                                                                            -- por lo que tendria que cambiarse de nuevo ese atributo de objeto
-                                                                                                            let (newTypeMap,newGlobalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext 
-                                                                                                            let (finalTypeMap,newGlobalMemory) = doDeepAssignmentMemories localMemAfterFunc newGlobalMemoryWithObjectAttributes objMemAfterFunc currentObjMem typeMapAfterFunc newTypeMap returnAddresses addressesCurrentContext
-                                                                                                             
-                                                                                                            modify $ \s -> (s { globalMemory =  newGlobalMemory })
-                                                                                                            modify $ \s -> (s { typeMap =  finalTypeMap })
-                                                                                                            modify $ \s -> (s { ip = (ip s) + 1 })
-                                                                                                        else do 
-                                                                                                               -- El orden es MUUUY importante, porque primero se deben actualizar los atributos de los objetos, y hasta el final
-                                                                                                               -- los return addresses, porque puede darse el caso que se este asignando un atributo de un objeto a la llamada de funcion
-                                                                                                               -- por lo que tendria que cambiarse de nuevo ese atributo de objeto
-                                                                                                               let (newTypeMap,newLocalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext
-                                                                                                               let (finalTypeMap,newLocalMemory) = doDeepAssignmentMemories localMemAfterFunc newLocalMemoryWithObjectAttributes objMemAfterFunc currentObjMem typeMapAfterFunc newTypeMap returnAddresses addressesCurrentContext
-   
-                                                                                                               modify $ \s -> (s { localMemory =  newLocalMemory })
-                                                                                                               modify $ \s -> (s { typeMap =  finalTypeMap })
-                                                                                                               modify $ \s -> (s { ip = (ip s) + 1 })
-                                                                                                  _ -> do 
-                                                                                                        if ((isMainContext context)) then 
-                                                                                                          do 
-                                                                                                              let (finalTypeMap,newGlobalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext 
-                                                                                                              modify $ \s -> (s { globalMemory =  newGlobalMemoryWithObjectAttributes })
-                                                                                                              modify $ \s -> (s { typeMap =  finalTypeMap })
-                                                                                                              modify $ \s -> (s { ip = (ip s) + 1 })
-                                                                                                        else do 
-                                                                                                               let (finalTypeMap,newLocalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext
-                                                                                                               modify $ \s -> (s { localMemory =  newLocalMemoryWithObjectAttributes })
-                                                                                                               modify $ \s -> (s { typeMap =  finalTypeMap })
-                                                                                                               modify $ \s -> (s { ip = (ip s) + 1 })
-                                                                                            else 
-                                                                                              do 
-                                                                                                if ((isMainContext context)) then 
-                                                                                                          do 
-                                                                                                              let (finalTypeMap,newGlobalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext 
-                                                                                                              modify $ \s -> (s { globalMemory =  newGlobalMemoryWithObjectAttributes })
-                                                                                                              modify $ \s -> (s { typeMap =  finalTypeMap })
-                                                                                                              modify $ \s -> (s { ip = (ip s) + 1 })
-                                                                                                        else do 
-                                                                                                               let (finalTypeMap,newLocalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext
-                                                                                                               modify $ \s -> (s { localMemory =  newLocalMemoryWithObjectAttributes })
-                                                                                                               modify $ \s -> (s { typeMap =  finalTypeMap })
-                                                                                                               modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                            (stateAfterFunc,logs) <- liftIO $ execRWST (runVM) (CPUContext funcInstructions funcMap False classTypeOfCallingObj) (setInitialCPUState globalMemory localMemFuncNew funcObjMem finalTypeMapFunc [])
+                                                                                            let (funcCPUState,_,_,localMemAfterFunc,objMemAfterFunc,typeMapAfterFunc,returnAddresses) = getCPUState stateAfterFunc
+                                                                                            case funcCPUState of 
+                                                                                              PANIC -> do 
+                                                                                                          modify $ \s -> (s { exitState = PANIC })
+                                                                                                          tell $ logs
+                                                                                                          return ()
+                                                                                              _ -> do 
+                                                                                                      -- Se sustituyen
+                                                                                                      if (currentIP + 1) < (length (currentInstructions context)) then do
+                                                                                                          let returnInstruction = (currentInstructions context) !! (currentIP + 1)
+                                                                                                          case returnInstruction of 
+                                                                                                            (QuadrupleReturnSet quadNum RETURN_SET addressesCurrentContext) ->
+                                                                                                                  if ((isMainContext context)) then 
+                                                                                                                    do
+                                                                                                                      -- El orden es MUUUY importante, porque primero se deben actualizar los atributos de los objetos, y hasta el final
+                                                                                                                      -- los return addresses, porque puede darse el caso que se este asignando un atributo de un objeto a la llamada de funcion
+                                                                                                                      -- por lo que tendria que cambiarse de nuevo ese atributo de objeto
+                                                                                                                      let (newTypeMap,newGlobalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext 
+                                                                                                                      let (finalTypeMap,newGlobalMemory) = doDeepAssignmentMemories localMemAfterFunc newGlobalMemoryWithObjectAttributes objMemAfterFunc currentObjMem typeMapAfterFunc newTypeMap returnAddresses addressesCurrentContext
+                                                                                                                       
+                                                                                                                      modify $ \s -> (s { globalMemory =  newGlobalMemory })
+                                                                                                                      modify $ \s -> (s { typeMap =  finalTypeMap })
+                                                                                                                      modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                                  else do 
+                                                                                                                         -- El orden es MUUUY importante, porque primero se deben actualizar los atributos de los objetos, y hasta el final
+                                                                                                                         -- los return addresses, porque puede darse el caso que se este asignando un atributo de un objeto a la llamada de funcion
+                                                                                                                         -- por lo que tendria que cambiarse de nuevo ese atributo de objeto
+                                                                                                                         let (newTypeMap,newLocalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext
+                                                                                                                         let (finalTypeMap,newLocalMemory) = doDeepAssignmentMemories localMemAfterFunc newLocalMemoryWithObjectAttributes objMemAfterFunc currentObjMem typeMapAfterFunc newTypeMap returnAddresses addressesCurrentContext
+             
+                                                                                                                         modify $ \s -> (s { localMemory =  newLocalMemory })
+                                                                                                                         modify $ \s -> (s { typeMap =  finalTypeMap })
+                                                                                                                         modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                            _ -> do 
+                                                                                                                  if ((isMainContext context)) then 
+                                                                                                                    do 
+                                                                                                                        let (finalTypeMap,newGlobalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext 
+                                                                                                                        modify $ \s -> (s { globalMemory =  newGlobalMemoryWithObjectAttributes })
+                                                                                                                        modify $ \s -> (s { typeMap =  finalTypeMap })
+                                                                                                                        modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                                  else do 
+                                                                                                                         let (finalTypeMap,newLocalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext
+                                                                                                                         modify $ \s -> (s { localMemory =  newLocalMemoryWithObjectAttributes })
+                                                                                                                         modify $ \s -> (s { typeMap =  finalTypeMap })
+                                                                                                                         modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                      else 
+                                                                                                        do 
+                                                                                                          if ((isMainContext context)) then 
+                                                                                                                    do 
+                                                                                                                        let (finalTypeMap,newGlobalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext 
+                                                                                                                        modify $ \s -> (s { globalMemory =  newGlobalMemoryWithObjectAttributes })
+                                                                                                                        modify $ \s -> (s { typeMap =  finalTypeMap })
+                                                                                                                        modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                                  else do 
+                                                                                                                         let (finalTypeMap,newLocalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext
+                                                                                                                         modify $ \s -> (s { localMemory =  newLocalMemoryWithObjectAttributes })
+                                                                                                                         modify $ \s -> (s { typeMap =  finalTypeMap })
+                                                                                                                         modify $ \s -> (s { ip = (ip s) + 1 })
                                                                                             
                                         
 
@@ -615,6 +627,7 @@ doAssignment a1 a2
     -- Si es un objeto, la asignacion debe hacerse considerando todos sus atributos
      | a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
      || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory = do 
+                                                                        -- liftIO $ putStrLn $ "khe"
                                                                         cpuState <- get
                                                                         let (panic,currentIP,globalMemory,localMemory,objectMemory,typeMap,_) = getCPUState cpuState
                                                                         -- Primero hay que cambiar su tipo en el type map

@@ -167,7 +167,6 @@ startSemanticAnalysis :: Program -> IO ()
 startSemanticAnalysis (Program classList functionList varsList (Block statements)) =  do 
             do 
                 let stateAfterClasses =  runTypeChecker (analyzeClasses classList) (setTCState emptySymbolTable emptyClassSymbolTable (Map.empty))
-                putStrLn.ppShow $ stateAfterClasses
                 exitIfFailure stateAfterClasses
                 let (_,classSymbolTable,aMap) = getTCState (snd (fromRight' stateAfterClasses))
                 let stateAfterFunctions = runTypeChecker (analyzeFunctions functionList globalScope Nothing) (setTCState emptySymbolTable classSymbolTable aMap)
@@ -184,8 +183,8 @@ startSemanticAnalysis (Program classList functionList varsList (Block statements
                         let stateAfterMain = runTypeChecker (analyzeStatements statements defScope) (setTCState symbolTableWithFuncsVars classSymbolTable aMap)
                         exitIfFailure stateAfterMain
                         let (symbolTableStatements,classSymbolTable,aMap) = getTCState (snd (fromRight' stateAfterMain))
-                        putStrLn.ppShow $ symbolTableStatements
-                        putStrLn.ppShow $ classSymbolTable
+                        -- putStrLn.ppShow $ symbolTableStatements
+                        -- putStrLn.ppShow $ classSymbolTable
                         putStrLn.ppShow $ aMap
                         startMemoryAllocation (Program classList functionList varsList (Block statements)) symbolTableStatements classSymbolTable aMap
 
@@ -411,7 +410,7 @@ analyzeVariable (VariableAssignmentObject dataType identifier (ObjectCreation cl
                                             TypePrimitive _ _ -> lift $ throwError (ConstructorOnlyClasses (show s))
                                             -- Checamos si el constructor es del mismo tipo que la clase
                                             TypeClassId classIdentifierDecl [] -> do 
-                                                                                    if (classIdentifierDecl == classIdentifier)
+                                                                                    if ((doesClassDeriveFromClass classIdentifierDecl (TypeClassId classIdentifier []) aMap) || (classIdentifierDecl == classIdentifier))
                                                                                      -- Checamos los parametros que se mandan con los del constructor
                                                                                      && (checkIfParamsAreCorrect scp params classIdentifier symTab classSymTab aMap) 
                                                                                      then insertInSymbolTable identifier (SymbolVar {dataType = dataType, scope = scp, isPublic = isVarPublic})
@@ -551,7 +550,11 @@ analyzeFuncParams ((dataType,identifier) : rest) =
 checkCorrectReturnTypes :: Scope -> Type -> Return -> SymbolTable -> SymbolTable -> ClassSymbolTable -> AncestorsMap -> Bool
 checkCorrectReturnTypes scp dataType (ReturnExp expression) symTab ownFuncSymTab classTab aMap =  
                                             case (preProcessExpression scp expression (Map.union symTab ownFuncSymTab) classTab aMap) of
-                                                Just expType -> dataType == expType
+                                                Just (TypePrimitive prim arrayDim) -> (TypePrimitive prim arrayDim) == dataType
+                                                Just (TypeClassId classId arrayDim) -> case dataType of 
+                                                                                          (TypeClassId parentClassId arrayDim2) -> (arrayDim == arrayDim2) && ((doesClassDeriveFromClass classId dataType aMap) || ((TypeClassId parentClassId arrayDim2) == (TypeClassId classId arrayDim)))
+                                                                                          _ -> False
+                                                                                          
                                                 _ -> False   
 
 -- Checamos aqui que la llamada al constructor sea correcta

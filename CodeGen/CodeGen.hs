@@ -8,6 +8,7 @@ import ExpressionOptimizer
 import MemoryLimits
 import Text.Show.Pretty
 import qualified Data.HashMap.Strict as Map
+import qualified OrderedMap as OMap
 import VirtualMachine
 import Data.Decimal
 import CodeGenDataTypes
@@ -21,9 +22,16 @@ import Control.Monad.Trans.Except
 import Control.Monad.Identity
 import Control.Monad.Trans
 import Control.Monad
+import Data.Hashable (Hashable)
 import  System.Console.Pretty (Color (..), Style (..), bgColor, color,
                                         style, supportsPretty)
 
+-- OrderedMemory se ocupa para los atributos de un bojeto! para ver esta decision de diseño mas detallada
+-- ver RF1. Decisión de Diseño
+type OrderedMemory = OMap.OrderedMap Address VMValue
+
+emptyOrderedMemory :: OrderedMemory
+emptyOrderedMemory = OMap.empty
 
 startCodeGen :: Program -> SymbolTable -> ClassSymbolTable -> VariableCounters -> IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> FunctionMap -> String -> AncestorsMap -> TypeMap -> IO()
 startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters1 idTable constTable objMap funcMap currModule aMap typeMap =
@@ -46,21 +54,22 @@ startCodeGen (Program classes functions variables (Block statements)) symTab cla
             let (objMem,memoryFromAttributes) = prepareMemoryFromObjects (Map.toList objMap) Map.empty Map.empty
             mapM_ (putStrLn.show) quads
             let funcMem = prepareMemoryFromFunctions (Map.toList funcMap) (Map.empty) 
-            -- mapM_ (putStrLn.show) $ (sortBy (compare `on` fst) (Map.toList funcMem) )
-            -- putStrLn $ ppShow $ (sortBy (compare `on` snd) (Map.toList constTable) )
-            -- putStrLn $ ppShow $ (Map.toList objMap)
-            -- putStrLn $ ppShow $ (sortBy (compare `on` fst) (Map.toList idTable) )
-            -- putStrLn $ ppShow $ (Map.union  memoryFromAttributes (prepareMemory idTable constTable))
+             -- (putStrLn) $ style Bold $ ppShow $ (Map.toList funcMap)
             startVM quads (Map.union  memoryFromAttributes (prepareMemory idTable constTable)) (Map.empty) objMem funcMem typeMap
+
+
+fromOrderedMap :: (Ord k,Hashable k) => (OMap.OrderedMap k v) -> (Map.HashMap k v)
+fromOrderedMap orderedMap = (Map.fromList (OMap.toList orderedMap)) 
 
 
 
 prepareMemory :: IdentifierAddressMap -> ConstantAddressMap -> Memory
 prepareMemory idTable constTable = (Map.union 
-                                        (makeMemory (Map.toList idTable) (Map.empty))
+                                        (makeMemory (OMap.toList idTable) (Map.empty))
                                         (makeMemory (Map.toList constTable) (Map.empty))
                                     )
 
+{- -}
 prepareMemoryFromFunctions :: [(String,FunctionData)] -> FunctionMemoryMap -> FunctionMemoryMap
 prepareMemoryFromFunctions []  fmem = fmem
 prepareMemoryFromFunctions ((funcID,funcData) : funcs) fmem =
@@ -75,9 +84,11 @@ prepareMemoryFromFunctions ((funcID,funcData) : funcs) fmem =
 prepareMemoryFromObjects :: [(Address,IdentifierAddressMap)] -> ObjectMemory -> Memory -> (ObjectMemory,Memory)
 prepareMemoryFromObjects [] objMem mem = (objMem,mem)
 prepareMemoryFromObjects ((objAddress,idMap) : idMaps) objMem mem = 
-                                        let mem1 = prepareMemory idMap (Map.empty)
-                                        in let objMem1 = (Map.insert objAddress (sort (Map.keys mem1)) objMem)
-                                        in let (objMem2,mem2) = prepareMemoryFromObjects idMaps objMem1 mem1 
+                                        -- Se crea la memoria ordenada de la tabla de identificadores del objeto. Ver bloque
+                                        -- de comentario mas abajo para saber por qué se hace esto
+                                        let mem1 = prepareOrderedMemory idMap
+                                        in let objMem1 = (Map.insert objAddress (OMap.keys mem1) objMem)
+                                        in let (objMem2,mem2) = prepareMemoryFromObjects idMaps objMem1 (fromOrderedMap mem1) 
                                         in (objMem2, (Map.union mem2 mem))
 
 makeMemory :: [(String,Address)] -> Memory -> Memory
@@ -97,6 +108,37 @@ makeMemory ((str,address) : addresses ) mem =
                         in (makeMemory addresses mem1)
                     else let mem1 = (Map.insert address VMEmpty mem)
                         in (makeMemory addresses mem1)
+
+-- Aqui es importante tener una opcion de crear memoria ordenada, pues los atributos de los objetos se 
+-- crean ordenadamente. Esto sirve al momento de una asignacion polimorfica, pues si se tiene 
+-- Humano h = p, donde p es un objeto cuya clase hereda de Humano, los primeros N atributos de Humano son equivalente
+-- a los primeros M atributos de p, por lo que la asignaci'on polimorfica siempre funcionara y no
+-- agarrara atributos que no le correspondan
+
+prepareOrderedMemory :: IdentifierAddressMap -> OrderedMemory
+prepareOrderedMemory idTable = makeOrderedMemory (OMap.toList idTable) emptyOrderedMemory
+
+makeOrderedMemory :: [(String,Address)] -> OrderedMemory -> OrderedMemory
+makeOrderedMemory [] mem = mem
+makeOrderedMemory ((str,address) : addresses ) mem =
+                    if (isInfixOf "<int>" str) then 
+                        let mem1 = (OMap.insert address (VMInteger (read (drop 5 str) :: Integer)) mem)
+                        in (makeOrderedMemory addresses mem1)
+                    else if (isInfixOf "<dec>" str) then 
+                        let mem1 = (OMap.insert address (VMDecimal (read (drop 5 str) :: Decimal)) mem)
+                        in (makeOrderedMemory addresses mem1)
+                    else if (isInfixOf "<bool>" str) then 
+                        let mem1 = (OMap.insert address (VMBool (read (drop 6 str) :: Bool)) mem)
+                        in (makeOrderedMemory addresses mem1)
+                    else if (isInfixOf "<str>" str) then 
+                        let mem1 = (OMap.insert address (VMString ((drop 5 str))) mem)
+                        in (makeOrderedMemory addresses mem1)
+                    else let mem1 = (OMap.insert address VMEmpty mem)
+                        in (makeOrderedMemory addresses mem1)
+
+
+
+
 
 
 generateCodeFromCaseStatements :: [[Statement]] -> CodeGen [[Quadruple]]
@@ -300,34 +342,34 @@ generateCodeReturnFromFunction (ExpressionLitVar (VarIdentifier identifierExp)) 
                                                     case (Map.lookup identifierExp symTab) of 
                                                         Just (SymbolVar (TypePrimitive prim accessExpression) _ _) ->
                                                             case accessExpression of 
-                                                                [] -> case ((Map.lookup identifierExp idTable)) of
+                                                                [] -> case ((OMap.lookup identifierExp idTable)) of
                                                                         Just address -> do 
                                                                                             tell $ [(buildReturnFromFunction quadNum [address])]
                                                                                             modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                                                (("[",size,"]") : []) -> case ((Map.lookup (identifierExp ++ "[0]") idTable)) of
+                                                                (("[",size,"]") : []) -> case ((OMap.lookup (identifierExp ++ "[0]") idTable)) of
                                                                                             Just address -> do 
                                                                                                                 let addressesArray = take (fromIntegral size) [address..]
                                                                                                                 tell $ [(buildReturnFromFunction quadNum addressesArray)]
                                                                                                                 modify $ \s -> (s { currentQuadNum = quadNum + 1})
 
-                                                                (("[",rows,"]") : ("[",cols,"]") : []) -> case ((Map.lookup (identifierExp ++ "[0][0]") idTable)) of
+                                                                (("[",rows,"]") : ("[",cols,"]") : []) -> case ((OMap.lookup (identifierExp ++ "[0][0]") idTable)) of
                                                                                     Just address -> do 
                                                                                                         let addressesArray = take (fromIntegral $ rows * cols) [address..]
                                                                                                         tell $ [(buildReturnFromFunction quadNum addressesArray)]
                                                                                                         modify $ \s -> (s { currentQuadNum = quadNum + 1})
                                                         Just (SymbolVar (TypeClassId prim accessExpression) _ _) ->
                                                             case accessExpression of 
-                                                                [] -> case ((Map.lookup identifierExp idTable)) of
+                                                                [] -> case ((OMap.lookup identifierExp idTable)) of
                                                                         Just address -> do 
                                                                                             tell $ [(buildReturnFromFunction quadNum [address])]
                                                                                             modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                                                (("[",size,"]") : []) -> case ((Map.lookup (identifierExp ++ "[0]") idTable)) of
+                                                                (("[",size,"]") : []) -> case ((OMap.lookup (identifierExp ++ "[0]") idTable)) of
                                                                                             Just address -> do 
                                                                                                                 let addressesArray = take (fromIntegral size) [address..]
                                                                                                                 tell $ [(buildReturnFromFunction quadNum addressesArray)]
                                                                                                                 modify $ \s -> (s { currentQuadNum = quadNum + 1})
 
-                                                                (("[",rows,"]") : ("[",cols,"]") : []) -> case ((Map.lookup (identifierExp ++ "[0][0]") idTable)) of
+                                                                (("[",rows,"]") : ("[",cols,"]") : []) -> case ((OMap.lookup (identifierExp ++ "[0][0]") idTable)) of
                                                                                     Just address -> do 
                                                                                                         let addressesArray = take (fromIntegral $ rows * cols) [address..]
                                                                                                         tell $ [(buildReturnFromFunction quadNum  addressesArray)]
@@ -354,7 +396,7 @@ generateCodeFromStatement (ReadStatement (Reading identifier))  =
         cgState <- get
         let (_,_,idTable,_,_,_,_) = getCGEnvironment cgEnv
         let (symTab,_,quadNum) = getCGState cgState
-        case (Map.lookup identifier idTable) of
+        case (OMap.lookup identifier idTable) of
             Just address ->
                 case (Map.lookup identifier symTab) of
                     Just (SymbolVar (TypePrimitive PrimitiveDouble _) _ _) -> 
@@ -390,26 +432,26 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                                 case (Map.lookup var symTab) of 
                                                                                     Just (SymbolVar (TypePrimitive prim accessExpression) _ _) ->
                                                                                         case accessExpression of 
-                                                                                            [] -> case ((Map.lookup var idTable)) of
+                                                                                            [] -> case ((OMap.lookup var idTable)) of
                                                                                                     Just address -> do 
                                                                                                                         tell $ [(buildQuadOneAddress quadNum op address)]
                                                                                                                         modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                                                                            (("[",size,"]") : []) -> case ((Map.lookup (var ++ "[0]") idTable)) of
+                                                                                            (("[",size,"]") : []) -> case ((OMap.lookup (var ++ "[0]") idTable)) of
                                                                                                                         Just address -> genLoopArray address size op
 
-                                                                                            (("[",rows,"]") : ("[",cols,"]") : []) -> case ((Map.lookup (var ++ "[0][0]") idTable)) of
+                                                                                            (("[",rows,"]") : ("[",cols,"]") : []) -> case ((OMap.lookup (var ++ "[0][0]") idTable)) of
                                                                                                                 Just address -> genLoopMatrix address rows cols 1  op
                                                                                     Just (SymbolVar (TypeClassId prim accessExpression) _ _) ->
                                                                                         case accessExpression of 
-                                                                                            [] -> case ((Map.lookup var idTable)) of
+                                                                                            [] -> case ((OMap.lookup var idTable)) of
                                                                                                     Just address ->
                                                                                                         do 
                                                                                                             tell $ [(buildQuadOneAddress quadNum op address)]
                                                                                                             modify $ \s -> (s { currentQuadNum = quadNum + 1}) 
-                                                                                            (("[",size,"]") : []) -> case ((Map.lookup (var ++ "[0]") idTable)) of
+                                                                                            (("[",size,"]") : []) -> case ((OMap.lookup (var ++ "[0]") idTable)) of
                                                                                                                         Just address -> genLoopArray address size  op
 
-                                                                                            (("[",rows,"]") : ("[",cols,"]") : []) -> case ((Map.lookup (var ++ "[0][0]") idTable)) of
+                                                                                            (("[",rows,"]") : ("[",cols,"]") : []) -> case ((OMap.lookup (var ++ "[0][0]") idTable)) of
                                                                                                                         Just address -> genLoopMatrix address rows cols 1  op
                                                                     genFromDisplay (DisplayObjMem (ObjectMember object attribute) op)  =
                                                                             do 
@@ -424,47 +466,47 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                                                 case (Map.lookup attribute symTabOfClass) of
                                                                                                     Just (SymbolVar (TypeClassId prim accessExpression) _ _) ->
                                                                                                         case accessExpression of 
-                                                                                                            [] -> case ((Map.lookup object idTable)) of
+                                                                                                            [] -> case ((OMap.lookup object idTable)) of
                                                                                                                     Just addressObj -> 
                                                                                                                         case (Map.lookup addressObj objMap) of
-                                                                                                                            Just objTable -> case (Map.lookup attribute objTable) of
+                                                                                                                            Just objTable -> case (OMap.lookup attribute objTable) of
                                                                                                                                                 Just addressAttr ->
                                                                                                                                                         do 
                                                                                                                                                             tell $ [(buildQuadOneAddress quadNum op addressAttr)]
                                                                                                                                                             modify $ \s -> (s { currentQuadNum = quadNum + 1}) 
-                                                                                                            (("[",size,"]") : []) -> case ((Map.lookup object idTable)) of
+                                                                                                            (("[",size,"]") : []) -> case ((OMap.lookup object idTable)) of
                                                                                                                                         Just addressObj -> 
                                                                                                                                             case (Map.lookup addressObj objMap) of
                                                                                                                                                 Just objTable -> 
-                                                                                                                                                    case (Map.lookup (attribute ++ "[0]") objTable) of
+                                                                                                                                                    case (OMap.lookup (attribute ++ "[0]") objTable) of
                                                                                                                                                         Just addressAttr -> genLoopArray addressAttr size op
-                                                                                                            (("[",rows,"]") : ("[",cols,"]") : []) -> case ((Map.lookup object idTable)) of
+                                                                                                            (("[",rows,"]") : ("[",cols,"]") : []) -> case ((OMap.lookup object idTable)) of
                                                                                                                                                         Just addressObj -> 
                                                                                                                                                             case (Map.lookup addressObj objMap) of
                                                                                                                                                                 Just objTable -> 
-                                                                                                                                                                    case (Map.lookup (attribute ++ "[0][0]") objTable) of
+                                                                                                                                                                    case (OMap.lookup (attribute ++ "[0][0]") objTable) of
                                                                                                                                                                         Just addressAttr -> genLoopMatrix addressAttr rows cols 1 op
                                                                                                     Just (SymbolVar (TypePrimitive prim accessExpression) _ _) ->
                                                                                                         case accessExpression of 
-                                                                                                            [] -> case ((Map.lookup object idTable)) of
+                                                                                                            [] -> case ((OMap.lookup object idTable)) of
                                                                                                                     Just addressObj -> 
                                                                                                                         case (Map.lookup addressObj objMap) of
-                                                                                                                            Just objTable -> case (Map.lookup attribute objTable) of
+                                                                                                                            Just objTable -> case (OMap.lookup attribute objTable) of
                                                                                                                                                 Just addressAttr -> 
                                                                                                                                                         do 
                                                                                                                                                             tell $ [(buildQuadOneAddress quadNum (op) addressAttr)]
                                                                                                                                                             modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                                                                                            (("[",size,"]") : []) -> case ((Map.lookup object idTable)) of
+                                                                                                            (("[",size,"]") : []) -> case ((OMap.lookup object idTable)) of
                                                                                                                                         Just addressObj -> 
                                                                                                                                             case (Map.lookup addressObj objMap) of
                                                                                                                                                 Just objTable -> 
-                                                                                                                                                    case (Map.lookup (attribute ++ "[0]") objTable) of
+                                                                                                                                                    case (OMap.lookup (attribute ++ "[0]") objTable) of
                                                                                                                                                         Just addressAttr -> genLoopArray addressAttr size  op
-                                                                                                            (("[",rows,"]") : ("[",cols,"]") : []) -> case ((Map.lookup object idTable)) of
+                                                                                                            (("[",rows,"]") : ("[",cols,"]") : []) -> case ((OMap.lookup object idTable)) of
                                                                                                                                                         Just addressObj -> 
                                                                                                                                                             case (Map.lookup addressObj objMap) of
                                                                                                                                                                 Just objTable -> 
-                                                                                                                                                                    case (Map.lookup (attribute ++ "[0][0]") objTable) of
+                                                                                                                                                                    case (OMap.lookup (attribute ++ "[0][0]") objTable) of
                                                                                                                                                                         Just addressAttr -> genLoopMatrix addressAttr rows cols 1 op
                                                                     genFromDisplay (DisplayVarArrayAccess identifierArray accessExpression op)  =
                                                                         do 
@@ -478,7 +520,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                                                         ((ArrayAccessExpression arrayIndexExp) : []) -> 
                                                                                                                         case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                                                                                     Just address ->
-                                                                                                                                        case (Map.lookup (identifierArray ++ "[0]") idTable) of
+                                                                                                                                        case (OMap.lookup (identifierArray ++ "[0]") idTable) of
                                                                                                                                             Just addressBase -> 
                                                                                                                                                 do 
                                                                                                                                                     (_,quadsIndexAccess) <- listen $ expCodeGen (reduceExpression arrayIndexExp)
@@ -498,7 +540,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                                                 Just addressRowsSize ->
                                                                                                     case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                                                         Just addressColsSize -> 
-                                                                                                                case (Map.lookup (identifierArray ++ "[0][0]") idTable) of
+                                                                                                                case (OMap.lookup (identifierArray ++ "[0][0]") idTable) of
                                                                                                                     Just addressBase ->
                                                                                                                             do 
                                                                                                                                 (_,quadsRowExp) <- listen $ expCodeGen (reduceExpression rowsIndexExp)
@@ -519,7 +561,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                                                         ((ArrayAccessExpression arrayIndexExp) : []) -> 
                                                                                                                         case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                                                                                     Just address ->
-                                                                                                                                        case (Map.lookup (identifierArray ++ "[0]") idTable) of
+                                                                                                                                        case (OMap.lookup (identifierArray ++ "[0]") idTable) of
                                                                                                                                             Just addressBase -> 
                                                                                                                                                 do 
                                                                                                                                                     (_,quadsIndexAccess) <- listen $ expCodeGen (reduceExpression arrayIndexExp)
@@ -539,7 +581,7 @@ generateCodeFromStatement (DisplayStatement displays)  =  genFromDisplays displa
                                                                                                 Just addressRowsSize ->
                                                                                                     case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                                                         Just addressColsSize -> 
-                                                                                                                case (Map.lookup (identifierArray ++ "[0][0]") idTable) of
+                                                                                                                case (OMap.lookup (identifierArray ++ "[0][0]") idTable) of
                                                                                                                     Just addressBase ->
                                                                                                                             do
                                                                                                                                 (_,quadsRowExp) <- listen $ expCodeGen (reduceExpression rowsIndexExp)
@@ -645,27 +687,27 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionLitVar (V
                 Just (SymbolVar (TypeClassId classIdentifier []) _ _) -> 
                     generateQuadruplesAssignmentClasses identifier identifier2
                 Just (SymbolVar (TypeClassId _ (("[",size,"]") : []) ) _ _) -> 
-                    case (Map.lookup (identifier ++ "[0]") idTable) of 
+                    case (OMap.lookup (identifier ++ "[0]") idTable) of 
                                 Just address1 ->  
-                                     case (Map.lookup (identifier2 ++ "[0]") idTable) of 
+                                     case (OMap.lookup (identifier2 ++ "[0]") idTable) of 
                                         Just address2 ->  
                                             assignTwoArrays address1 address2 size 
 
                 Just (SymbolVar (TypeClassId _ (("[",rows,"]") : ("[",columns,"]") : []) ) _ _) -> 
-                    case (Map.lookup (identifier ++ "[0][0]") idTable) of 
+                    case (OMap.lookup (identifier ++ "[0][0]") idTable) of 
                                 Just address1 ->  
-                                     case (Map.lookup (identifier2 ++ "[0][0]") idTable) of 
+                                     case (OMap.lookup (identifier2 ++ "[0][0]") idTable) of 
                                         Just address2 -> assignTwoMatrices address1 address2 rows columns
                 Just (SymbolVar (TypePrimitive prim (("[",size,"]") : []) ) _ _) -> 
-                    case (Map.lookup (identifier ++ "[0]") idTable) of 
+                    case (OMap.lookup (identifier ++ "[0]") idTable) of 
                                 Just address1 ->  
-                                     case (Map.lookup (identifier2 ++ "[0]") idTable) of 
+                                     case (OMap.lookup (identifier2 ++ "[0]") idTable) of 
                                         Just address2 ->  
                                             assignTwoArrays address1 address2 size
                 Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",columns,"]") : []) ) _ _) -> 
-                    case (Map.lookup (identifier ++ "[0][0]") idTable) of 
+                    case (OMap.lookup (identifier ++ "[0][0]") idTable) of 
                                 Just address1 ->  
-                                     case (Map.lookup (identifier2 ++ "[0][0]") idTable) of 
+                                     case (OMap.lookup (identifier2 ++ "[0][0]") idTable) of 
                                         Just address2 ->  
                                             assignTwoMatrices address1 address2 rows columns
                 _ ->  do
@@ -674,7 +716,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionLitVar (V
                         cgState <- get
                         let (_,_,quadNum) = getCGState cgState
                         -- liftIO $ putStrLn.show $ idTable
-                        case (Map.lookup identifier idTable) of
+                        case (OMap.lookup identifier idTable) of
                             Just address -> do 
                                                 tell $ ([(buildQuadrupleTwoAddresses quadNum ASSIGNMENT ((getLastAddress $ last $ quadsExp) , address ))])
                                                 modify $ \s -> (s { currentQuadNum = quadNum + 1})
@@ -688,8 +730,8 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray 
                         Just (SymbolVar (TypeClassId _ (("[",size,"]") : [] )) _ _) ->
                             case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                 Just address ->
-                                    case (Map.lookup (identifierArray ++ "[0]") idTable) of
-                                        Just addressBase -> case (Map.lookup identifier idTable) of
+                                    case (OMap.lookup (identifierArray ++ "[0]") idTable) of
+                                        Just addressBase -> case (OMap.lookup identifier idTable) of
                                                                 Just addressIdentifier -> 
                                                                     do 
                                                                         (_,quads) <- listen $ expCodeGen (reduceExpression arrayIndexExp)
@@ -706,7 +748,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray 
                                                 
                         _ -> 
                             do
-                                 case (Map.lookup identifier idTable) of
+                                 case (OMap.lookup identifier idTable) of
                                         Just addressIdentifier -> 
                                             do 
                                                 (_,quadsExp) <- listen $ expCodeGen (reduceExpression (ExpressionVarArray identifierArray ((ArrayAccessExpression arrayIndexExp) : []))) 
@@ -730,9 +772,9 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray 
                                 Just addressRowsSize ->
                                     case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                         Just addressColsSize -> 
-                                                case (Map.lookup (identifierArray ++ "[0][0]") idTable) of
+                                                case (OMap.lookup (identifierArray ++ "[0][0]") idTable) of
                                                     Just addressBase -> 
-                                                        case (Map.lookup identifier idTable) of
+                                                        case (OMap.lookup identifier idTable) of
                                                             Just addressIdentifier -> 
                                                                 do 
                                                                     (_,quadsRowExp) <- listen $ expCodeGen (reduceExpression rowsIndexExp)
@@ -752,7 +794,7 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionVarArray 
                                                                     modify $ \s -> (s { varCounters = (intGC + 3, decGC, strGC, boolGC + 1,objGC)})
                         _ -> 
                             do
-                             case (Map.lookup identifier idTable) of
+                             case (OMap.lookup identifier idTable) of
                                     Just addressIdentifier -> 
                                         do 
                                             (_,quadsExp) <- listen $ expCodeGen (reduceExpression (ExpressionVarArray identifierArray ((ArrayAccessExpression rowsIndexExp) : (ArrayAccessExpression colsIndexExp) : []))) 
@@ -773,36 +815,36 @@ generateCodeFromAssignment (AssignmentExpression identifier (ExpressionFuncCall 
                                                                 let (symTab,_,quadNum) = getCGState cgState
                                                                 case (Map.lookup identifier symTab) of 
                                                                     Just (SymbolVar (TypeClassId classIdentifier []) _ _) -> 
-                                                                        case (Map.lookup (identifier) idTable) of 
+                                                                        case (OMap.lookup (identifier) idTable) of 
                                                                                     Just address -> generateCodeFuncCall functionCall [address]
                                     
                                                                     Just (SymbolVar (TypeClassId _ (("[",size,"]") : []) ) _ _) -> 
-                                                                        case (Map.lookup (identifier ++ "[0]") idTable) of 
+                                                                        case (OMap.lookup (identifier ++ "[0]") idTable) of 
                                                                                     Just address ->  
                                                                                         do 
                                                                                             let addressesArray = take (fromIntegral $ size) [address..]
                                                                                             generateCodeFuncCall functionCall addressesArray
 
                                                                     Just (SymbolVar (TypeClassId _ (("[",rows,"]") : ("[",columns,"]") : []) ) _ _) -> 
-                                                                        case (Map.lookup (identifier ++ "[0][0]") idTable) of 
+                                                                        case (OMap.lookup (identifier ++ "[0][0]") idTable) of 
                                                                                     Just address ->  
                                                                                          do 
                                                                                             let addressesArray = take (fromIntegral $ rows * columns) [address..]
                                                                                             generateCodeFuncCall functionCall addressesArray
                                                                     Just (SymbolVar (TypePrimitive prim (("[",size,"]") : []) ) _ _) -> 
-                                                                        case (Map.lookup (identifier ++ "[0]") idTable) of 
+                                                                        case (OMap.lookup (identifier ++ "[0]") idTable) of 
                                                                                     Just address ->  
                                                                                          do 
                                                                                             let addressesArray = take (fromIntegral $ size) [address..]
                                                                                             generateCodeFuncCall functionCall addressesArray
                                                                     Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",columns,"]") : []) ) _ _) -> 
-                                                                        case (Map.lookup (identifier ++ "[0][0]") idTable) of 
+                                                                        case (OMap.lookup (identifier ++ "[0][0]") idTable) of 
                                                                                     Just address ->  
                                                                                          do 
                                                                                             let addressesArray = take (fromIntegral $ rows * columns) [address..]
                                                                                             generateCodeFuncCall functionCall addressesArray
                                                                     _ ->  do
-                                                                            case (Map.lookup (identifier) idTable) of 
+                                                                            case (OMap.lookup (identifier) idTable) of 
                                                                                     Just address -> generateCodeFuncCall functionCall [address]
 
 generateCodeFromAssignment (AssignmentExpression identifier expression)  = 
@@ -813,7 +855,7 @@ generateCodeFromAssignment (AssignmentExpression identifier expression)  =
         cgState <- get
         let (classSymTab,objMap,idTable,constTable,_,_,_) = getCGEnvironment cgEnv
         let (symTab,_,quadNum) = getCGState cgState
-        case (Map.lookup identifier idTable) of
+        case (OMap.lookup identifier idTable) of
             Just address -> case (Map.lookup identifier symTab) of
                                 Just (SymbolVar (TypePrimitive PrimitiveDouble _) _ _) -> 
                                     do 
@@ -841,62 +883,62 @@ generateCodeFromAssignment (AssignmentObjectMember identifier (ObjectMember obje
             let (classSymTab,objMap,idTable,funcMap,currentModule,_,_) = getCGEnvironment cgEnv
             case (Map.lookup identifier symTab) of
                 Just (SymbolVar (TypeClassId classIdentifier []) _ _) ->
-                    case (Map.lookup objectIdentifier idTable) of 
+                    case (OMap.lookup objectIdentifier idTable) of 
                         Just addressObject -> 
                                 case (Map.lookup addressObject objMap) of 
-                                    Just idTableObj -> case (Map.lookup attrIdentifier idTableObj) of 
+                                    Just idTableObj -> case (OMap.lookup attrIdentifier idTableObj) of 
                                                             Just addressAttribute -> 
-                                                                case (Map.lookup identifier idTable) of
+                                                                case (OMap.lookup identifier idTable) of
                                                                     Just address -> 
                                                                         do 
                                                                             tell $ [(buildQuadrupleTwoAddresses quadNum ASSIGNMENT (addressAttribute , address ))]
                                                                             modify $ \s -> (s { currentQuadNum = quadNum + 1})
                     -- generateQuadruplesAssignmentClasses identifier identifier2 quadNum symTab classSymTab varCounters idTable constTable objMap
                 Just (SymbolVar (TypePrimitive prim  []) _ _) -> 
-                    case (Map.lookup identifier idTable) of 
+                    case (OMap.lookup identifier idTable) of 
                                 Just address1 ->  
-                                     case (Map.lookup objectIdentifier idTable) of 
+                                     case (OMap.lookup objectIdentifier idTable) of 
                                         Just objAddress2 -> 
                                             case (Map.lookup objAddress2 objMap) of
                                                 Just idTableObject ->
-                                                    case (Map.lookup attrIdentifier idTableObject) of
+                                                    case (OMap.lookup attrIdentifier idTableObject) of
                                                         Just addressAttribute -> assignTwoArrays address1 addressAttribute 1
                 Just (SymbolVar (TypePrimitive prim (("[",size,"]") : []) ) _ _) -> 
-                    case (Map.lookup (identifier ++ "[0]") idTable) of 
+                    case (OMap.lookup (identifier ++ "[0]") idTable) of 
                                 Just address1 ->  
-                                     case (Map.lookup objectIdentifier idTable) of 
+                                     case (OMap.lookup objectIdentifier idTable) of 
                                         Just objAddress2 -> 
                                             case (Map.lookup objAddress2 objMap) of
                                                 Just idTableObject ->
-                                                    case (Map.lookup (attrIdentifier ++ "[0]") idTableObject) of
+                                                    case (OMap.lookup (attrIdentifier ++ "[0]") idTableObject) of
                                                         Just addressAttribute -> assignTwoArrays address1 addressAttribute size
                 Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",columns,"]") : []) ) _ _) -> 
-                    case (Map.lookup (identifier ++ "[0][0]") idTable) of 
+                    case (OMap.lookup (identifier ++ "[0][0]") idTable) of 
                                 Just address1 ->  
-                                     case (Map.lookup objectIdentifier idTable) of 
+                                     case (OMap.lookup objectIdentifier idTable) of 
                                         Just objAddress2 -> 
                                             case (Map.lookup objAddress2 objMap) of
                                                 Just idTableObject ->
-                                                    case (Map.lookup (attrIdentifier ++ "[0][0]") idTableObject) of
+                                                    case (OMap.lookup (attrIdentifier ++ "[0][0]") idTableObject) of
                                                         Just addressAttribute -> assignTwoMatrices address1 addressAttribute rows columns
                 Just (SymbolVar (TypeClassId _ (("[",size,"]") : []) ) _ _) -> 
-                    case (Map.lookup (identifier ++ "[0]") idTable) of 
+                    case (OMap.lookup (identifier ++ "[0]") idTable) of 
                                 Just address1 ->  
-                                     case (Map.lookup objectIdentifier idTable) of 
+                                     case (OMap.lookup objectIdentifier idTable) of 
                                         Just objAddress2 -> 
                                             case (Map.lookup objAddress2 objMap) of
                                                 Just idTableObject ->
-                                                    case (Map.lookup (attrIdentifier ++ "[0]") idTableObject) of
+                                                    case (OMap.lookup (attrIdentifier ++ "[0]") idTableObject) of
                                                         Just addressAttribute -> assignTwoArrays address1 addressAttribute size 
 
                 Just (SymbolVar (TypeClassId _ (("[",rows,"]") : ("[",columns,"]") : []) ) _ _) -> 
-                    case (Map.lookup (identifier ++ "[0][0]") idTable) of 
+                    case (OMap.lookup (identifier ++ "[0][0]") idTable) of 
                                 Just address1 ->  
-                                     case (Map.lookup objectIdentifier idTable) of 
+                                     case (OMap.lookup objectIdentifier idTable) of 
                                         Just objAddress2 -> 
                                             case (Map.lookup objAddress2 objMap) of
                                                 Just idTableObject ->
-                                                    case (Map.lookup (attrIdentifier ++ "[0][0]") idTableObject) of
+                                                    case (OMap.lookup (attrIdentifier ++ "[0][0]") idTableObject) of
                                                         Just addressAttribute -> assignTwoMatrices address1 addressAttribute rows columns   
 generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objectIdentifier attrIdentifier) expression) =  
                              do 
@@ -904,7 +946,7 @@ generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objec
                                 cgState <- get
                                 let (symTab,varCounters,quadNum) = getCGState cgState
                                 let (classSymTab,objMap,idTable,constTable,funcMap,currentModule, aMap) = getCGEnvironment cgEnv  
-                                case (Map.lookup objectIdentifier idTable) of 
+                                case (OMap.lookup objectIdentifier idTable) of 
                                     Just objectAddress -> 
                                         case (Map.lookup objectAddress objMap) of 
                                             Just objTable -> 
@@ -913,7 +955,7 @@ generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objec
                                                         case (Map.lookup classIdentifier classSymTab) of 
                                                               Just symTabOfClass -> case (Map.lookup attrIdentifier symTabOfClass) of 
                                                                                         Just (SymbolVar (TypePrimitive prim []) scp isPublic) ->
-                                                                                             case (Map.lookup attrIdentifier objTable) of 
+                                                                                             case (OMap.lookup attrIdentifier objTable) of 
                                                                                                    Just attrAddress ->
                                                                                                         do 
                                                                                                             (_,quadsExp) <- listen $ expCodeGen (reduceExpression expression)
@@ -923,10 +965,10 @@ generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objec
                                                                                                             tell $ [(buildQuadrupleTwoAddresses quadNum ASSIGNMENT ((getLastAddress $ last $ quadsExp) , attrAddress ))]
                                                                                                             modify $ \s -> (s { currentQuadNum = quadNum + 1})
                                                                                         Just (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic) ->
-                                                                                             case (Map.lookup (attrIdentifier ++ "[0]")  objTable) of 
+                                                                                             case (OMap.lookup (attrIdentifier ++ "[0]")  objTable) of 
                                                                                                    Just attrAddress -> 
                                                                                                        do 
-                                                                                                        let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0]") attrAddress idTable)
+                                                                                                        let tempIdTable = (OMap.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0]") attrAddress idTable)
                                                                                                         let symbolVarAttr = (SymbolVar (TypePrimitive prim (("[",size,"]") : [])) scp isPublic)
                                                                                                         let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
                                                                                                         (stateAfterAttributesInserted,quadruples) <- liftIO $ execRWST (generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression))
@@ -938,10 +980,10 @@ generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objec
                                                                                                         tell $ quadruples
                                                                                                        
                                                                                         Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic) ->
-                                                                                             case (Map.lookup (attrIdentifier ++ "[0][0]")  objTable) of 
+                                                                                             case (OMap.lookup (attrIdentifier ++ "[0][0]")  objTable) of 
                                                                                                    Just attrAddress -> 
                                                                                                        do 
-                                                                                                        let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0][0]") attrAddress idTable)
+                                                                                                        let tempIdTable = (OMap.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0][0]") attrAddress idTable)
                                                                                                         let symbolVarAttr = (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)
                                                                                                         let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
                                                                                                         (stateAfterAttributesInserted,quadruples) <- liftIO $ execRWST (generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression))
@@ -953,7 +995,7 @@ generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objec
                                                                                                         tell $ quadruples
 
                                                                                         Just (SymbolVar (TypeClassId c []) scp isPublic) ->
-                                                                                             case (Map.lookup attrIdentifier objTable) of 
+                                                                                             case (OMap.lookup attrIdentifier objTable) of 
                                                                                                    Just attrAddress -> 
                                                                                                        do 
                                                                                                             (_,quadsExp) <- listen $ expCodeGen (reduceExpression expression)
@@ -963,10 +1005,10 @@ generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objec
                                                                                                             tell $ [(buildQuadrupleTwoAddresses quadNum ASSIGNMENT ((getLastAddress $ last $ quadsExp) , attrAddress ))]
                                                                                                             modify $ \s -> (s { currentQuadNum = quadNum + 1})
                                                                                         Just (SymbolVar (TypeClassId c (("[",size,"]") : [])) scp isPublic) ->
-                                                                                             case (Map.lookup (attrIdentifier ++ "[0]")  objTable) of 
+                                                                                             case (OMap.lookup (attrIdentifier ++ "[0]")  objTable) of 
                                                                                                    Just attrAddress -> 
                                                                                                         do 
-                                                                                                            let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0]") attrAddress idTable)
+                                                                                                            let tempIdTable = (OMap.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0]") attrAddress idTable)
                                                                                                             let symbolVarAttr = (SymbolVar (TypeClassId c (("[",size,"]") : [])) scp isPublic)
                                                                                                             let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
                                                                                                             (stateAfterAttributesInserted,quadruples) <- liftIO $ execRWST (generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression))
@@ -978,10 +1020,10 @@ generateCodeFromAssignment (AssignmentObjectMemberExpression (ObjectMember objec
                                                                                                             tell $ quadruples
                                                                       
                                                                                         Just (SymbolVar (TypeClassId c (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic) ->
-                                                                                             case (Map.lookup (attrIdentifier ++ "[0][0]")  objTable) of 
+                                                                                             case (OMap.lookup (attrIdentifier ++ "[0][0]")  objTable) of 
                                                                                                    Just attrAddress -> 
                                                                                                        do 
-                                                                                                        let tempIdTable = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0][0]") attrAddress idTable)
+                                                                                                        let tempIdTable = (OMap.insert (objectIdentifier ++ "." ++ attrIdentifier ++ "[0][0]") attrAddress idTable)
                                                                                                         let symbolVarAttr = (SymbolVar (TypeClassId c (("[",rows,"]") : ("[",cols,"]")  : [])) scp isPublic)
                                                                                                         let newSymTab = (Map.insert (objectIdentifier ++ "." ++ attrIdentifier) symbolVarAttr symTab)
                                                                                                         (stateAfterAttributesInserted,quadruples) <- liftIO $ execRWST (generateCodeFromAssignment (AssignmentExpression (objectIdentifier ++ "." ++ attrIdentifier) expression))
@@ -1002,8 +1044,8 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                         Just (SymbolVar (TypeClassId _ (("[",size,"]") : [] )) _ _) ->
                                                             case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                 Just address ->
-                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
-                                                                        Just addressBase -> case (Map.lookup id idTable) of
+                                                                    case (OMap.lookup (identifier ++ "[0]") idTable) of
+                                                                        Just addressBase -> case (OMap.lookup id idTable) of
                                                                                                 Just addressObject -> 
                                                                                                     do 
                                                                                                         (_,quads) <- listen $ expCodeGen (reduceExpression arrayIndexExp)
@@ -1020,8 +1062,8 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                         Just (SymbolVar (TypePrimitive _ (("[",size,"]") : [] )) _ _) ->
                                                             case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                 Just address ->
-                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
-                                                                        Just addressBase -> case (Map.lookup id idTable) of
+                                                                    case (OMap.lookup (identifier ++ "[0]") idTable) of
+                                                                        Just addressBase -> case (OMap.lookup id idTable) of
                                                                                                 Just addressIdentifier -> 
                                                                                                     do 
                                                                                                         (_,quads) <- listen $ expCodeGen (reduceExpression arrayIndexExp)
@@ -1047,9 +1089,9 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                                 Just addressRowsSize ->
                                                                     case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                         Just addressColsSize -> 
-                                                                                case (Map.lookup (identifier ++ "[0][0]") idTable) of
+                                                                                case (OMap.lookup (identifier ++ "[0][0]") idTable) of
                                                                                     Just addressBase ->
-                                                                                        case (Map.lookup id idTable) of
+                                                                                        case (OMap.lookup id idTable) of
                                                                                             Just addressIdentifier ->
                                                                                                 do 
                                                                                                     (_,quadsRowExp) <- listen $ expCodeGen (reduceExpression rowsIndexExp)
@@ -1074,9 +1116,9 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                                         Just addressRowsSize ->
                                                                             case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                                 Just addressColsSize -> 
-                                                                                        case (Map.lookup (identifier ++ "[0][0]") idTable) of
+                                                                                        case (OMap.lookup (identifier ++ "[0][0]") idTable) of
                                                                                             Just addressBase ->
-                                                                                                 case (Map.lookup id idTable) of
+                                                                                                 case (OMap.lookup id idTable) of
                                                                                                     Just addressIdentifier ->
                                                                                                         do 
                                                                                                             (_,quadsRowExp) <- listen $ expCodeGen (reduceExpression rowsIndexExp)
@@ -1106,7 +1148,7 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                                 Just (SymbolVar (TypeClassId classId (("[",size,"]") : []) ) _ _) ->
                                                                     case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                             Just address ->
-                                                                                case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                case (OMap.lookup (identifier ++ "[0]") idTable) of
                                                                                     Just addressBase -> 
                                                                                                         do 
                                                                                                             let boundQuad = [(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsIndexAccess), address ))]
@@ -1124,7 +1166,7 @@ generateCodeFromAssignment  (AssignmentArrayExpression identifier ((ArrayAccessE
                                                                 Just (SymbolVar (TypePrimitive _ (("[",size,"]") : []) ) _ _) ->
                                                                     case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                             Just address ->
-                                                                                case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                case (OMap.lookup (identifier ++ "[0]") idTable) of
                                                                                     Just addressBase -> 
                                                                                                         do 
                                                                                                             let boundQuad = [(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsIndexAccess), address ))]
@@ -1151,7 +1193,7 @@ generateCodeFromAssignment (AssignmentArrayExpression identifier ((ArrayAccessEx
                                                                     Just addressRowsSize ->
                                                                         case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                             Just addressColsSize -> 
-                                                                                    case (Map.lookup (identifier ++ "[0][0]") idTable) of
+                                                                                    case (OMap.lookup (identifier ++ "[0][0]") idTable) of
                                                                                         Just addressBase -> 
                                                                                             do
                                                                                                 (_,quadsRowExp) <- listen $ expCodeGen (reduceExpression arrayRowsExp)
@@ -1178,7 +1220,7 @@ generateCodeFromAssignment (AssignmentArrayExpression identifier ((ArrayAccessEx
                                                                     Just addressRowsSize ->
                                                                         case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                             Just addressColsSize -> 
-                                                                                    case (Map.lookup (identifier ++ "[0][0]") idTable) of
+                                                                                    case (OMap.lookup (identifier ++ "[0][0]") idTable) of
                                                                                         Just addressBase -> 
                                                                                             do
                                                                                                 (_,quadsRowExp) <- listen $ expCodeGen (reduceExpression arrayRowsExp)
@@ -1212,9 +1254,9 @@ generateQuadruplesAssignmentClasses identifier1 identifier2  =
                                             cgState <- get
                                             let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
                                             let (classSymTab,objMap,idTable,constTable,funcMap,currentModule, aMap) = getCGEnvironment cgEnv
-                                            case (Map.lookup identifier1 idTable) of 
+                                            case (OMap.lookup identifier1 idTable) of 
                                                 Just addressReceiver -> 
-                                                    case (Map.lookup identifier2 idTable) of
+                                                    case (OMap.lookup identifier2 idTable) of
                                                         Just addressGiver -> 
                                                             do 
                                                                 let newQuad = [(buildQuadrupleTwoAddresses quadNum ASSIGNMENT (addressGiver , addressReceiver))]
@@ -1250,7 +1292,7 @@ generateCodeFromVariableStatement (VariableAssignment1D _ identifier literalOrVa
         do 
             cgEnv <- ask
             let (_,_,idTable,_,_,_,_) = getCGEnvironment cgEnv
-            case (Map.lookup (identifier ++ "[0]") idTable) of
+            case (OMap.lookup (identifier ++ "[0]") idTable) of
                 Just address -> generateAssignmentArray1D literalOrVariables address
 generateCodeFromVariableStatement (VariableAssignment2D _ identifier listLiteralOrVariables) = 
         do 
@@ -1258,7 +1300,7 @@ generateCodeFromVariableStatement (VariableAssignment2D _ identifier listLiteral
             cgState <- get
             let (_,_,idTable,_,_,_,_) = getCGEnvironment cgEnv
             let (symTab,_,_) = getCGState cgState
-            case (Map.lookup (identifier ++ "[0][0]") idTable) of
+            case (OMap.lookup (identifier ++ "[0][0]") idTable) of
                 Just address ->
                     case (Map.lookup identifier symTab) of
                         Just (SymbolVar (TypePrimitive prim (("[",rows,"]") : ("[",cols,"]") : [] )) _ _) ->
@@ -1282,7 +1324,7 @@ generateAssignmentArray1D  (litOrVar : litOrVars) address =
                 (VarIdentifier identifier) ->
                      case (Map.lookup identifier symTab) of
                         Just (SymbolVar (TypeClassId _ _) _ _) -> 
-                                 case (Map.lookup identifier idTable) of 
+                                 case (OMap.lookup identifier idTable) of 
                                     Just addressGiver -> 
                                         do 
                                             let newQuad = ([(buildQuadrupleTwoAddresses quadNum ASSIGNMENT (addressGiver , address ))])

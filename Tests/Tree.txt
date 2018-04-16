@@ -43,16 +43,16 @@ class Tree{
             Node l,r;
             l = n.getLeftNode();
             r = n.getRightNode();
-            displayLn(n.val);
             Integer val;
             val = n.val;
+            //Primero hacemos la suma
             updateSum(val);
+            //Despues imprimimos en pantalla
+            displayLn(n.val);
             preorder(l);
             preorder(r);
         }
     }
-
-
 
     [+] printPreorder => Nothing {
         preorder(root);
