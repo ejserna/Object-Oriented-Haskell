@@ -55,15 +55,11 @@ crearPersona => Persona :: Money sueldo -> String nombre{
 crearPersonas => Persona [10] :: Money sueldo -> String nombre{
     Persona [10] personas;
     String [10] strings = ["a","b","c","d","e","f","g","h","i","k"];
-    Profesor p2;
-    p2.isElda = "Elda";
-    p2.altura = 12.2;
-    p2.edad = 35;
-    p2.sueldo = 1000.0;
-    p2.nombre = "Juancho";
-    displayLn(p2);
     for i in [0..9]{
+        // Aquí construimos un objeto de tipo profesor
+        // que usa el constructor Persona
         Profesor p = Persona(sueldo ^ i,nombre +" " + ">" +  strings[i] + "<");
+        // Se lo asignamos al índice del arreglo de tipo Persona
         personas[i] = p;
     }
     return personas;
