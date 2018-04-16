@@ -40,6 +40,7 @@ install_dependencies:
 	cabal install Stack
 	cabal install pretty-terminal
 	cabal install ordered-containers
+	cabal install either-5
 
 clean:
 	rm -f Parser.hs
