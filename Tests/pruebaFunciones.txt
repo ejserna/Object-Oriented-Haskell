@@ -36,9 +36,14 @@ fibo => Int :: Int n -> Int k {
     return koko;
 }
 
+enteroMatriz2 => Int [10][10] :: Int [10][10] n {
+    n[9][9] = 11111111111;
+    return n;
+}
+
 enteroMatriz => Int [10][10] :: Int [10][10] n {
     n[9][9] = 29292929;
-    return n;
+    return enteroMatriz2(n);
 }
 
 puntos => Point [10] :: Point [10] n {
