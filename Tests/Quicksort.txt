@@ -1,0 +1,48 @@
+quicksort => Nothing :: Int low -> Int high -> Int[10] n{
+    
+    Int i,j;
+    i = low;
+    j = high;
+
+    Int pivot;
+    pivot = n[low + (high - low)/2];
+
+    while(i<=j){
+        while(n[i] < pivot){
+            i++;
+        }
+
+        while(n[j] > pivot){
+            j--;
+        }
+
+        if(i<=j){
+           Int temp;
+           temp = n[i];
+           n[i] = n[j];
+           n[j] = temp;
+           i++;
+           j--;
+        }
+    }
+    if(low<j){
+        quicksort(low,j,n);
+    }
+    if(i<high){
+        quicksort(i,high,n);
+    }
+}
+
+Int [10] n = [3,4,6,2,1,7,8,10,5,9];
+Int n1 = 10; 
+
+main{
+    Int currNum;
+    displayLn(n);
+    // quicksort(0,n1-1,n);
+    for i in [0..9]{
+        currNum = n[i];
+        displayLn(currNum);
+
+    } 
+}

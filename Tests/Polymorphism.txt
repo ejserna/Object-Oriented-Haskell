@@ -43,13 +43,21 @@ factorial => Integer :: Integer n{
         }
 }
 
-polyChange => Humano :: Humano h1{
+polyChange => Humano :: Humano h1 {
     Humano h;
     Estudiante e;
     h = e;
     e.z3 = 1000;
-    h.speak();
-    return e;
+    return h;
+}
+
+polySwap => Humano [2] :: Humano h1 -> Humano h2{
+    Humano hAux;
+    hAux = h1;
+    h1 = h2;
+    h2 = hAux;
+    Humano [2] hums = [h1,h2];
+    return hums;
 }
 
 polyFunc => Nothing :: Humano h1 -> Humano h2 -> Humano h3{
@@ -59,40 +67,48 @@ polyFunc => Nothing :: Humano h1 -> Humano h2 -> Humano h3{
 }
 main{
     Humano h;
-    Persona p;
     Estudiante e;
-    polyFunc(h,p,e);
-    Integer i;
-    displayLn(factorial(5));
-    e.hijos = 2;
-    e.materias = 3;
-    e.edad = 100;
-    e.z2 = 921111;
-    e.z = 21111;
-    h.speak();
-    p.speak();
-    e.speak();
-    displayLn("-------------------");
-    p.z = 11111;
-    h = p;
-    h.speak();
-    h = e;
-    displayLn(222222222222222222222222222222222222222222222222);
-    h.speak();
-    p.speak();
-    e.speak();
-    displayLn(111111111111111111111111111111111111111111111111);
-    polyFunc(h,p,e);
-    displayLn(p,h.z2);
-    Humano [3] humanos = [h,p,e];
+    // Persona p;
+    // Estudiante e;
+    // h = p;
+    // h.speak();
+    // p = h;
+    // polyFunc(h,p,e);
+    // Integer i;
+    // displayLn(factorial(5));
+    // e.hijos = 2;
+    // e.materias = 3;
+    // e.edad = 100;
+    // e.z2 = 921111;
+    // e.z = 21111;
+    // h.speak();
+    // p.speak();
+    // e.speak();
+    // displayLn("-------------------");
+    // p.z = 11111;
+    // h = p;
+    // h.speak();
+    // h = e;
+    // displayLn(222222222222222222222222222222222222222222222222);
+    // h.speak();
+    // p.speak();
+    // e.speak();
+    // displayLn(111111111111111111111111111111111111111111111111);
+    // polyFunc(h,p,e);
+    // displayLn(p,h.z2);
+    // Humano [3] humanos = [h,p,e];
+    // h = humanos[1];
+    // Humano h2 = p;
+    // h.speak();
+    // h = polyChange(h);
+    // h.speak();
+    Humano [2] humanos;
+    humanos = polySwap(h,e);
     h = humanos[1];
-    Humano h2 = p;
     h.speak();
-    h = polyChange(h);
-    h.speak();
-    displayLn(h.z3);
-    if (h == h2){
-        displayLn("Op");
-    }
+    // displayLn(h.z3);
+    // if (h == h2){
+    //     displayLn("Op");
+    // }
     
 }

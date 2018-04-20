@@ -12,8 +12,6 @@ class Persona : Humano{
     [-] String nombre;
     [-] Humano h;
 
-    
-
     Persona :: Money mSueldo -> String sNombre {
         sueldo = mSueldo;
         nombre = sNombre;

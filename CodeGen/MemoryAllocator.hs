@@ -74,7 +74,9 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
            do 
             let env = (setEnvironment symTab classSymTab 0 aMap)
             let memState = setMemoryState OMap.empty Map.empty Map.empty Map.empty (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory) (startIntLiteralMemory,startDecimalLiteralMemory,startStringLiteralMemory,startBoolLiteralMemory) Map.empty
-            (stateAfterConstants1,_) <-  execRWST (prepareConstantAddressMap statements) env memState
+            let globalVariablesAsStatements = (map (\v-> VariableStatement v) variables)
+            (stateAfterConstantsGlobalVars,_) <-  execRWST (prepareConstantAddressMap globalVariablesAsStatements) env memState
+            (stateAfterConstants1,_) <-  execRWST (prepareConstantAddressMap statements) env stateAfterConstantsGlobalVars
             (stateAfterConstants2,_) <- execRWST (fillFromExpression (ExpressionLitVar $ DecimalLiteral 0.0) ) env stateAfterConstants1 
             (stateAfterConstants3,_) <- execRWST (fillFromExpression (ExpressionLitVar $ IntegerLiteral 0 ) ) env stateAfterConstants2
             (stateAfterConstants4,_) <- execRWST (fillFromExpression (ExpressionLitVar $ StringLiteral "") ) env stateAfterConstants3
@@ -86,7 +88,7 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
             -- putStrLn $ ppShow $(sortBy (compare `on` fst) (Map.toList typeMap) ) 
             -- let (varCountersMem,newIdMap,objectAddressMap) = (prepareAddressMapsFromSymbolTable symTab classSymTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory)
             --                                                     (Map.empty) (Map.empty))
-            startCodeGen (Program classes functions variables (Block statements)) symTab classSymTab varCounters idMap constMap objMap funcMap "_main_" aMap typeMap
+            startCodeGen (Program classes functions variables (Block ( globalVariablesAsStatements ++ statements ))) symTab classSymTab varCounters idMap constMap objMap funcMap "_main_" aMap typeMap
 
 prepareConstantAddressMap :: [Statement] -> MA
 prepareConstantAddressMap []  = return ()
