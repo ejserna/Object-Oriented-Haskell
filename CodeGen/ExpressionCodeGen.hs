@@ -711,22 +711,59 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
 
 
 
-
+getAllAddresses :: [(Identifier,Symbol)] -> IdentifierAddressMap -> [Address]
+getAllAddresses [] _ = []
+getAllAddresses ((attrIdentifier,sym): elems) idTable =  case sym of 
+                                                            (SymbolVar (TypePrimitive _ []) _ _) -> 
+                                                                case (OMap.lookup attrIdentifier idTable) of 
+                                                                    Just addressIdentifier -> ([addressIdentifier] ++ (getAllAddresses elems idTable))
+                                                            (SymbolVar (TypePrimitive _ (("[",size,"]") : [] ) ) _ _) -> 
+                                                                case (OMap.lookup (attrIdentifier ++ "[0]") idTable) of 
+                                                                    Just addressIdentifier -> 
+                                                                        let addressesArray = [addressIdentifier..] 
+                                                                        in ((take (fromIntegral size) addressesArray) ++ (getAllAddresses elems idTable))
+                                                            (SymbolVar (TypePrimitive _ (("[",rows,"]") : ("[",cols,"]") : [] ) ) _ _) -> 
+                                                                case (OMap.lookup (attrIdentifier ++ "[0][0]") idTable) of 
+                                                                    Just addressIdentifier -> 
+                                                                        let addressesMatrix = [addressIdentifier..] 
+                                                                        in ((take (fromIntegral (rows * cols)) addressesMatrix) ++ (getAllAddresses elems idTable))
+                                                            (SymbolVar (TypeClassId _ []) _ _) -> 
+                                                                case (OMap.lookup attrIdentifier idTable) of 
+                                                                    Just addressIdentifier -> ([addressIdentifier] ++ (getAllAddresses elems idTable))
+                                                            (SymbolVar (TypeClassId _ (("[",size,"]") : [] ) ) _ _) -> 
+                                                                case (OMap.lookup (attrIdentifier ++ "[0]") idTable) of 
+                                                                    Just addressIdentifier -> 
+                                                                        let addressesArray = [addressIdentifier..] 
+                                                                        in ((take (fromIntegral size) addressesArray) ++ (getAllAddresses elems idTable))
+                                                            (SymbolVar (TypeClassId _ (("[",rows,"]") : ("[",cols,"]") : [] ) ) _ _) -> 
+                                                                case (OMap.lookup (attrIdentifier ++ "[0][0]") idTable) of 
+                                                                    Just addressIdentifier -> 
+                                                                        let addressesMatrix = [addressIdentifier..] 
+                                                                        in ((take (fromIntegral (rows * cols)) addressesMatrix) ++ (getAllAddresses elems idTable))
 
 getAddressesOfAttributesInClassFunction :: String -> IdentifierAddressMap -> ClassSymbolTable -> [Address]
 getAddressesOfAttributesInClassFunction currentModule idMapOfFunc classSymTab = 
-                                                                    let identifierAttributes = getAttributesOfCurrentClass currentModule classSymTab
-                                                                    in (map (\f -> case (OMap.lookup f idMapOfFunc) of 
-                                                                                    Just addressIdentifier -> addressIdentifier) identifierAttributes)
+                                                                    let identifierAndSymbolsAttributes = getAttributesOfCurrentClassWithSymbol currentModule classSymTab
+                                                                    in getAllAddresses identifierAndSymbolsAttributes idMapOfFunc
+                                                                    -- in (map (\f -> case (OMap.lookup f idMapOfFunc) of 
+                                                                    --                 Just addressIdentifier -> addressIdentifier) identifierAttributes)
 getAddressesOfAttributesInObjMap :: Identifier -> ClassIdentifier  -> IdentifierAddressMap -> ObjectAddressMap -> ClassSymbolTable -> [Address]
 getAddressesOfAttributesInObjMap objIdentifier classIdentifier idMap objMap classSymTab = 
-                                                                    let identifierAttributes = getAttributesOfCurrentClass classIdentifier classSymTab
+                                                                    let identifierAndSymbolsAttributes = getAttributesOfCurrentClassWithSymbol classIdentifier classSymTab
                                                                     in case (OMap.lookup objIdentifier idMap) of 
                                                                         Just addressObj -> case (Map.lookup addressObj objMap) of 
-                                                                                                Just idTableObj -> 
-                                                                                                    (map (\f -> case (OMap.lookup f idTableObj) of 
-                                                                                                                    Just addressIdentifier -> addressIdentifier) 
-                                                                                                    identifierAttributes)
+                                                                                                Just idTableObj ->
+                                                                                                    getAllAddresses identifierAndSymbolsAttributes idTableObj
+                                                                                                    -- (map (\(attrIdentifier,sym) -> 
+                                                                                                    --                 case sym of 
+                                                                                                    --                     (SymbolVar (TypePrimitive prim []) _ _) -> 
+                                                                                                    --                         case (OMap.lookup attrIdentifier idTableObj) of 
+                                                                                                    --                             Just addressIdentifier -> addressIdentifier
+                                                                                                    --                     (SymbolVar (TypePrimitive prim (("[",size,"]") : [] ) ) _ _) -> 
+                                                                                                    --                         case (OMap.lookup (attrIdentifier ++ "[0]") idTableObj) of 
+                                                                                                    --                             Just addressIdentifier -> addressIdentifier
+                                                                                                    --     ) 
+                                                                                                    -- identifierAndSymbolsAttributes)
 
                                                                     
 
@@ -775,8 +812,7 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet 
                                                             tell $ [funcCallQuad]
                                                             case addressesToSet of 
                                                                 [] -> do 
-                                
-
+                            
                                                                     case returnType of 
                                                                         Just (TypePrimitive PrimitiveMoney []) -> 
                                                                                        do 
@@ -814,6 +850,110 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet 
                                                                                         tell $ [ret]
                                                                                         modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
                                                                                         modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC + 1,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveMoney (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let decsToSet = take (fromIntegral $ size) [decGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) decsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC + (fromIntegral $ size),strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveDouble (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let decsToSet = take (fromIntegral $ size) [decGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) decsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC + (fromIntegral $ size),strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveInteger (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let intsToSet = take (fromIntegral $ size) [intGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) intsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC + (fromIntegral $ size),decGC,strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveInt (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let intsToSet = take (fromIntegral $ size) [intGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) intsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC + (fromIntegral $ size),decGC,strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveBool (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let boolsToSet = take (fromIntegral $ size) [boolGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) boolsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC + (fromIntegral $ size),objGC)}))
+                                                                        Just (TypePrimitive PrimitiveString (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let strsToSet = take (fromIntegral $ size) [strGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) strsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC,strGC + (fromIntegral $ size),boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveMoney (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let decsToSet = take (fromIntegral $ rows * cols) [decGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) decsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC + (fromIntegral $ rows * cols),strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveDouble (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let decsToSet = take (fromIntegral $ rows * cols) [decGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) decsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC + (fromIntegral $ rows * cols),strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveInteger (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let intsToSet = take (fromIntegral $ rows * cols) [intGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) intsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC + (fromIntegral $ rows * cols),decGC,strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveInt (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let intsToSet = take (fromIntegral $ rows * cols) [intGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) intsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC + (fromIntegral $ rows * cols),decGC,strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveBool (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let boolsToSet = take (fromIntegral $ rows * cols) [boolGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) boolsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC + (fromIntegral $ rows * cols),objGC)}))
+                                                                        Just (TypePrimitive PrimitiveString (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let strsToSet = take (fromIntegral $ rows * cols) [strGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) strsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC,strGC + (fromIntegral $ rows * cols),boolGC,objGC)}))
+                                                                        Just (TypeClassId _ []) -> 
+                                                                                       do 
+                                                                                        let ret = buildReturnAssignment (quadNum + 1) [objGC]
+                                                                                        tell $ [ret]
+                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                        modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC,objGC + 1)}))
+                                                                        Just (TypeClassId _ (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let objsToSet = take (fromIntegral $ size) [objGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) objsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC,objGC + (fromIntegral $ size))}))
+                                                                        Just (TypeClassId _ (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let objsToSet = take (fromIntegral $ rows * cols) [objGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) objsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC,objGC + (fromIntegral $ rows * cols))}))
                                                                         _ -> do 
                                                                                         modify $ (\s -> (s { currentQuadNum = quadNum + 1}))
 
@@ -855,8 +995,8 @@ generateCodeFuncCall (FunctionCallObjMem (ObjectMember identifier funcIdentifier
                                                                             modify $ (\s -> newCGState)
                                                                             cgState <- get
                                                                             let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
-                                                                            
                                                                             let addressesAttributesOfCaller = getAddressesOfAttributesInObjMap identifier ("_" ++ classId ++ "_") idTable objMap classSymTab
+
                                                                             let addressesAttributesOfCallingFunction = getAddressesOfAttributesInClassFunction ("_" ++ classId ++ "_") idMapFunc classSymTab
                                                                             let zippedAddresses = zip addressesAttributesOfCaller addressesAttributesOfCallingFunction
                                                                             let addressOfObject = (fromJust (OMap.lookup identifier idTable))

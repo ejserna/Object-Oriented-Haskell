@@ -378,7 +378,9 @@ generateCodeReturnFromFunction expression =  do
                                                 (_,quads) <- listen $ expCodeGen (reduceExpression expression)
                                                 cgState <- get
                                                 let (_,_,quadNum) = getCGState cgState
-                                                tell $ [(buildReturnFromFunction quadNum [(getLastAddress $ last $ quads)])]
+                                                liftIO $ putStrLn $ "-------------"
+                                                liftIO $ mapM_  (putStrLn.(color White).ppShow) quads
+                                                tell $ [(buildReturnFromFunction quadNum (getLastReturnAddresses $ last $ quads))]
                                                 modify $ \s -> (s { currentQuadNum = quadNum + 1})
 
                                                             

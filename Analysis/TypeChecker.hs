@@ -421,6 +421,9 @@ filterFuncs :: Symbol -> Bool
 filterFuncs (SymbolFunction _ _ _ _ _ _ _) = False
 filterFuncs _ = False
 
+isReturnStatement :: Statement -> Bool
+isReturnStatement (ReturnStatement ret) = True
+isReturnStatement _ = False
 
 analyzeFunction :: Function -> Scope -> Maybe Bool -> TC
 analyzeFunction (Function identifier (TypeFuncReturnPrimitive primitive arrayDimension) params (Block statements)) scp isPublic = 
@@ -444,8 +447,9 @@ analyzeFunction (Function identifier (TypeFuncReturnPrimitive primitive arrayDim
                                 whenLeft symTabWithStatementsState (lift.throwError)
                                 let (symTabFuncFinished,_,_) = getTCState (snd (fromRight' symTabWithStatementsState))
                                 -- let (symTabWithStatements,_,_) = getTCState tcState
+                                let isLastStatementReturn = isReturnStatement (last $ statements)
                                 let updatedSymTabFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypePrimitive primitive arrayDimension)), scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = (Map.filterWithKey (\k _ -> k /= identifier) symTabFuncFinished), params = params}) symTab
-                                if (areReturnTypesOk scp (TypePrimitive primitive arrayDimension) statements updatedSymTabFunc symTabFuncFinished classSymTab aMap)
+                                if (areReturnTypesOk isLastStatementReturn scp (TypePrimitive primitive arrayDimension) statements updatedSymTabFunc symTabFuncFinished classSymTab aMap)
                                     then 
                                         modify $ \s -> (s { tcSymTab = updatedSymTabFunc } )
                                     else lift $ throwError (BadReturns identifier)
@@ -470,8 +474,9 @@ analyzeFunction (Function identifier (TypeFuncReturnClassId classIdentifier arra
                                 whenLeft symTabWithStatementsState (lift.throwError)
                                 let (symTabFuncFinished,_,_) = getTCState (snd (fromRight' symTabWithStatementsState))
                                 -- let (symTabWithStatements,_,_) = getTCState tcState
+                                let isLastStatementReturn = isReturnStatement (last $ statements)
                                 let updatedSymTabFunc = Map.insert identifier (SymbolFunction {returnType = (Just (TypeClassId classIdentifier arrayDimension)), scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = (Map.filterWithKey (\k _ -> k /= identifier) symTabFuncFinished), params = params}) symTab
-                                if (areReturnTypesOk scp (TypeClassId classIdentifier arrayDimension) statements updatedSymTabFunc symTabFuncFinished classSymTab aMap)
+                                if (areReturnTypesOk isLastStatementReturn scp (TypeClassId classIdentifier arrayDimension) statements updatedSymTabFunc symTabFuncFinished classSymTab aMap)
                                     then 
                                         modify $ \s -> (s { tcSymTab = updatedSymTabFunc } )
                                     else lift $ throwError (BadReturns identifier)
@@ -502,30 +507,30 @@ analyzeFunction (Function identifier (TypeFuncReturnNothing) params (Block state
                                 let updatedSymTabFunc = Map.insert identifier (SymbolFunction {returnType = Nothing, scope = scp, body = (Block statements), shouldReturn = True ,isPublic = isPublic, symbolTable = (Map.filterWithKey (\k _ -> k /= identifier) symTabFuncFinished), params = params}) symTab
                                 modify $ \s -> (s { tcSymTab = updatedSymTabFunc } )
 
-areReturnTypesOk :: Scope -> Type -> [Statement] -> SymbolTable -> SymbolTable -> ClassSymbolTable -> AncestorsMap -> Bool
-areReturnTypesOk _ _ [] _ _ _ _  = False 
-areReturnTypesOk scp funcRetType ((ReturnStatement ret) : []) symTab ownFuncSymTab classTab aMap = 
+areReturnTypesOk :: Bool -> Scope -> Type -> [Statement] -> SymbolTable -> SymbolTable -> ClassSymbolTable -> AncestorsMap -> Bool
+areReturnTypesOk isThereAReturnStatement _ _ [] _ _ _ _  = isThereAReturnStatement 
+areReturnTypesOk isThereAReturnStatement scp funcRetType ((ReturnStatement ret) : []) symTab ownFuncSymTab classTab aMap = 
                                                 checkCorrectReturnTypes scp funcRetType ret symTab ownFuncSymTab classTab aMap
-areReturnTypesOk scp funcRetType ((ConditionStatement (If _ (Block statements))) : []) symTab ownFuncSymTab classTab aMap = 
-                                                areReturnTypesOk (scp - 1) funcRetType statements symTab ownFuncSymTab classTab aMap
-areReturnTypesOk scp funcRetType ((ConditionStatement (IfElse _ (Block statements) (Block statementsElse))) : []) symTab ownFuncSymTab classTab aMap = 
-                                                areReturnTypesOk (scp - 1) funcRetType statements symTab ownFuncSymTab classTab aMap &&
-                                                areReturnTypesOk (scp - 1) funcRetType statementsElse symTab ownFuncSymTab classTab aMap
-areReturnTypesOk scp funcRetType ((CaseStatement (Case expressionToMatch expAndBlock otherwiseStatements)) : []) symTab ownFuncSymTab classTab aMap = 
-                                                (foldl (\bool f -> (bool && (areReturnTypesOk (scp - 1) funcRetType (snd f) symTab ownFuncSymTab classTab aMap))) True expAndBlock ) &&
-                                                (areReturnTypesOk (scp - 1) funcRetType otherwiseStatements symTab ownFuncSymTab classTab aMap)
-areReturnTypesOk scp funcRetType ((ConditionStatement (If _ (Block statements))) : sts) symTab ownFuncSymTab classTab aMap = 
-                                                areReturnTypesOk (scp - 1) funcRetType statements symTab ownFuncSymTab classTab aMap &&
-                                                areReturnTypesOk (scp - 1) funcRetType sts symTab ownFuncSymTab classTab aMap 
-areReturnTypesOk scp funcRetType ((ConditionStatement (IfElse _ (Block statements) (Block statementsElse))) : sts) symTab ownFuncSymTab classTab aMap = 
-                                                areReturnTypesOk (scp - 1) funcRetType statements symTab ownFuncSymTab classTab aMap &&
-                                                areReturnTypesOk (scp - 1) funcRetType statementsElse symTab ownFuncSymTab classTab aMap &&
-                                                areReturnTypesOk (scp - 1) funcRetType sts symTab ownFuncSymTab classTab aMap 
-areReturnTypesOk scp funcRetType ((CaseStatement (Case expressionToMatch expAndBlock otherwiseStatements)) : sts) symTab ownFuncSymTab classTab aMap = 
-                                                (foldl (\bool f -> (bool && (areReturnTypesOk (scp - 1) funcRetType (snd f) symTab ownFuncSymTab classTab aMap))) True expAndBlock ) &&
-                                                (areReturnTypesOk (scp - 1) funcRetType otherwiseStatements symTab ownFuncSymTab classTab aMap)
-                                                && areReturnTypesOk (scp - 1) funcRetType sts symTab ownFuncSymTab classTab aMap  
-areReturnTypesOk scp funcRetType (_ : sts) symTab ownFuncSymTab classTab aMap =  areReturnTypesOk (scp - 1) funcRetType sts symTab ownFuncSymTab classTab aMap
+areReturnTypesOk isThereAReturnStatement scp funcRetType ((ConditionStatement (If _ (Block statements))) : []) symTab ownFuncSymTab classTab aMap = 
+                                                areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType statements symTab ownFuncSymTab classTab aMap
+areReturnTypesOk isThereAReturnStatement scp funcRetType ((ConditionStatement (IfElse _ (Block statements) (Block statementsElse))) : []) symTab ownFuncSymTab classTab aMap = 
+                                                areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType statements symTab ownFuncSymTab classTab aMap &&
+                                                areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType statementsElse symTab ownFuncSymTab classTab aMap
+areReturnTypesOk isThereAReturnStatement scp funcRetType ((CaseStatement (Case expressionToMatch expAndBlock otherwiseStatements)) : []) symTab ownFuncSymTab classTab aMap = 
+                                                (foldl (\bool f -> (bool && (areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType (snd f) symTab ownFuncSymTab classTab aMap))) True expAndBlock ) &&
+                                                (areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType otherwiseStatements symTab ownFuncSymTab classTab aMap)
+areReturnTypesOk isThereAReturnStatement scp funcRetType ((ConditionStatement (If _ (Block statements))) : sts) symTab ownFuncSymTab classTab aMap = 
+                                                areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType statements symTab ownFuncSymTab classTab aMap &&
+                                                areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType sts symTab ownFuncSymTab classTab aMap 
+areReturnTypesOk isThereAReturnStatement scp funcRetType ((ConditionStatement (IfElse _ (Block statements) (Block statementsElse))) : sts) symTab ownFuncSymTab classTab aMap = 
+                                                areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType statements symTab ownFuncSymTab classTab aMap &&
+                                                areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType statementsElse symTab ownFuncSymTab classTab aMap &&
+                                                areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType sts symTab ownFuncSymTab classTab aMap 
+areReturnTypesOk isThereAReturnStatement scp funcRetType ((CaseStatement (Case expressionToMatch expAndBlock otherwiseStatements)) : sts) symTab ownFuncSymTab classTab aMap = 
+                                                (foldl (\bool f -> (bool && (areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType (snd f) symTab ownFuncSymTab classTab aMap))) True expAndBlock ) &&
+                                                (areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType otherwiseStatements symTab ownFuncSymTab classTab aMap)
+                                                && areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType sts symTab ownFuncSymTab classTab aMap  
+areReturnTypesOk isThereAReturnStatement scp funcRetType (_ : sts) symTab ownFuncSymTab classTab aMap =  areReturnTypesOk isThereAReturnStatement (scp - 1) funcRetType sts symTab ownFuncSymTab classTab aMap
 
 -- Aqui sacamos todos los returns que pueda haber, inclusive si estan en statements anidados
 getReturnStatements :: [Statement]  -> [Return]
