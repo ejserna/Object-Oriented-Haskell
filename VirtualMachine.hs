@@ -284,7 +284,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                                     context <-  ask
                                                                     let quadruples = (currentInstructions context)
                                                                     tty <- liftIO $ openFile "/dev/tty" ReadMode
-                                                                    liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: Integer" ) ++ (style SlowBlink $ ">")
+                                                                    liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected input type: Integer" ) ++ (style SlowBlink $ ">")
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     case (checkInt x) of 
@@ -299,7 +299,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                       || a1 >= startDecimalLocalMemory && a1 <= endDecimalLocalMemory =
                                                                 do 
                                                                     tty <- liftIO $ openFile "/dev/tty" ReadMode
-                                                                    liftIO $ putStrLn $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: Decimal" ) ++ (style SlowBlink $ ">")
+                                                                    liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected input type: Decimal" ) ++ (style SlowBlink $ ">")
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     case (checkDecimal x) of 
@@ -314,7 +314,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                       || a1 >= startStringLocalMemory && a1 <= endStringLocalMemory =
                                                                 do 
                                                                     tty <- liftIO $ openFile "/dev/tty" ReadMode
-                                                                    liftIO $ putStrLn $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: String" ) ++ (style SlowBlink $ ">")
+                                                                    liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected input type: String" ) ++ (style SlowBlink $ ">")
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     insertValueInAddress (VMString x) a1
@@ -324,7 +324,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                       || a1 >= startBoolLocalMemory && a1 <= endBoolLocalMemory =
                                                                 do 
                                                                     tty <- liftIO $ openFile "/dev/tty" ReadMode
-                                                                    liftIO $ putStrLn $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: True | False" ) ++ (style SlowBlink $ ">")
+                                                                    liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected input type: True | False" ) ++ (style SlowBlink $ ">")
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     case (checkBool x) of 

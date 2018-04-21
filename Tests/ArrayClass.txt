@@ -1,0 +1,159 @@
+class Array{
+
+    // MARK: Private attributes
+
+    [-] Int [100] arr;
+    [-] Int size;
+
+    // MARK: Constructor
+
+    Array :: Int [100] array -> Int s{
+        arr = array;
+        size = s;
+    }
+
+    // MARK: Private member methods
+
+    // Quicksort
+    [-] partition => Int :: Int low -> Int high{
+        Int i,j,pivot,temp;
+        pivot = arr[high];
+        i = low - 1;
+        j = low;
+        while (j <= (high - 1)){
+            if (arr[j] <= pivot){
+                i++;
+                temp = arr[i];
+                arr[i] = arr[j];
+                arr[j] = temp;
+            }
+            j++;
+        }
+        temp = arr[i + 1];
+        arr[i + 1] = arr[high];
+        arr[high] = temp;
+        return i + 1;
+    }
+
+    
+    [-] quicksort => Nothing :: Int low -> Int high{
+        Int partitionIndex; 
+        if (low < high){
+            partitionIndex = partition(low, high);
+            quicksort(low, partitionIndex - 1);
+            quicksort(partitionIndex + 1, high);
+        }
+    }
+
+    // Mergesort
+    [-] merge => Nothing :: Int left -> Int mid -> Int right{
+        Int [100] l,r;
+        Int i,j,k,leftSize,rightSize;
+        i = 0;
+        j = 0;
+        leftSize = mid - left + 1;
+        rightSize = right - mid;
+        while (i < leftSize){
+            l[i] = arr[left + i];
+            i++;
+        }        
+        while (j < rightSize){
+            r[j] = arr[mid + j + 1];
+            j++;
+        }
+        i = 0;
+        j = 0;
+        k = left;
+        while (i < leftSize && j < rightSize){
+            if (l[i] <= r[j]){
+                arr[k] = l[i];
+                i++;
+            }
+            else{
+                arr[k] = r[j];
+                j++;
+            }
+            k++;
+        }
+        while (i < leftSize){
+            arr[k] = l[i];
+            i++;
+            k++;
+        }
+
+        while (j < rightSize){
+            arr[k] = r[j];
+            j++;
+            k++;
+        }
+    }
+
+    [-] mergesort => Nothing :: Int left -> Int right{
+        Int partitionIndex; 
+        Int mid;
+        if (left < right){
+            mid = left + (right - left) / 2;
+            mergesort(left, mid);
+            mergesort(mid + 1, right);
+            merge(left,mid,right);
+        }
+    }
+
+    // MARK: Public member methods
+
+    [+] getArray => Int [100]{
+        return arr;
+    }
+
+    // Sort method that uses the sort the given sort method
+    [+] sort => Nothing :: String sortType {
+        displayLn("Selected sort:",sortType,size);
+        case sortType of
+            "mergesort" => mergesort(0,size - 1);
+            otherwise => quicksort(0,size - 1);        
+    }
+
+    // Binary search on sorted array
+    [+] find => Bool :: Int elem{
+        Int low,high,mid;
+        low = 0;
+        high = size - 1;
+        while (low <= high){
+            mid = low + (high - low) / 2;
+            if (arr[mid] == elem){
+                return True;
+            }
+            if (elem < arr[mid]){
+                high = mid - 1;
+            }
+            if (elem > arr[mid]){
+                low = mid + 1;
+            }
+        }
+        return False;
+    }
+}
+// MARK: Global variables
+Int [100] n;
+Int j = 100;
+Int i = 0;
+Int size = 100;
+String sortType;
+
+// MARK: Main
+main{
+    while (i < 100){
+        n[i] = (j ^ 2);
+        j--;
+        i++;
+    }
+    Array a = Array(n,size);
+    displayLn("Which sort do you want to use? (mergesort/quicksort)");
+    read(sortType);
+    a.sort(sortType);
+    n = a.getArray();
+    displayLn(n);
+    displayLn("Is number in array?");
+    read(i);
+    displayLn(a.find(i));
+}
