@@ -147,12 +147,13 @@ main{
         j--;
         i++;
     }
+    displayLn(1.1,"Before sorting:",n);
     Array a = Array(n,size);
     displayLn("Which sort do you want to use? (mergesort/quicksort)");
     read(sortType);
     a.sort(sortType);
     n = a.getArray();
-    displayLn(n);
+    displayLn(1.2,"After sorting:",n);
     displayLn("Is number in array?");
     read(i);
     displayLn(a.find(i));
