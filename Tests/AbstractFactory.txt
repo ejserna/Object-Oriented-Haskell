@@ -1,0 +1,60 @@
+class Button{
+    [+] paint => Nothing{
+        displayLn("I'm a generic button");
+    }
+}
+
+class WINButton : Button{
+    [+] paint => Nothing{
+        displayLn("I'm a Windows button");
+    }
+}
+
+class OSXButton : Button{
+    [+] paint => Nothing{
+        displayLn("I'm an OSX button");
+    }
+}
+
+class GUIFactory{
+    [+] createButton => Button{
+        Button b;
+        return b;
+    }
+}
+
+class WINFactory : GUIFactory{
+    [+] createButton => Button{
+        WINButton b;
+        return b;
+    }
+}
+
+class OSXFactory : GUIFactory{
+    [+] createButton => Button{
+        OSXButton b;
+        return b;
+    }
+}
+
+run => Nothing :: GUIFactory g{
+    Button b;
+    b = g.createButton();
+    b.paint();
+}
+
+main{
+    String environment;
+    while(True){
+        read(environment);
+        case environment of
+            "mac" => {
+                OSXFactory o;
+                run(o);
+            }
+            otherwise => {
+                WINFactory w;
+                run(w);
+            }
+    }
+}

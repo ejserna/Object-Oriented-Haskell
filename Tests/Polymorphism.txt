@@ -47,8 +47,8 @@ polyChange => Humano :: Humano h1 {
     Humano h;
     Estudiante e;
     h = e;
-    e.z3 = 1000;
-    return h;
+    e.z3 = 1001;
+    return e;
 }
 
 polySwap => Humano [2] :: Humano h1 -> Humano h2{
@@ -70,7 +70,6 @@ main{
     Estudiante e;
     Persona p;
     h = p;
-    h.speak();
     polyFunc(h,p,e);
     Integer i;
     displayLn(factorial(5));
@@ -100,6 +99,7 @@ main{
     h.speak();
     h = polyChange(h);
     h.speak();
+    displayLn(h.z3);
     if (h == h2){
         displayLn("Op");
     }
