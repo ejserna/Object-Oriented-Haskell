@@ -1,0 +1,106 @@
+class Node{
+    [+] Node next;
+    [+] Integer val;
+    Node :: Node n -> Integer v{
+        next = n;
+        val = v;
+    }
+
+    [+] setNext => Nothing :: Node n{
+        next = n;
+    }
+
+    [+] setVal => Nothing :: Integer v{
+        val = v;
+    }
+
+
+}
+
+class LinkedList{
+    [-] Node root;
+    [-] Node null;
+    LinkedList :: Node n {
+        root = n;
+        root.next = null;
+    }
+
+    [-] insertRecursive => Node :: Node n -> Node last{
+        if (n == null){
+            return last;
+
+        }
+        else{
+            Node next,aux;
+            aux = n.next;
+            next = insertRecursive(aux,last);
+            n.next = next;
+            return n;
+        }
+    }
+
+    [+] insert => Nothing :: Integer num{
+        Node last = Node(null,num);
+        root = insertRecursive(root,last);
+    }
+
+    [-] updateRecursive => Node :: Node n -> Integer nodeNum -> Integer newVal -> Integer cont{
+        if (cont == nodeNum){
+            n.val = newVal;
+            return n;
+
+        }
+        else{
+            Node next,aux;
+            aux = n.next;
+            cont++;
+            next = updateRecursive(aux,nodeNum,newVal,cont);
+            n.next = next;
+            return n;
+        }
+    }
+
+    [+] update => Nothing :: Integer nodeNum -> Integer newVal{
+        root = updateRecursive(root,nodeNum,newVal,0);
+    }
+
+    [+] find => Bool :: Integer v{
+        Node nAux;
+        Integer v2;
+        nAux = root;
+        while(nAux != null){
+            v2 = nAux.val;
+            if(v2 == v){
+                return True;
+            }else{
+                nAux = nAux.next;
+            }
+        }
+        return False;
+    }
+
+    [+] displayList => Nothing{
+        Node nAux;
+        nAux = root;
+        Integer v2;
+        while(nAux != null){
+            v2 = nAux.val;
+            display(v2);
+            nAux = nAux.next;
+        }
+    }
+
+
+}
+
+main{
+    Node null;
+    Node root = Node(null,10);
+    LinkedList l = LinkedList(root);
+    l.insert(11);
+    l.insert(12);
+    l.insert(13);
+    l.update(2,120);
+    displayLn(l.find(10));
+    l.displayList();
+}
