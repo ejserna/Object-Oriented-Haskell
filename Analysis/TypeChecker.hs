@@ -105,9 +105,6 @@ instance (Show a) => Show (TCError a) where
                                                ++ (color White . style Bold  $ "Bad expression in \n" 
                                                ++ (color Red . style Bold  $ show $ a )))
                                                
-
-                 
-
 data TCState = TCState
                 {   tcSymTab :: SymbolTable, 
                     tcClassSymTab :: ClassSymbolTable,
@@ -126,7 +123,6 @@ modifyTCState (val,newTCState) = do
                                   modify $ \s -> newTCState
 
 type TypeChecker α = StateT TCState (Except (TCError String)) α
-
 type TC = TypeChecker ()
 
 runTypeChecker f =  runExcept.runStateT f
@@ -163,15 +159,27 @@ updatedSymTabOfClassWithParent classIdentifier parentClassIdentifier =
                                             -- modify $ \s -> (s { tcSymTab = newSymTab})
                                             modify $ \s -> (s { tcClassSymTab = updatedSymTabOfClass})
 
+{-
+  Con esta función se empieza el analisis semántico. Lo único que se requiere es Program, el 
+  nodo raíz del árbol abstracto de sintaxis.
+-}
 startSemanticAnalysis :: Program -> IO ()
 startSemanticAnalysis (Program classList functionList varsList (Block statements)) =  do 
             do 
+                -- Primero, se analizan las clases. El Map.empty que se manda es el mapa de herencias que se tiene que tener en la etapa
+                -- de análisis semántico.
                 let stateAfterClasses =  runTypeChecker (analyzeClasses classList) (setTCState emptySymbolTable emptyClassSymbolTable (Map.empty))
                 exitIfFailure stateAfterClasses
+                -- Después, se obtiene la tabla de símbolos de las clases.
                 let (_,classSymbolTable,aMap) = getTCState (snd (fromRight' stateAfterClasses))
+                -- Se corre el typechecker pero ahora con las funciones. Aqui el output sera la tabla de simbolos del programa principal
+                -- pero con las funciones. Es importante notar que aquí ahora se utiliza la tabla de símbolos de las clases obtenidas
+                -- en el paso anterior.
                 let stateAfterFunctions = runTypeChecker (analyzeFunctions functionList globalScope Nothing) (setTCState emptySymbolTable classSymbolTable aMap)
                 exitIfFailure stateAfterFunctions
                 let (symbolTableWithFuncs,_,_) = getTCState (snd (fromRight' stateAfterFunctions))
+                -- Se corre el typechecker pero ahora con las funciones. Aqui el output sera la tabla de simbolos del programa principal
+                -- pero con las funciones
                 let stateAfterVariables = runTypeChecker (analyzeVariables varsList globalScope Nothing) (setTCState symbolTableWithFuncs classSymbolTable aMap)
                 exitIfFailure stateAfterVariables
                 let (symbolTableWithFuncsVars,_,_) = getTCState (snd (fromRight' stateAfterVariables))
@@ -180,28 +188,15 @@ startSemanticAnalysis (Program classList functionList varsList (Block statements
                                                         putStrLn $ "There shouldn't be returns in main"
                 else 
                     do 
+                        -- Por último, se analizan los estatutos encontrados en el bloque principal del programa
                         let stateAfterMain = runTypeChecker (analyzeStatements statements defScope) (setTCState symbolTableWithFuncsVars classSymbolTable aMap)
                         exitIfFailure stateAfterMain
                         let (symbolTableStatements,classSymbolTable,aMap) = getTCState (snd (fromRight' stateAfterMain))
-                        -- putStrLn.ppShow $ symbolTableStatements
-                        -- putStrLn.ppShow $ classSymbolTable
-                        putStrLn.ppShow $ aMap
+                        -- Se pasa a la etapa de alocación de memoria
+                        -- el nodo raíz con la tabla de símbolos final, 
+                        -- la tabla de símbolos de las clases y 
+                        -- el mapa de herencias
                         startMemoryAllocation (Program classList functionList varsList (Block statements)) symbolTableStatements classSymbolTable aMap
-
-                -- if (classErrors) 
-                --     then putStrLn $ show "[SEMANTIC ANALYSIS 1] ERROR: Semantic Error in Class Checking."
-                --     else do putStrLn $ ppShow $ "[SEMANTIC ANALYSIS 1]: Semantic Class Analysis Passed."
-                --             putStrLn $ ppShow $ classSymbolTable
-                
-                -- let (symbolTableWithFuncsVars,semanticErrorVars) = analyzeVariables varsList globalScope Nothing symbolTableWithFuncs classSymbolTable
-                
-                -- let (symbolTableStatements,semanticErrorBlock) = 
-                -- if (semanticErrorFuncs || semanticErrorVars || semanticErrorBlock || (length returnListInMain) > 0) 
-                --     then putStrLn $ show "[SEMANTIC ANALYSIS 2] ERROR: Semantic Error in Variable Checking."
-                --     else do putStrLn $ ppShow $ "[SEMANTIC ANALYSIS 2]: Semantic Variable Analysis Passed."
-                --             putStrLn $ ppShow $  symbolTableStatements
-                --             putStrLn $ show "[CODEGEN 1] Starting Memory Allocation for CodeGen"
-                        -- 
 
 deepFilter :: [(Identifier,Symbol)] -> Identifier -> [(Identifier,Symbol)]
 deepFilter [] _  = []

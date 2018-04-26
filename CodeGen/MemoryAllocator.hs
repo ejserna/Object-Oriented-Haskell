@@ -58,7 +58,7 @@ type MemoryAllocator a =  RWST SymbolEnvironment () MemoryState IO a
 type MA =  MemoryAllocator ()
 
 maxDeepness :: Integer
-maxDeepness = 6
+maxDeepness = 7
 
 setMemoryState :: IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> FunctionMap -> VariableCounters -> LiteralCounters -> TypeMap -> MemoryState
 setMemoryState idMap consMap objMap funcMap varCounters litCounters typeMap = MemoryState  idMap consMap objMap funcMap varCounters litCounters typeMap

@@ -1,19 +1,16 @@
 class Array{
 
     // MARK: Private attributes
-
     [-] Int [100] arr;
     [-] Int size;
 
     // MARK: Constructor
-
     Array :: Int [100] array -> Int s{
         arr = array;
         size = s;
     }
 
     // MARK: Private member methods
-
     // Quicksort
     [-] partition => Int :: Int low -> Int high{
         Int i,j,pivot,temp;
@@ -100,7 +97,6 @@ class Array{
     }
 
     // MARK: Public member methods
-
     [+] getArray => Int [100]{
         return arr;
     }
