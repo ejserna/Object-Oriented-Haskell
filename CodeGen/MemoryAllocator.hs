@@ -57,8 +57,10 @@ type MemoryAllocator a =  RWST SymbolEnvironment () MemoryState IO a
 
 type MA =  MemoryAllocator ()
 
-maxDeepness :: Integer
-maxDeepness = 7
+maxDeepness :: Int -> Integer
+maxDeepness 1 = 30
+maxDeepness 2 = 6
+maxDeepness _ = 3
 
 setMemoryState :: IdentifierAddressMap -> ConstantAddressMap -> ObjectAddressMap -> FunctionMap -> VariableCounters -> LiteralCounters -> TypeMap -> MemoryState
 setMemoryState idMap consMap objMap funcMap varCounters litCounters typeMap = MemoryState  idMap consMap objMap funcMap varCounters litCounters typeMap
@@ -328,8 +330,9 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypeClassId classId arrayAcce
                                 env <- ask
                                 let (intGC,decGC,strGC,boolGC,objGC) = (varCountersMem memState)
                                 let identifierAddressMap = (idAddressMapMem memState)
-                                
-                                if ((deepness env) == maxDeepness) then return ()
+                                let symTabOnlyRecursiveAttributes = (Map.filter (onlyRecursiveAttributes (SymbolVar (TypeClassId classId arrayAccess) scp isPublic))  (symTabMem env))
+                                let numRecursiveAttributes = (length (Map.toList symTabOnlyRecursiveAttributes))
+                                if ((deepness env) == (maxDeepness numRecursiveAttributes)) then return ()
                                 else 
                                     do case (arrayAccess) of 
                                         [] -> 
@@ -381,7 +384,7 @@ fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statement
                                                         env <- ask
                                                         memState <- get
                                                         let funcMap = (funcMapMem memState)
-                                                        if ((Map.member (fromModule ++ identifier) funcMap) || ((deepness env) == maxDeepness))  then fillIdentifierAddressMap rest fromModule
+                                                        if ((Map.member (fromModule ++ identifier) funcMap) || ((deepness env) == (maxDeepness 7 )) )  then fillIdentifierAddressMap rest fromModule
                                                             else do 
                                                                     (stateAfterFuncConstants,_) <-  liftIO $ execRWST (prepareConstantAddressMap statements) (setEnvironment symTabFunc (classTabMem env) (deepness env) (aMapMem env)) 
                                                                                                                                                     (setMemoryState (OMap.empty) (constTable memState) 

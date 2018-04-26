@@ -48,11 +48,10 @@ class Tree{
             //Primero hacemos la suma
             updateSum(val);
             //Despues imprimimos en pantalla
-            
-            preorder(l);
             displayLn(n.val);
-            
+            preorder(l);            
             preorder(r);
+            
         }
     }
 

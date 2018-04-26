@@ -89,6 +89,11 @@ onlyAttributes :: Symbol -> Bool
 onlyAttributes (SymbolFunction _ _ _ _ _ _ _) = False
 onlyAttributes _ = True
 
+onlyRecursiveAttributes :: Symbol -> Symbol -> Bool
+onlyRecursiveAttributes (SymbolFunction _ _ _ _ _ _ _) _ = False
+onlyRecursiveAttributes _ (SymbolFunction _ _ _ _ _ _ _)  = False
+onlyRecursiveAttributes symbol1 symbol2 = symbol1 == symbol2
+
 getClassNameFromCurrentModule :: String -> String
 getClassNameFromCurrentModule currentModule = let currentModule1 = drop 1 currentModule
                                                   numToTakeSecond = findIndex(`elem` "_") currentModule1

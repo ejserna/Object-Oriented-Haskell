@@ -32,7 +32,7 @@ data Symbol = SymbolVar
                 , shouldReturn :: Bool -- Si la funcion regresa Nothing, no tiene por que tener un return regresar
                 , isPublic :: Maybe Bool
                 , symbolTable :: SymbolTable
-                }
+                } deriving (Eq)
                 
 instance Show Symbol where
     show sym = case sym of

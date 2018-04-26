@@ -115,7 +115,6 @@ class LinkedList{
 
     // See getListUntilMiddle comments for explanation
     [-] splitListInTwo => Node :: Node slow -> Node fast {
-        
         if (fast == null){
             slow.next = null;
             return slow;
@@ -221,21 +220,24 @@ class LinkedList{
 }
 
 main{
+    Integer num,val;
     Node null,n;
     Node root = Node(null,11);
     LinkedList l = LinkedList(root);
-    l.insert(10);
-    l.insert(999);
+    for i in [1..10]{
+        read(num);
+        l.insert(num);
+    }
+    l.displayList();
     
     l.displayList();
-
-    l.insert(12);
+    l.sort();
     l.displayList();
-    l.insert(13);
-    l.displayList();
-    l.update(2,120);
-    displayLn(l.find(10));
-    l.insert(1);
+    displayLn("Which element of the list do you want to update? (Introduce its index, starting from 0");
+    read(num);
+    displayLn("What will be its new value?");
+    read(val);
+    l.update(num,val);
     l.displayList();
     l.sort();
     l.displayList();
