@@ -41,7 +41,13 @@ class LinkedList{
 
     [+] insert => Nothing :: Integer num{
         Node last = Node(null,num);
-        root = insertRecursive(root,last);
+        if (root == null){
+            root = last;
+        }
+        else{
+            root = insertRecursive(root,last);  
+        }
+        
     }
 
     [-] updateRecursive => Node :: Node n -> Integer nodeNum -> Integer newVal -> Integer cont{
@@ -204,7 +210,7 @@ class LinkedList{
         root = mergesort(root);
     }
 
-    [+] displayList => Nothing{
+    [+] show => Nothing{
         Node nAux;
         nAux = root;
         Integer v2;
@@ -218,29 +224,24 @@ class LinkedList{
 
 
 }
-
 main{
     Integer num,val;
-    Node null,n;
-    Node root = Node(null,11);
-    LinkedList l = LinkedList(root);
+    LinkedList l;
     for i in [1..10]{
         read(num);
         l.insert(num);
     }
-    l.displayList();
-    
-    l.displayList();
+    display("Before sorting:");    
+    l.show();
+    display("After sorting:");   
     l.sort();
-    l.displayList();
+    l.show();
     displayLn("Which element of the list do you want to update? (Introduce its index, starting from 0");
     read(num);
     displayLn("What will be its new value?");
     read(val);
     l.update(num,val);
-    l.displayList();
+    l.show();
     l.sort();
-    l.displayList();
-
-
+    l.show();
 }
