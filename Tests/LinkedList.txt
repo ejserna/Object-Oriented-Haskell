@@ -227,7 +227,7 @@ class LinkedList{
 main{
     Integer num,val;
     LinkedList l;
-    for i in [1..10]{
+    for i in [1..5]{
         read(num);
         l.insert(num);
     }
