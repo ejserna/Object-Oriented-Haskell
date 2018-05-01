@@ -18,7 +18,8 @@ import Control.Monad
 import Text.Show.Pretty
 
 
--- Los primeros 4 son los contadores de variables de tipo Integers,Decimales,Strings,Bool 
+-- Los primeros  son los contadores de variables de tipo Integers,Decimales,Strings,Bool
+-- El ultimo contador es para los objetos 
 type VariableCounters = (Address,Address,Address,Address,Address) 
 
 -- Contadores de literales de integers,decimales,strings y booleanos

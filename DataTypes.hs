@@ -149,14 +149,7 @@ data Assignment
     | AssignmentFunctionCall Identifier FunctionCall
     | AssignmentObjectMember Identifier ObjectMember
     | AssignmentObjectMemberExpression ObjectMember Expression
-    -- | AssignmentObjectFuncCall ObjectMember FunctionCall
-    -- | ObjMemAssignObjMem ObjectMember ObjectMember
     | AssignmentArrayExpression Identifier [ArrayAccess] Expression
-    -- | VarArrayAssignFunctionCall Identifier [ArrayAccess] FunctionCall
-    -- | VarArrayAssignObjMem Identifier [ArrayAccess] ObjectMember
-    -- | ObjMemArrayAssignExpression ObjectMember [ArrayAccess] Expression
-    -- | ObjMemArrayAssignFunctionCall ObjectMember [ArrayAccess] FunctionCall
-    -- | ObjMemArrayAssignObjMem ObjectMember [ArrayAccess] ObjectMember
   deriving(Show,Eq)
 
 data Reading

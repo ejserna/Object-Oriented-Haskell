@@ -249,10 +249,7 @@ analyzeClassBlock (ClassInheritance classIdentifier parentClass classBlock) =
                                                                 modify $ \s -> (s { tcAncestors = newAncestorMap}) 
                                                                 analyzeMembersOfClassBlock classBlock classIdentifier globalScope
                                                                 updatedSymTabOfClassWithParent classIdentifier parentClass
-                                    
-
-                                
-                                
+     
                         Nothing -> do
                                     let s =  (ClassInheritance classIdentifier parentClass classBlock)
                                     lift $ throwError (ParentClassNotFound parentClass (show s))

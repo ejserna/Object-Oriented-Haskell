@@ -207,14 +207,10 @@ runVM = do
         else do
             if currentInstructionPointer < (length quadruples) then do
                 let currentInstruction = quadruples !! currentInstructionPointer
-                -- liftIO $ putStrLn $ "MEMO"
-                -- liftIO $ putStrLn.ppShow $ globalMemory
-                -- liftIO $ putStrLn.ppShow $ currentInstruction
                 (runInstruction currentInstruction)
                 runVM 
                 return ()
             else do
-                -- tell $ [color Cyan "Done"]
                 return ()
 
 runInstruction :: Quadruple -> VM
@@ -520,7 +516,8 @@ runInstruction _ =  do
 
 -- Se consigue la clase y la llamada a funcion
 getClassNameAndFunctionName :: String -> String -> TypeMap -> (String,String)
-getClassNameAndFunctionName funcNameString currentClass typeMap | (getClassNameFromCurrentModule funcNameString) == "main" = ("",funcNameString)
+getClassNameAndFunctionName funcNameString currentClass typeMap 
+                                       | (getClassNameFromCurrentModule funcNameString) == "main" = ("",funcNameString)
                                        | otherwise = 
                                             let indexEnd = findIndex(`elem` "_") funcNameString
                                             in case (checkInt (take (fromJust indexEnd) funcNameString)) of 
@@ -531,6 +528,7 @@ getClassNameAndFunctionName funcNameString currentClass typeMap | (getClassNameF
                                                       funcStringOnly = drop ((fromJust indexEndClass)) newFuncString
                                                       currentTypeOfObject = (fromJust (Map.lookup objAddress typeMap))
                                                   in (currentTypeOfObject,(currentTypeOfObject ++ (drop 1 funcStringOnly)))
+                                              -- Si no es un objeto que est'a llamando la funcion, y se esta haciendo adentro de una funcion miembro
                                               Nothing ->
                                                   let className =  (getClassNameFromCurrentModule funcNameString)
                                                       funcStringOnly = drop ((length className) + 2) funcNameString
