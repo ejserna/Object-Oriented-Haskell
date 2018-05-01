@@ -7,6 +7,7 @@ import Quadruple
 -- Esta sección tiene las producciones semánticas para producir el árbol abstracto de sintaxis 
 type Identifier = String
 type ClassIdentifier = String
+type AncestorsMap = Map.HashMap ClassIdentifier [ClassIdentifier]
 
 data Program 
     = Program [Class] [Function] [Variable] Block
@@ -140,6 +141,7 @@ data Statement
     | VariableStatement Variable
     | ConditionStatement If
     | CycleStatement Cycle
+    | CaseStatement Case
   deriving (Show,Eq)
 
 data Assignment
@@ -210,7 +212,15 @@ class ExpressionOperation a where
    (|>=|) :: a -> a -> a
    (|<=|) :: a -> a -> a
 
-
+class TypeSemant a where
+   semantarithmetic :: a -> a -> (Either String Type)
+   semantadd :: a -> a -> (Either String Type)
+   semantmod :: a -> a -> (Either String Type)
+   semantneg :: a -> (Either String Type)
+   semantequivalence :: a -> a -> (Either String Type)
+   semantbooleanrelational :: a -> a -> (Either String Type)
+   semantrelational :: a -> a -> (Either String Type)
+   semantnot :: a -> (Either String Type)
 
 instance ExpressionOperation Expression where
    a |+| b = (ExpressionPlus a b)
@@ -235,6 +245,9 @@ data If
     | IfElse Expression Block Block
   deriving(Show,Eq)
 
+data Case
+    = Case Expression [(Expression,[Statement])] [Statement]
+  deriving (Show,Eq)
 
 data Cycle
     = CycleWhile While

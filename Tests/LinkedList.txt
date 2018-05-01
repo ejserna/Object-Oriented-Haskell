@@ -1,0 +1,247 @@
+class Node{
+    [+] Node next;
+    [+] Integer val;
+    Node :: Node n -> Integer v{
+        next = n;
+        val = v;
+    }
+
+    [+] setNext => Nothing :: Node n{
+        next = n;
+    }
+
+    [+] setVal => Nothing :: Integer v{
+        val = v;
+    }
+
+
+}
+
+class LinkedList{
+    [-] Node root;
+    [-] Node null;
+    LinkedList :: Node n {
+        root = n;
+        root.next = null;
+    }
+
+    [-] insertRecursive => Node :: Node n -> Node last{
+        if (n == null){
+            return last;
+
+        }
+        else{
+            Node next,aux;
+            aux = n.next;
+            next = insertRecursive(aux,last);
+            n.next = next;
+            return n;
+        }
+    }
+
+    [+] insert => Nothing :: Integer num{
+        Node last = Node(null,num);
+        if (root == null){
+            root = last;
+        }
+        else{
+            root = insertRecursive(root,last);  
+        }
+        
+    }
+
+    [-] updateRecursive => Node :: Node n -> Integer nodeNum -> Integer newVal -> Integer cont{
+        if (cont == nodeNum){
+            n.val = newVal;
+            return n;
+
+        }
+        else{
+            Node next,aux;
+            aux = n.next;
+            cont++;
+            next = updateRecursive(aux,nodeNum,newVal,cont);
+            n.next = next;
+            return n;
+        }
+    }
+
+    [+] update => Nothing :: Integer nodeNum -> Integer newVal{
+        root = updateRecursive(root,nodeNum,newVal,0);
+    }
+
+    [+] find => Bool :: Integer v{
+        Node nAux;
+        Integer v2;
+        nAux = root;
+        while(nAux != null){
+            v2 = nAux.val;
+            if(v2 == v){
+                return True;
+            }else{
+                nAux = nAux.next;
+            }
+        }
+        return False;
+    }
+
+    [-] recursiveSort => Node :: Node a -> Node b {
+        
+        Node result = null;
+        Node next,res;
+        //Base cases
+        if (a == null){
+            return b;
+        }
+        if (b == null){
+            return a;
+        }
+ 
+        // Pick either a or b, and recur
+        Integer aVal,bVal;
+        aVal = a.val;
+        bVal = b.val;
+        if (aVal <= bVal) 
+        {
+            result = a;
+            next = a.next;
+            res = recursiveSort(next, b);
+            result.next = res;
+        } 
+        else
+        {
+            result = b;
+            next = b.next;            
+            res = recursiveSort(a, next);
+            result.next = res;
+        }
+        return result;
+ 
+    }
+
+    // See getListUntilMiddle comments for explanation
+    [-] splitListInTwo => Node :: Node slow -> Node fast {
+        if (fast == null){
+            slow.next = null;
+            return slow;
+        }
+        else{
+            Node next,nextNext,slowNext;
+            slowNext = slow.next;
+            next = fast.next;
+            nextNext = next.next;
+            next = splitListInTwo(slowNext,nextNext);
+            slow.next = next;
+            return slow;
+        }
+    }
+
+    // See getMiddle comments for explanation
+    [-] getMiddleRecursive => Node :: Node slow -> Node fast {
+        
+        if (fast == null){
+            return slow;
+        }
+        else{
+            Node next,nextNext,slowNext,middle;
+            slowNext = slow.next;
+            next = fast.next;
+            nextNext = next.next;
+            middle = getMiddleRecursive(slowNext,nextNext);
+            return middle;
+        }
+    }
+
+    // This method gets half of the list
+    // input: 1 - 2 - 3 - 4 - 5 - 6
+    // output: 1  - 2 - 3
+    [+] getListUntilMiddle => Node :: Node n{
+        Node slow,next,fast,nextNext;
+        fast = n;
+        slow = n;
+        next = fast.next;
+        nextNext = next.next;
+
+        n = splitListInTwo(slow,nextNext);
+        return n;
+    }
+
+    // This method gets the middle node of the list
+    // input: 1 - 2 - 3 - 4 - 5 - 6
+    // output: 3
+    [+] getMiddle => Node :: Node n{
+        Node slow,next,fast,nextNext;
+        fast = n;
+        slow = n;
+        next = fast.next;
+        nextNext = next.next;
+
+        n = getMiddleRecursive(slow,nextNext);
+        return n;
+    }
+ 
+    [-] mergesort => Node :: Node h {
+        // Base case : if head is null
+        Node next,listUntilMiddle,nextToMiddle,left,right,sortedList,middle;
+        next = h.next;
+        if (h == null || next == null)
+        {
+            return h;
+        }
+
+        // Get half of the list
+        listUntilMiddle = getListUntilMiddle(h);
+        // Get to the middle node.
+        middle = getMiddle(h);
+        // Get the node that is next to middle
+        nextToMiddle = middle.next;
+        // Apply mergeSort on left list
+        left = mergesort(listUntilMiddle);
+ 
+        // // Apply mergeSort on right list
+        right = mergesort(nextToMiddle);
+ 
+        // Merge the left and right lists
+        sortedList = recursiveSort(left, right);
+        return sortedList;
+    }
+
+    [+] sort => Nothing{
+        root = mergesort(root);
+    }
+
+    [+] show => Nothing{
+        Node nAux;
+        nAux = root;
+        Integer v2;
+        while(nAux != null){
+            v2 = nAux.val;
+            display(v2);
+            nAux = nAux.next;
+        }
+        displayLn();
+    }
+
+
+}
+main{
+    Integer num,val;
+    LinkedList l;
+    for i in [1..5]{
+        read(num);
+        l.insert(num);
+    }
+    display("Before sorting:");    
+    l.show();
+    display("After sorting:");   
+    l.sort();
+    l.show();
+    displayLn("Which element of the list do you want to update? (Introduce its index, starting from 0");
+    read(num);
+    displayLn("What will be its new value?");
+    read(val);
+    l.update(num,val);
+    l.show();
+    l.sort();
+    l.show();
+}

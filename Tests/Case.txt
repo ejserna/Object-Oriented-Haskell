@@ -1,0 +1,20 @@
+main{
+    Integer i = 100;
+    Integer j = 50;
+    read(i);
+    case i of 
+        1 => displayLn("weon");
+        2 + 2 => displayLn("weon2");
+        j * 2 => displayLn("weonazo");
+        i => displayLn("weonazozozo");
+        otherwise => displayLn("noweon");
+    displayLn("siga la fiesta");
+    if (j == (i / 2 ) && True){
+        displayLn("vamo a darle");
+    }
+    else{
+        displayLn("no hay rumba");
+    }
+
+    
+}

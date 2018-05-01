@@ -1,0 +1,107 @@
+class Humano{
+    [+] Integer edad;
+    [+] Integer z;
+    [+] Integer z3;
+    [+] Integer z1;
+    [+] Integer z2;
+    [+] String z99;
+    [+] speak => Nothing{
+        displayLn("Human");
+    }
+}
+
+class Persona : Humano{
+    [+] Integer hijos;
+    [+] Integer hijos1;
+    [+] Integer hijos2;
+    [+] Integer hijos3;
+    [+] String hijos4;
+    [+] speak => Nothing{
+        displayLn("Person");
+    }
+}
+
+class Estudiante : Persona{
+    [+] Integer materias;
+    [+] Integer materias2;
+    [+] Integer materias5;
+    [+] Integer materias4;
+    [+] Integer materias3;
+    [+] Decimal materias9494;
+    [+] speak => Nothing{
+        displayLn("Estudiante");
+    }
+}
+
+factorial => Integer :: Integer n{
+    case n of 
+        0 => return 1;
+        1 => return 1;
+        otherwise => 
+        {
+            return (n * factorial(n - 1));
+        }
+}
+
+polyChange => Humano :: Humano h1 {
+    Humano h;
+    Estudiante e;
+    h = e;
+    e.z3 = 1001;
+    return e;
+}
+
+polySwap => Humano [2] :: Humano h1 -> Humano h2{
+    Humano hAux;
+    hAux = h1;
+    h1 = h2;
+    h2 = hAux;
+    Humano [2] hums = [h1,h2];
+    return hums;
+}
+
+polyFunc => Nothing :: Humano h1 -> Humano h2 -> Humano h3{
+    h1.speak();
+    h2.speak();
+    h3.speak();
+}
+main{
+    Humano h;
+    Estudiante e;
+    Persona p;
+    h = p;
+    polyFunc(h,p,e);
+    Integer i;
+    displayLn(factorial(5));
+    e.hijos = 2;
+    e.materias = 3;
+    e.edad = 100;
+    e.z2 = 921111;
+    e.z = 21111;
+    h.speak();
+    p.speak();
+    e.speak();
+    displayLn("-------------------");
+    p.z = 11111;
+    h = p;
+    h.speak();
+    h = e;
+    displayLn(222222222222222222222222222222222222222222222222);
+    h.speak();
+    p.speak();
+    e.speak();
+    displayLn(111111111111111111111111111111111111111111111111);
+    polyFunc(h,p,e);
+    displayLn(p,h.z2);
+    Humano [3] humanos = [h,p,e];
+    h = humanos[1];
+    Humano h2 = p;
+    h.speak();
+    h = polyChange(h);
+    h.speak();
+    displayLn(h.z3);
+    if (h == h2){
+        displayLn("Op");
+    }
+    
+}

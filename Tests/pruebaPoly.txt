@@ -1,0 +1,45 @@
+class UtilEscolar{
+    [+] String tipo;
+    [+] Bool obligatorio;
+    [+] String dueno;
+    [+] who => Nothing{
+        displayLn("Util");
+    }
+}
+
+class Pluma : UtilEscolar{
+    [+] String color;
+    [+] who => Nothing{
+        displayLn("Pluma");
+    }
+}
+
+class BIC : Pluma{
+    [+] String estilo;
+    [+] Integer numeroPunta;
+    [+] who => Nothing{
+        displayLn("BIC");
+    }
+}
+
+main{
+    UtilEscolar ue;
+    ue.tipo = "Cuaderno";
+    ue.obligatorio = True;
+    ue.dueno = "Juan";
+    Pluma p;
+    p.color = "Rojo";
+    p.tipo = "Escribir";
+    ue = p;
+    String tipo1;
+    tipo1 = ue.tipo;
+    displayLn(tipo1);
+    BIC b;
+    b.numeroPunta = 2;
+    b.estilo = "Gel";
+    b.color = "Amarillo";
+    p = b;
+    String color2;
+    color2 = p.color;
+    displayLn(color2);
+}

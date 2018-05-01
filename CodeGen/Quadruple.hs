@@ -160,10 +160,19 @@ getQuadNum (QuadrupleReturnSet quadNum op addresses) = quadNum
 getQuadNum (QuadrupleReturn quadNum op addresses) = quadNum
 
 
-getLastAddress :: Quadruple -> QuadNum
+getLastAddress :: Quadruple -> Address
 getLastAddress (QuadrupleThreeAddresses quadNum op address1 address2 address3) = address3
 getLastAddress (QuadrupleTwoAddresses quadNum op address1 address2) = address2
 getLastAddress (QuadrupleReturnSet quadNum op (a : [])) = a
+getLastAddress (QuadrupleReturn quadNum op (a : [])) = a
+getLastAddress (QuadrupleOneAddress quadNum op address) = address
+
+getLastReturnAddresses :: Quadruple -> [Address]
+getLastReturnAddresses (QuadrupleReturn quadNum op addresses) = addresses
+getLastReturnAddresses (QuadrupleReturnSet quadNum op addresses) = addresses
+getLastReturnAddresses (QuadrupleThreeAddresses quadNum op address1 address2 address3) = [address3]
+getLastReturnAddresses (QuadrupleTwoAddresses quadNum op address1 address2) = [address2]
+getLastReturnAddresses (QuadrupleOneAddress quadNum op address) = [address]
 
 buildGoto :: QuadNum -> QuadNum -> Quadruple
 buildGoto quadNum quadNumAssigned = (QuadrupleOneQuad quadNum (GOTO) quadNumAssigned) 

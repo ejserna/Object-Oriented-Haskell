@@ -32,8 +32,8 @@ data Symbol = SymbolVar
                 , shouldReturn :: Bool -- Si la funcion regresa Nothing, no tiene por que tener un return regresar
                 , isPublic :: Maybe Bool
                 , symbolTable :: SymbolTable
-                }
-
+                } deriving (Eq)
+                
 instance Show Symbol where
     show sym = case sym of
         SymbolVar dt scope isPublic  -> "SYMVAR  " ++ intercalate ", " [ppShow dt, show scope, show isPublic]
@@ -42,13 +42,4 @@ instance Show Symbol where
 emptySymbolTable :: SymbolTable
 emptySymbolTable = Map.empty 
 
--- insert :: Identifier -> Symbol -> SymbolTable -> SymbolTable
--- insert idn sym table = if Map.member idn table
---     then table 
---     else Map.insert idn (Map.singleton scp sym) table
---     where
---         inner scpTab = if Map.member scp scpTab
---             then error "SymbolTable.insert: inserting Symbol already in SymbolTable"
---             else Map.insert scp sym scpTab
---         scp = scope sym
 

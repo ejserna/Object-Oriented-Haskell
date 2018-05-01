@@ -9,6 +9,7 @@ import Control.Monad.Trans
 import Control.Monad
 import DataTypes
 import CodeGenDataTypes
+import MemoryLimits
 import Quadruple
 import SymbolTable
 import ExpressionOptimizer
@@ -18,12 +19,13 @@ import Text.Show.Pretty
 import qualified Data.HashMap.Strict as Map
 import Data.List (intercalate, maximumBy,findIndex)
 import Data.Ord (comparing)
+import qualified OrderedMap as OMap
 
 expCodeGen :: Expression -> CG 
 expCodeGen (ExpressionLitVar (DecimalLiteral dec)) = do
                                                         cgEnvironment <- ask
                                                         cgState <- get
-                                                        let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                        let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                         let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                         case (Map.lookup ("<dec>" ++ (show (dec))) constTable) of
                                                             Just addressCons -> 
@@ -35,7 +37,7 @@ expCodeGen (ExpressionLitVar (DecimalLiteral dec)) = do
 expCodeGen (ExpressionLitVar (IntegerLiteral int)) = do
                                                         cgEnvironment <- ask
                                                         cgState <- get
-                                                        let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                        let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                         let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                         case (Map.lookup ("<int>" ++ (show (int))) constTable) of
                                                             Just addressCons -> 
@@ -48,7 +50,7 @@ expCodeGen (ExpressionLitVar (IntegerLiteral int)) = do
 expCodeGen (ExpressionLitVar (StringLiteral str)) = do 
                                                         cgEnvironment <- ask
                                                         cgState <- get
-                                                        let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                        let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                         let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                         case (Map.lookup ("<str>" ++ (str)) constTable) of
                                                             Just addressCons -> 
@@ -60,7 +62,7 @@ expCodeGen (ExpressionLitVar (StringLiteral str)) = do
 expCodeGen (ExpressionLitVar (BoolLiteral bool)) = do 
                                                     cgEnvironment <- ask
                                                     cgState <- get
-                                                    let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                    let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                     case (Map.lookup ("<bool>" ++ (show (bool))) constTable) of
                                                         Just addressCons -> 
@@ -73,80 +75,80 @@ expCodeGen (ExpressionLitVar (VarIdentifier id)) =
                                                 do 
                                                     cgEnvironment <- ask
                                                     cgState <- get
-                                                    let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                    let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                     case (checkDataTypeOfVar (VarIdentifier id) symTab) of
-                                                        (TypePrimitive PrimitiveDouble []) -> case (Map.lookup id idTable) of
+                                                        (TypePrimitive PrimitiveDouble []) -> case (OMap.lookup id idTable) of
                                                                                     Just addressCons -> case (Map.lookup ("<dec>0") constTable) of
                                                                                                             Just address -> 
                                                                                                                 do 
                                                                                                                     cgEnvironment <- ask
                                                                                                                     cgState <- get
-                                                                                                                    let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                                    let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                                     tell $ [(buildQuadrupleThreeAddresses quadNum ADD_ (address, addressCons, (decGC)))]
                                                                                                                     modify $ \s -> (s { varCounters = (intGC, decGC + 1, strGC, boolGC,objGC)})
                                                                                                                     modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                                        (TypePrimitive PrimitiveMoney []) -> case (Map.lookup id idTable) of
+                                                        (TypePrimitive PrimitiveMoney []) -> case (OMap.lookup id idTable) of
                                                                                     Just addressCons -> case (Map.lookup ("<dec>0") constTable) of
                                                                                                             Just address -> 
                                                                                                                 do 
                                                                                                                     cgEnvironment <- ask
                                                                                                                     cgState <- get
-                                                                                                                    let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                                    let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                                     tell $ [(buildQuadrupleThreeAddresses quadNum ADD_ (address, addressCons, (decGC)))]
                                                                                                                     modify $ \s -> (s { varCounters = (intGC, decGC + 1, strGC, boolGC,objGC)})
                                                                                                                     modify $ \s -> (s { currentQuadNum = quadNum + 1})
                                         
-                                                        (TypePrimitive PrimitiveInt [])-> case (Map.lookup (id) idTable) of
+                                                        (TypePrimitive PrimitiveInt [])-> case (OMap.lookup (id) idTable) of
                                                                                    Just addressCons ->  case (Map.lookup ("<int>0") constTable) of
                                                                                                             Just address -> do 
                                                                                                                                 cgEnvironment <- ask
                                                                                                                                 cgState <- get
-                                                                                                                                let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                                                let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                                                 let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                                                 tell $ [(buildQuadrupleThreeAddresses quadNum ADD_ (address, addressCons, (intGC)))]
                                                                                                                                 modify $ \s -> (s { varCounters = (intGC + 1, decGC, strGC, boolGC,objGC)})
                                                                                                                                 modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                                        (TypePrimitive PrimitiveInteger []) -> case (Map.lookup (id) idTable) of
+                                                        (TypePrimitive PrimitiveInteger []) -> case (OMap.lookup (id) idTable) of
                                                                                     Just addressCons ->  case (Map.lookup ("<int>0") constTable) of
                                                                                                             Just address -> do 
                                                                                                                                 cgEnvironment <- ask
                                                                                                                                 cgState <- get
-                                                                                                                                let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                                                let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                                                 let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                                                 tell $ [(buildQuadrupleThreeAddresses quadNum ADD_ (address, addressCons, (intGC)))]
                                                                                                                                 modify $ \s -> (s { varCounters = (intGC + 1, decGC, strGC, boolGC,objGC)})
                                                                                                                                 modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                                        (TypePrimitive PrimitiveString [])  -> case (Map.lookup (id) idTable) of
+                                                        (TypePrimitive PrimitiveString [])  -> case (OMap.lookup (id) idTable) of
                                                                                     Just addressCons -> 
                                                                                         case (Map.lookup ("<str>") constTable) of
                                                                                             Just address -> do 
                                                                                                                 cgEnvironment <- ask
                                                                                                                 cgState <- get
-                                                                                                                let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                                let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                                 let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                                 tell $ [(buildQuadrupleThreeAddresses quadNum ADD_ (address, addressCons, (strGC)))]
                                                                                                                 modify $ \s -> (s { varCounters = (intGC, decGC, strGC + 1, boolGC,objGC)})
                                                                                                                 modify $ \s -> (s { currentQuadNum = quadNum + 1}) 
-                                                        (TypePrimitive PrimitiveBool [])  -> case (Map.lookup (id) idTable) of
+                                                        (TypePrimitive PrimitiveBool [])  -> case (OMap.lookup (id) idTable) of
                                                                                 Just addressCons -> 
                                                                                     case (Map.lookup ("<bool>True") constTable) of
                                                                                         Just address -> do 
                                                                                                             cgEnvironment <- ask
                                                                                                             cgState <- get
-                                                                                                            let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                            let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                             let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                                             tell $ [(buildQuadrupleThreeAddresses quadNum EQ_ (address, addressCons, (boolGC)))]
                                                                                                             modify $ \s -> (s { varCounters = (intGC, decGC, strGC, boolGC + 1,objGC)})
                                                                                                             modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                                        (TypeClassId _ [])  -> case (Map.lookup (id) idTable) of
+                                                        (TypeClassId _ [])  -> case (OMap.lookup (id) idTable) of
                                                                                 Just addressCons -> 
                                                                                     do 
                                                                                         cgEnvironment <- ask
                                                                                         cgState <- get
-                                                                                        let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                        let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                         let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                                                         tell $ [(buildQuadrupleTwoAddresses quadNum ASSIGNMENT (addressCons, objGC ))]
                                                                                         modify $ \s -> (s { varCounters = (intGC, decGC, strGC, boolGC,objGC + 1)})
@@ -173,7 +175,7 @@ expCodeGen (ExpressionNot exp1) =
                                 expCodeGen exp1
                                 cgEnvironment <- ask
                                 cgState <- get
-                                let (_,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                let (_,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                 let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                 tell $ [(buildQuadrupleTwoAddresses quadNum NOT_ (boolGC, boolGC))]
                                 modify $ \s -> (s { varCounters = (intGC, decGC, strGC, boolGC + 1,objGC)})
@@ -183,27 +185,27 @@ expCodeGen (ExpressionNeg exp1) =
                                 do 
                                     cgEnvironment <- ask
                                     cgState <- get
-                                    let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                    let (classSymTab,_,idTable,constTable,_,_,aMap) = getCGEnvironment cgEnvironment
                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
-                                    let typeExp1 = (expressionProcess (-100000000000000) exp1 symTab classSymTab)
+                                    let typeExp1 = (expressionTypeChecker (-100000000000000) exp1 symTab classSymTab aMap)
                                     expCodeGen exp1
                                     cgEnvironment <- ask
                                     cgState <- get
                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                     case (typeExp1) of
-                                        Just PrimitiveDouble -> do 
+                                        Right (TypePrimitive PrimitiveDouble []) -> do 
                                                                     tell $ [(buildQuadrupleTwoAddresses quadNum NEG_ (decGC - 1, decGC))]
                                                                     modify $ \s -> (s { varCounters = (intGC, decGC + 1, strGC, boolGC,objGC)})
                                                                     modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                        Just PrimitiveMoney -> do 
+                                        Right (TypePrimitive PrimitiveMoney []) -> do 
                                                                     tell $ [(buildQuadrupleTwoAddresses quadNum NEG_ (decGC - 1, decGC))]
                                                                     modify $ \s -> (s { varCounters = (intGC, decGC + 1, strGC, boolGC,objGC)})
                                                                     modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                        Just PrimitiveInt ->  do 
+                                        Right (TypePrimitive PrimitiveInt []) ->  do 
                                                                     tell $ [(buildQuadrupleTwoAddresses quadNum NEG_ (intGC - 1, intGC))]
                                                                     modify $ \s -> (s { varCounters = (intGC + 1, decGC, strGC, boolGC,objGC)})
                                                                     modify $ \s -> (s { currentQuadNum = quadNum + 1})
-                                        Just PrimitiveInteger -> do 
+                                        Right (TypePrimitive PrimitiveInteger []) -> do 
                                                                     tell $ [(buildQuadrupleTwoAddresses quadNum NEG_ (intGC - 1, intGC))]
                                                                     modify $ \s -> (s { varCounters = (intGC + 1, decGC, strGC, boolGC,objGC)})
                                                                     modify $ \s -> (s { currentQuadNum = quadNum + 1})
@@ -211,13 +213,13 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) =
                                                                                     (_,quads) <- listen $ expCodeGen exp1
                                                                                     cgEnvironment <- ask
                                                                                     cgState <- get
-                                                                                    let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                    let (classSymTab,_,idTable,constTable,_,_,aMap) = getCGEnvironment cgEnvironment
                                                                                     let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState 
                                                                                     case (Map.lookup identifier symTab) of
                                                                                         Just (SymbolVar (TypePrimitive PrimitiveString (("[",size,"]") : [] )) _ _) ->
                                                                                             case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                                                 Just address ->
-                                                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                    case (OMap.lookup (identifier ++ "[0]") idTable) of
                                                                                                         Just addressBase -> do 
                                                                                                                                 let boundQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quads), address ))])
                                                                                                                                 let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quads), intGC))]
@@ -228,7 +230,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) =
                                                                                         Just (SymbolVar (TypePrimitive PrimitiveMoney (("[",size,"]") : [] )) _ _) ->
                                                                                             case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                                                 Just address ->
-                                                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                    case (OMap.lookup (identifier ++ "[0]") idTable) of
                                                                                                         Just addressBase -> do 
                                                                                                                                 let boundQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quads), address ))])
                                                                                                                                 let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quads), intGC))]
@@ -239,7 +241,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) =
                                                                                         Just (SymbolVar (TypePrimitive PrimitiveDouble (("[",size,"]") : [] )) _ _) ->
                                                                                             case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                                                 Just address ->
-                                                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                    case (OMap.lookup (identifier ++ "[0]") idTable) of
                                                                                                         Just addressBase -> do 
                                                                                                                                 let boundQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quads), address ))])
                                                                                                                                 let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quads), intGC))]
@@ -250,7 +252,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) =
                                                                                         Just (SymbolVar (TypePrimitive PrimitiveInteger (("[",size,"]") : [] )) _ _) ->
                                                                                             case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                                                 Just address ->
-                                                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                    case (OMap.lookup (identifier ++ "[0]") idTable) of
                                                                                                         Just addressBase -> do 
                                                                                                                                 let boundQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quads), address ))])
                                                                                                                                 let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quads), intGC))]
@@ -261,7 +263,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) =
                                                                                         Just (SymbolVar (TypePrimitive PrimitiveInt (("[",size,"]") : [] )) _ _) ->
                                                                                             case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                                                 Just address ->
-                                                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                    case (OMap.lookup (identifier ++ "[0]") idTable) of
                                                                                                         Just addressBase -> do 
                                                                                                                                 let boundQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quads), address ))])
                                                                                                                                 let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quads), intGC))]
@@ -272,7 +274,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) =
                                                                                         Just (SymbolVar (TypePrimitive PrimitiveBool (("[",size,"]") : [] )) _ _) ->
                                                                                             case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                                                 Just address ->
-                                                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                    case (OMap.lookup (identifier ++ "[0]") idTable) of
                                                                                                         Just addressBase -> do 
                                                                                                                                 let boundQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quads), address ))])
                                                                                                                                 let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quads), intGC))]
@@ -283,7 +285,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression exp1) : [])) =
                                                                                         Just (SymbolVar (TypeClassId _ (("[",size,"]") : [] )) _ _) ->
                                                                                             case (Map.lookup ("<int>" ++ (show $ size)) constTable) of
                                                                                                 Just address ->
-                                                                                                    case (Map.lookup (identifier ++ "[0]") idTable) of
+                                                                                                    case (OMap.lookup (identifier ++ "[0]") idTable) of
                                                                                                         Just addressBase -> do 
                                                                                                                                 let boundQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quads), address ))])
                                                                                                                                 let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 1) ADD_INDEX (addressBase, (getLastAddress $ last $ quads), intGC))]
@@ -298,7 +300,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression rowsIndexExp) 
                                                                                                 (_,quadsColExp) <- listen $ expCodeGen colsIndexExp  
                                                                                                 cgEnvironment <- ask
                                                                                                 cgState <- get
-                                                                                                let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                                                                let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                                                                 let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState 
                                                                                                 case (Map.lookup identifier symTab) of
                                                                                                     Just (SymbolVar (TypePrimitive PrimitiveString (("[",rows,"]") : ("[",cols,"]") : [] )) _ _) ->
@@ -306,7 +308,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression rowsIndexExp) 
                                                                                                             Just addressRowsSize ->
                                                                                                                 case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                                                                     Just addressColsSize -> 
-                                                                                                                            case (Map.lookup (identifier ++ "[0][0]") idTable) of
+                                                                                                                            case (OMap.lookup (identifier ++ "[0][0]") idTable) of
                                                                                                                                 Just addressBase -> 
                                                                                                                                     do
                                                                                                                                         let boundRowQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsRowExp), addressRowsSize ))])
@@ -323,7 +325,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression rowsIndexExp) 
                                                                                                             Just addressRowsSize ->
                                                                                                                 case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                                                                     Just addressColsSize -> 
-                                                                                                                            case (Map.lookup (identifier ++ "[0][0]") idTable) of
+                                                                                                                            case (OMap.lookup (identifier ++ "[0][0]") idTable) of
                                                                                                                                 Just addressBase -> 
                                                                                                                                         do 
                                                                                                                                             let boundRowQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsRowExp), addressRowsSize ))])
@@ -341,7 +343,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression rowsIndexExp) 
                                                                                                             Just addressRowsSize ->
                                                                                                                 case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                                                                     Just addressColsSize -> 
-                                                                                                                            case (Map.lookup (identifier ++ "[0][0]") idTable) of
+                                                                                                                            case (OMap.lookup (identifier ++ "[0][0]") idTable) of
                                                                                                                                 Just addressBase -> 
                                                                                                                                         do
                                                                                                                                             let boundRowQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsRowExp), addressRowsSize ))])
@@ -358,7 +360,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression rowsIndexExp) 
                                                                                                             Just addressRowsSize ->
                                                                                                                 case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                                                                     Just addressColsSize -> 
-                                                                                                                            case (Map.lookup (identifier ++ "[0][0]") idTable) of
+                                                                                                                            case (OMap.lookup (identifier ++ "[0][0]") idTable) of
                                                                                                                                 Just addressBase ->
                                                                                                                                         do 
                                                                                                                                             let boundRowQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsRowExp), addressRowsSize ))])
@@ -376,7 +378,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression rowsIndexExp) 
                                                                                                             Just addressRowsSize ->
                                                                                                                 case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                                                                     Just addressColsSize -> 
-                                                                                                                            case (Map.lookup (identifier ++ "[0][0]") idTable) of
+                                                                                                                            case (OMap.lookup (identifier ++ "[0][0]") idTable) of
                                                                                                                                 Just addressBase -> 
                                                                                                                                         do 
                                                                                                                                             let boundRowQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsRowExp), addressRowsSize ))])
@@ -393,7 +395,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression rowsIndexExp) 
                                                                                                             Just addressRowsSize ->
                                                                                                                 case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                                                                     Just addressColsSize -> 
-                                                                                                                            case (Map.lookup (identifier ++ "[0][0]") idTable) of
+                                                                                                                            case (OMap.lookup (identifier ++ "[0][0]") idTable) of
                                                                                                                                 Just addressBase -> 
                                                                                                                                         do 
                                                                                                                                             let boundRowQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsRowExp), addressRowsSize ))])
@@ -410,7 +412,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression rowsIndexExp) 
                                                                                                     --         Just addressRowsSize ->
                                                                                                     --             case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
                                                                                                     --                 Just addressColsSize -> 
-                                                                                                    --                         case (Map.lookup (identifier ++ "[0][0]") idTable) of
+                                                                                                    --                         case (OMap.lookup (identifier ++ "[0][0]") idTable) of
                                                                                                     --                             Just addressBase -> 
                                                                                                     --                                     do 
                                                                                                     --                                         let boundRowQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsRowExp), addressRowsSize ))])
@@ -428,10 +430,10 @@ genQuadrupleArithmetic exp1 exp2 op =
                     do 
                         cgEnvironment <- ask
                         cgState <- get
-                        let (classSymTab,_,_,_,_,_) = getCGEnvironment cgEnvironment
+                        let (classSymTab,_,_,_,_,_,aMap) = getCGEnvironment cgEnvironment
                         let (symTab,_,_) = getCGState cgState
-                        let typeExp1 = (expressionProcess (-100000000000000) exp1 symTab classSymTab)
-                        let typeExp2 = (expressionProcess (-100000000000000) exp2 symTab classSymTab)
+                        let typeExp1 = (expressionTypeChecker (-100000000000000) exp1 symTab classSymTab aMap)
+                        let typeExp2 = (expressionTypeChecker (-100000000000000) exp2 symTab classSymTab aMap)
                         (_,quadsExp1) <- listen $ expCodeGen exp1
                         cgState <- get
                         let (_,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
@@ -440,42 +442,42 @@ genQuadrupleArithmetic exp1 exp2 op =
                         let (_,(intGC2, decGC2, strGC2, boolGC2,objGC2),quadNum2) = getCGState cgState
                         if (typeExp2 == typeExp1) then do
                             case (typeExp1) of 
-                                Just PrimitiveDouble -> do 
+                                Right (TypePrimitive PrimitiveDouble []) -> do 
                                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, decGC2 - 1, (decGC2)))]
                                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                             modify $ \s -> (s { varCounters = (intGC2, decGC2 + 1, strGC2, boolGC2,objGC2)})
-                                Just PrimitiveMoney -> do 
+                                Right (TypePrimitive PrimitiveMoney []) -> do 
                                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, decGC2 - 1, (decGC2)))]
                                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                             modify $ \s -> (s { varCounters = (intGC2, decGC2 + 1, strGC2, boolGC2,objGC2)})
-                                Just PrimitiveInt -> do 
+                                Right (TypePrimitive PrimitiveInt []) -> do 
                                                         tell $ [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, intGC2 - 1, (intGC2)))]
                                                         modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                         modify $ \s -> (s { varCounters = (intGC2 + 1, decGC2, strGC2, boolGC2,objGC2)})
-                                Just PrimitiveInteger -> do 
+                                Right (TypePrimitive PrimitiveInteger []) -> do 
                                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, intGC2 - 1, (intGC2)))]
                                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                             modify $ \s -> (s { varCounters = (intGC2 + 1, decGC2, strGC2, boolGC2,objGC2)})
-                                Just PrimitiveString -> do 
+                                Right (TypePrimitive PrimitiveString []) -> do 
                                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (strGC - 1, strGC2 - 1, (strGC2)))]
                                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2 + 1, boolGC2,objGC2)})
                             -- Aqui hay un else porque nuestro lenguaje permite hacer mezclas de tipos enteros y decimales en operaciones
                             else do
                                 case (typeExp1) of 
-                                    Just PrimitiveDouble -> do 
+                                    Right (TypePrimitive PrimitiveDouble []) -> do 
                                                                 tell $ [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, intGC2 - 1, (decGC2)))]
                                                                 modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                                 modify $ \s -> (s { varCounters = (intGC2, decGC2 + 1, strGC2, boolGC2,objGC2)})
-                                    Just PrimitiveMoney -> do 
+                                    Right (TypePrimitive PrimitiveMoney []) -> do 
                                                                 tell $  [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, intGC2 - 1, (decGC2)))]
                                                                 modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                                 modify $ \s -> (s { varCounters = (intGC2, decGC2 + 1, strGC2, boolGC2,objGC2)})
-                                    Just PrimitiveInt -> do 
+                                    Right (TypePrimitive PrimitiveInt []) -> do 
                                                                 tell $ [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, decGC2 - 1, (decGC2)))]
                                                                 modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                                 modify $ \s -> (s { varCounters = (intGC2, decGC2 + 1, strGC2, boolGC2,objGC2)})
-                                    Just PrimitiveInteger -> do 
+                                    Right (TypePrimitive PrimitiveInteger []) -> do 
                                                                 tell $ [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, decGC2 - 1, (decGC2)))]
                                                                 modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                                                 modify $ \s -> (s { varCounters = (intGC2, decGC2 + 1, strGC2, boolGC2,objGC2)})
@@ -487,10 +489,10 @@ genQuadrupleRelational exp1 exp2 op =
     do 
         cgEnvironment <- ask
         cgState <- get
-        let (classSymTab,_,_,_,_,_) = getCGEnvironment cgEnvironment
+        let (classSymTab,_,_,_,_,_,aMap) = getCGEnvironment cgEnvironment
         let (symTab,_,_) = getCGState cgState
-        let typeExp1 = (expressionProcess (-100000000000000) exp1 symTab classSymTab)
-        let typeExp2 = (expressionProcess (-100000000000000) exp2 symTab classSymTab)
+        let typeExp1 = (expressionTypeChecker (-100000000000000) exp1 symTab classSymTab aMap)
+        let typeExp2 = (expressionTypeChecker (-100000000000000) exp2 symTab classSymTab aMap)
         (_,quadsExp1) <- listen $ expCodeGen exp1
         cgState <- get
         let (_,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
@@ -499,31 +501,31 @@ genQuadrupleRelational exp1 exp2 op =
         let (_,(intGC2, decGC2, strGC2, boolGC2,objGC2),quadNum2) = getCGState cgState
         if (typeExp2 == typeExp1) then do 
             case (typeExp1) of 
-                Just PrimitiveDouble -> do
+                Right (TypePrimitive PrimitiveDouble []) -> do
                                             tell $  [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, decGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
                      -- ((intGC2, decGC2, strGC2, boolGC2 + 1,objGC2), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, decGC2 - 1, boolGC2))], quadNum2 + 1)
-                Just PrimitiveMoney -> do
+                Right (TypePrimitive PrimitiveMoney []) -> do
                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (decGC - 1, decGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
-                Just PrimitiveInt -> do
+                Right (TypePrimitive PrimitiveInt []) -> do
                                             tell $  [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, intGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
 
                 -- ((intGC2, decGC2, strGC2, boolGC2 + 1,objGC2), quad1 ++ quad2 ++ [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, intGC2 - 1, boolGC2))], quadNum2 + 1)
-                Just PrimitiveInteger -> do
+                Right (TypePrimitive PrimitiveInteger []) -> do
                                             tell $  [(buildQuadrupleThreeAddresses quadNum2 op (intGC - 1, intGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
 
-                Just PrimitiveString -> do
+                Right (TypePrimitive PrimitiveString []) -> do
                                             tell $  [(buildQuadrupleThreeAddresses quadNum2 op (strGC - 1, strGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
-                Just PrimitiveBool -> do
+                Right (TypePrimitive PrimitiveBool []) -> do
                                             tell $ [(buildQuadrupleThreeAddresses quadNum2 op (boolGC - 1, boolGC2 - 1, (boolGC2)))]
                                             modify $ \s -> (s { currentQuadNum = quadNum2 + 1})
                                             modify $ \s -> (s { varCounters = (intGC2, decGC2, strGC2, boolGC2 + 1,objGC2)})
@@ -542,7 +544,7 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                             do 
                                 cgEnv <- ask
                                 cgState <- get
-                                let (_,_,idTable,_,funcMap,currentModule) = getCGEnvironment cgEnv
+                                let (_,_,idTable,_,funcMap,currentModule,_) = getCGEnvironment cgEnv
                                 let (symTab,_,quadNum) = getCGState cgState 
                                 case t of
                                     (TypeClassId classId accessExpression) ->
@@ -550,7 +552,7 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                                             [] -> 
                                                 case e of 
                                                     (ExpressionLitVar (VarIdentifier identifierExp)) ->
-                                                        case (Map.lookup identifierExp idTable) of 
+                                                        case (OMap.lookup identifierExp idTable) of 
                                                             Just attrObject ->
                                                                                 do 
                                                                                     let (a : as) = addressesInFunction
@@ -565,7 +567,7 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                                                                                     return $ paramsZip ++ quadsParams
                                             (("[",size,"]") : []) -> case e of 
                                                                         (ExpressionLitVar (VarIdentifier identifierExp)) ->
-                                                                            case (Map.lookup (identifierExp ++ "[0]") idTable) of 
+                                                                            case (OMap.lookup (identifierExp ++ "[0]") idTable) of 
                                                                                 Just attrBase ->
                                                                                             do 
                                                                                                 let addressesC = [attrBase..] 
@@ -581,7 +583,7 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                                                                                                 return (paramsZip ++ quadsParams)
                                             (("[",rows,"]") : ("[",cols,"]") : []) -> case e of 
                                                                         (ExpressionLitVar (VarIdentifier identifierExp)) ->
-                                                                            case (Map.lookup (identifierExp ++ "[0][0]") idTable) of 
+                                                                            case (OMap.lookup (identifierExp ++ "[0][0]") idTable) of 
                                                                                 Just attrBase -> 
                                                                                             do 
 
@@ -599,7 +601,7 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                                         case accessExpression of 
                                             [] -> case e of 
                                                     (ExpressionLitVar (VarIdentifier identifierExp)) ->
-                                                        case (Map.lookup identifierExp idTable) of 
+                                                        case (OMap.lookup identifierExp idTable) of 
                                                             Just attrObject ->
                                                                                 do 
                                                                                     let (a : as) = addressesInFunction
@@ -617,7 +619,7 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                                                             -- tell $ quads
                                                             cgEnvironment <- ask
                                                             cgState <- get
-                                                            let (classSymTab,_,idTable,constTable,_,_) = getCGEnvironment cgEnvironment
+                                                            let (classSymTab,_,idTable,constTable,_,_,_) = getCGEnvironment cgEnvironment
                                                             let (symTab,(intGC, decGC, strGC, boolGC,objGC),quadNum) = getCGState cgState
                                                             case prim of 
                                                                 PrimitiveDouble ->
@@ -677,7 +679,7 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                                                                                     return (paramsZip ++ quadsParams)
                                             (("[",size,"]") : []) -> case e of 
                                                                         (ExpressionLitVar (VarIdentifier identifierExp)) ->
-                                                                            case (Map.lookup (identifierExp ++ "[0]") idTable) of 
+                                                                            case (OMap.lookup (identifierExp ++ "[0]") idTable) of 
                                                                                 Just attrBase ->
                                                                                             do 
                                                                                                 let addressesC = [attrBase..] 
@@ -692,7 +694,7 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
                                                                                                 return (paramsZip ++ quadsParams)
                                             (("[",rows,"]") : ("[",cols,"]") : []) -> case e of 
                                                                                         (ExpressionLitVar (VarIdentifier identifierExp)) ->
-                                                                                            case (Map.lookup (identifierExp ++ "[0][0]") idTable) of 
+                                                                                            case (OMap.lookup (identifierExp ++ "[0][0]") idTable) of 
                                                                                                 Just attrBase -> 
                                                                                                             do 
                                                                                                                 let addressesC = [attrBase..] 
@@ -709,22 +711,59 @@ generateCodeFromCallParams  addressesInFunction  (t : ts) (e : es) =
 
 
 
-
+getAllAddresses :: [(Identifier,Symbol)] -> IdentifierAddressMap -> [Address]
+getAllAddresses [] _ = []
+getAllAddresses ((attrIdentifier,sym): elems) idTable =  case sym of 
+                                                            (SymbolVar (TypePrimitive _ []) _ _) -> 
+                                                                case (OMap.lookup attrIdentifier idTable) of 
+                                                                    Just addressIdentifier -> ([addressIdentifier] ++ (getAllAddresses elems idTable))
+                                                            (SymbolVar (TypePrimitive _ (("[",size,"]") : [] ) ) _ _) -> 
+                                                                case (OMap.lookup (attrIdentifier ++ "[0]") idTable) of 
+                                                                    Just addressIdentifier -> 
+                                                                        let addressesArray = [addressIdentifier..] 
+                                                                        in ((take (fromIntegral size) addressesArray) ++ (getAllAddresses elems idTable))
+                                                            (SymbolVar (TypePrimitive _ (("[",rows,"]") : ("[",cols,"]") : [] ) ) _ _) -> 
+                                                                case (OMap.lookup (attrIdentifier ++ "[0][0]") idTable) of 
+                                                                    Just addressIdentifier -> 
+                                                                        let addressesMatrix = [addressIdentifier..] 
+                                                                        in ((take (fromIntegral (rows * cols)) addressesMatrix) ++ (getAllAddresses elems idTable))
+                                                            (SymbolVar (TypeClassId _ []) _ _) -> 
+                                                                case (OMap.lookup attrIdentifier idTable) of 
+                                                                    Just addressIdentifier -> ([addressIdentifier] ++ (getAllAddresses elems idTable))
+                                                            (SymbolVar (TypeClassId _ (("[",size,"]") : [] ) ) _ _) -> 
+                                                                case (OMap.lookup (attrIdentifier ++ "[0]") idTable) of 
+                                                                    Just addressIdentifier -> 
+                                                                        let addressesArray = [addressIdentifier..] 
+                                                                        in ((take (fromIntegral size) addressesArray) ++ (getAllAddresses elems idTable))
+                                                            (SymbolVar (TypeClassId _ (("[",rows,"]") : ("[",cols,"]") : [] ) ) _ _) -> 
+                                                                case (OMap.lookup (attrIdentifier ++ "[0][0]") idTable) of 
+                                                                    Just addressIdentifier -> 
+                                                                        let addressesMatrix = [addressIdentifier..] 
+                                                                        in ((take (fromIntegral (rows * cols)) addressesMatrix) ++ (getAllAddresses elems idTable))
 
 getAddressesOfAttributesInClassFunction :: String -> IdentifierAddressMap -> ClassSymbolTable -> [Address]
 getAddressesOfAttributesInClassFunction currentModule idMapOfFunc classSymTab = 
-                                                                    let identifierAttributes = getAttributesOfCurrentClass currentModule classSymTab
-                                                                    in (map (\f -> case (Map.lookup f idMapOfFunc) of 
-                                                                                    Just addressIdentifier -> addressIdentifier) identifierAttributes)
+                                                                    let identifierAndSymbolsAttributes = getAttributesOfCurrentClassWithSymbol currentModule classSymTab
+                                                                    in getAllAddresses identifierAndSymbolsAttributes idMapOfFunc
+                                                                    -- in (map (\f -> case (OMap.lookup f idMapOfFunc) of 
+                                                                    --                 Just addressIdentifier -> addressIdentifier) identifierAttributes)
 getAddressesOfAttributesInObjMap :: Identifier -> ClassIdentifier  -> IdentifierAddressMap -> ObjectAddressMap -> ClassSymbolTable -> [Address]
 getAddressesOfAttributesInObjMap objIdentifier classIdentifier idMap objMap classSymTab = 
-                                                                    let identifierAttributes = getAttributesOfCurrentClass classIdentifier classSymTab
-                                                                    in case (Map.lookup objIdentifier idMap) of 
+                                                                    let identifierAndSymbolsAttributes = getAttributesOfCurrentClassWithSymbol classIdentifier classSymTab
+                                                                    in case (OMap.lookup objIdentifier idMap) of 
                                                                         Just addressObj -> case (Map.lookup addressObj objMap) of 
-                                                                                                Just idTableObj -> 
-                                                                                                    (map (\f -> case (Map.lookup f idTableObj) of 
-                                                                                                                    Just addressIdentifier -> addressIdentifier) 
-                                                                                                    identifierAttributes)
+                                                                                                Just idTableObj ->
+                                                                                                    getAllAddresses identifierAndSymbolsAttributes idTableObj
+                                                                                                    -- (map (\(attrIdentifier,sym) -> 
+                                                                                                    --                 case sym of 
+                                                                                                    --                     (SymbolVar (TypePrimitive prim []) _ _) -> 
+                                                                                                    --                         case (OMap.lookup attrIdentifier idTableObj) of 
+                                                                                                    --                             Just addressIdentifier -> addressIdentifier
+                                                                                                    --                     (SymbolVar (TypePrimitive prim (("[",size,"]") : [] ) ) _ _) -> 
+                                                                                                    --                         case (OMap.lookup (attrIdentifier ++ "[0]") idTableObj) of 
+                                                                                                    --                             Just addressIdentifier -> addressIdentifier
+                                                                                                    --     ) 
+                                                                                                    -- identifierAndSymbolsAttributes)
 
                                                                     
 
@@ -738,13 +777,13 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet 
                             do 
                                 cgEnv <- ask
                                 cgState <- get
-                                let (classSymTab,_,idTable,_,funcMap,currentModule) = getCGEnvironment cgEnv
+                                let (classSymTab,_,idTable,_,funcMap,currentModule,_) = getCGEnvironment cgEnv
                                 let (symTab,_,_) = getCGState cgState
                                 -- liftIO $ putStrLn.ppShow $ funcMap
                                 -- liftIO $ putStrLn.ppShow $ currentModule ++ funcIdentifier
 
                                 case (Map.lookup (currentModule ++ funcIdentifier) funcMap) of 
-                                    Just (FunctionData _ paramsAddressesFunc idMapFunc objMapFunc) -> 
+                                    Just (FunctionData _ paramsAddressesFunc idMapFunc objMapFunc typeMap) -> 
                                             do 
                                                 case (Map.lookup funcIdentifier symTab) of 
                                                     Just (SymbolFunction params returnType _ _ _ _ _) ->
@@ -773,8 +812,7 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet 
                                                             tell $ [funcCallQuad]
                                                             case addressesToSet of 
                                                                 [] -> do 
-                                
-
+                            
                                                                     case returnType of 
                                                                         Just (TypePrimitive PrimitiveMoney []) -> 
                                                                                        do 
@@ -812,6 +850,110 @@ generateCodeFuncCall (FunctionCallVar funcIdentifier callParams) addressesToSet 
                                                                                         tell $ [ret]
                                                                                         modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
                                                                                         modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC + 1,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveMoney (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let decsToSet = take (fromIntegral $ size) [decGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) decsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC + (fromIntegral $ size),strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveDouble (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let decsToSet = take (fromIntegral $ size) [decGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) decsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC + (fromIntegral $ size),strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveInteger (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let intsToSet = take (fromIntegral $ size) [intGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) intsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC + (fromIntegral $ size),decGC,strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveInt (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let intsToSet = take (fromIntegral $ size) [intGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) intsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC + (fromIntegral $ size),decGC,strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveBool (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let boolsToSet = take (fromIntegral $ size) [boolGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) boolsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC + (fromIntegral $ size),objGC)}))
+                                                                        Just (TypePrimitive PrimitiveString (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let strsToSet = take (fromIntegral $ size) [strGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) strsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC,strGC + (fromIntegral $ size),boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveMoney (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let decsToSet = take (fromIntegral $ rows * cols) [decGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) decsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC + (fromIntegral $ rows * cols),strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveDouble (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let decsToSet = take (fromIntegral $ rows * cols) [decGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) decsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC + (fromIntegral $ rows * cols),strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveInteger (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let intsToSet = take (fromIntegral $ rows * cols) [intGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) intsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC + (fromIntegral $ rows * cols),decGC,strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveInt (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let intsToSet = take (fromIntegral $ rows * cols) [intGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) intsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC + (fromIntegral $ rows * cols),decGC,strGC,boolGC,objGC)}))
+                                                                        Just (TypePrimitive PrimitiveBool (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let boolsToSet = take (fromIntegral $ rows * cols) [boolGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) boolsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC + (fromIntegral $ rows * cols),objGC)}))
+                                                                        Just (TypePrimitive PrimitiveString (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let strsToSet = take (fromIntegral $ rows * cols) [strGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) strsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC,strGC + (fromIntegral $ rows * cols),boolGC,objGC)}))
+                                                                        Just (TypeClassId _ []) -> 
+                                                                                       do 
+                                                                                        let ret = buildReturnAssignment (quadNum + 1) [objGC]
+                                                                                        tell $ [ret]
+                                                                                        modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                        modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC,objGC + 1)}))
+                                                                        Just (TypeClassId _ (("[",size,"]") : [])) -> 
+                                                                                        do 
+                                                                                            let objsToSet = take (fromIntegral $ size) [objGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) objsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC,objGC + (fromIntegral $ size))}))
+                                                                        Just (TypeClassId _ (("[",rows,"]") : ("[",cols,"]")  : [])) -> 
+                                                                                        do 
+                                                                                            let objsToSet = take (fromIntegral $ rows * cols) [objGC..]
+                                                                                            let ret = buildReturnAssignment (quadNum + 1) objsToSet
+                                                                                            tell $ [ret]
+                                                                                            modify $ (\s -> (s { currentQuadNum = quadNum + 2}))
+                                                                                            modify $ (\s -> (s { varCounters = (intGC,decGC,strGC,boolGC,objGC + (fromIntegral $ rows * cols))}))
                                                                         _ -> do 
                                                                                         modify $ (\s -> (s { currentQuadNum = quadNum + 1}))
 
@@ -826,7 +968,7 @@ generateCodeFuncCall (FunctionCallObjMem (ObjectMember identifier funcIdentifier
                             do 
                                 cgEnv <- ask
                                 cgState <- get
-                                let (classSymTab,objMap,idTable,_,funcMap,_) = getCGEnvironment cgEnv
+                                let (classSymTab,objMap,idTable,_,funcMap,_,_) = getCGEnvironment cgEnv
                                 let (symTab,_,_) = getCGState cgState
                                 
                                 -- liftIO $ putStrLn.ppShow $ currentModule ++ funcIdentifier
@@ -834,7 +976,7 @@ generateCodeFuncCall (FunctionCallObjMem (ObjectMember identifier funcIdentifier
                                 case (Map.lookup identifier symTab) of 
                                     Just (SymbolVar (TypeClassId classId []) _ _) ->
                                         case (Map.lookup (("_" ++ classId ++ "_") ++ funcIdentifier) funcMap) of 
-                                            Just (FunctionData _ paramsAddressesFunc idMapFunc objMapFunc) -> 
+                                            Just (FunctionData _ paramsAddressesFunc idMapFunc objMapFunc typeMap) -> 
                                                     do 
                                                         case (Map.lookup classId classSymTab) of 
                                                             Just symTabOfClass ->
@@ -853,11 +995,12 @@ generateCodeFuncCall (FunctionCallObjMem (ObjectMember identifier funcIdentifier
                                                                             modify $ (\s -> newCGState)
                                                                             cgState <- get
                                                                             let (symTab,(intGC,decGC,strGC,boolGC,objGC),quadNum) = getCGState cgState
-                                                                            
                                                                             let addressesAttributesOfCaller = getAddressesOfAttributesInObjMap identifier ("_" ++ classId ++ "_") idTable objMap classSymTab
+
                                                                             let addressesAttributesOfCallingFunction = getAddressesOfAttributesInClassFunction ("_" ++ classId ++ "_") idMapFunc classSymTab
                                                                             let zippedAddresses = zip addressesAttributesOfCaller addressesAttributesOfCallingFunction
-                                                                            let funcCallQuad = buildFuncCall quadNum zippedAddresses quadsParams (("_" ++ classId ++ "_") ++ funcIdentifier)
+                                                                            let addressOfObject = (fromJust (OMap.lookup identifier idTable))
+                                                                            let funcCallQuad = buildFuncCall quadNum zippedAddresses quadsParams ((show addressOfObject) ++ ("_" ++ classId ++ "_") ++ funcIdentifier)
                                                                             tell $ [funcCallQuad]
                                                                             case addressesToSet of 
                                                                                 [] -> do 

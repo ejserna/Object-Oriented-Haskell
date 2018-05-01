@@ -230,11 +230,11 @@ LiteralOrVariable :
       | "True" {BoolLiteral True}
 
 Block:
-    "{" BlockStatement "}" {Block $2}
+    "{" Statements "}" {Block $2}
 
-BlockStatement :
+Statements :
         {- empty -} { [] }
-      | Statement BlockStatement {$1 : $2}
+      | Statement Statements {$1 : $2}
 
 Statement :
         Assignment ";" {AssignStatement $1}
@@ -246,6 +246,7 @@ Statement :
       | Variable   {VariableStatement $1}
       | If  {ConditionStatement $1}
       | Cycle      {CycleStatement $1}
+      | Case {CaseStatement $1 }
 
 Assignment :
         var_identifier "=" Expression        {AssignmentExpression $1 $3}
@@ -317,16 +318,14 @@ If :
 --      {- empty -}  {NoElse}
 --    | "else" Block {Else $2}
 
-{-Case :
-    "case" var_identifier "of" "{" CaseBlock "otherwise" "=>" CaseStatement "end" ";" "}"
+Case :
+      "case" Expression "of" CaseBlock "otherwise" "=>" "{" Statements "}" {Case $2 $4 $8}
+    | "case" Expression "of" CaseBlock "otherwise" "=>" Statement {Case $2 $4 [$7]}
 
 CaseBlock :
-
-  | LiteralOrVariable "=>" CaseStatement "end" ";" CaseBlock
-
-CaseStatement :
-    
-    | Statement CaseStatement -}
+   {- empty -} { [] }
+  | Expression "=>" "{" Statements "}" CaseBlock { ($1,$4) : $6 }
+  | Expression "=>" Statement CaseBlock { ($1,[$3]) : $4 }
 
 
 Cycle :
@@ -420,7 +419,7 @@ parseError tokenList = let pos = tokenPosn(head(tokenList))
 startTypeChecker ::  String -> IO()
 startTypeChecker source = do
                             let parseTree = ooh (alexScanTokens2 source)
-                            putStrLn $ ppShow $ parseTree
+                            -- putStrLn $ ppShow $ parseTree
                             startSemanticAnalysis parseTree
 
 main = do 

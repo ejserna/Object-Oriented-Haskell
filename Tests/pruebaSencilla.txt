@@ -8,7 +8,8 @@ main{
     Money m1,m2;
     m1 = 1.222222;
     m2 = m1;
-    if (i == 100 || j == 100){
+    read(i);
+    if (i == 100 && j == 100){
         displayLn("Es cien",i);
     }
     else{
@@ -21,7 +22,7 @@ main{
             }
         }
         else{
-            for counter in (1..100){
+            for counter in [1..100]{
                 if (counter == 99){
                     displayLn("counter es 10 ",counter);
                     read(i);

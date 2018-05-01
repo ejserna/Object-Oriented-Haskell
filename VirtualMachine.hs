@@ -20,8 +20,11 @@ import Control.Monad
 import Control.Monad.Cont
 import Control.Exception
 import Data.Stack as Stack
+import Data.Maybe
+import Data.List (intercalate,findIndex)
 import Quadruple
 import DataTypes
+import MemoryLimits
 import CodeGenDataTypes
 import Data.Decimal
 import Text.Show.Pretty
@@ -81,11 +84,29 @@ instance ExpressionOperation VMValue where
    (VMDecimal dec1) |==| (VMDecimal dec2) = (VMBool (dec1 == dec2))
    (VMBool bool1)   |==| (VMBool bool2) = (VMBool (bool1 == bool2))
    (VMString str1) |==| (VMString str2) = (VMBool (str1 == str2))
+   (VMInteger _) |==| VMEmpty = (VMBool False)
+   (VMDecimal _) |==| VMEmpty = (VMBool False)
+   (VMString _) |==| VMEmpty = (VMBool False)
+   (VMBool _) |==| VMEmpty = (VMBool False)
+   VMEmpty  |==| (VMInteger _)  = (VMBool False)
+   VMEmpty  |==| (VMDecimal _) = (VMBool False)
+   VMEmpty |==| (VMString _)  = (VMBool False)
+   VMEmpty  |==| (VMBool _) = (VMBool False)
+   (VMEmpty) |==| (VMEmpty) = (VMBool (True))
 
    (VMInteger int1) |!=| (VMInteger int2) = (VMBool (int1 /= int2))
    (VMDecimal dec1) |!=| (VMDecimal dec2) = (VMBool (dec1 /= dec2))
    (VMBool bool1)   |!=| (VMBool bool2) = (VMBool (bool1 /= bool2))
    (VMString str1)  |!=| (VMString str2) = (VMBool (str1 /= str2))
+   (VMInteger _) |!=| VMEmpty = (VMBool True)
+   (VMDecimal _) |!=| VMEmpty = (VMBool True)
+   (VMString _) |!=| VMEmpty = (VMBool True)
+   (VMBool _) |!=| VMEmpty = (VMBool True)
+   VMEmpty  |!=| (VMInteger _)  = (VMBool True)
+   VMEmpty  |!=| (VMDecimal _) = (VMBool True)
+   VMEmpty |!=| (VMString _)  = (VMBool True)
+   VMEmpty  |!=| (VMBool _) = (VMBool True)
+   (VMEmpty) |!=| (VMEmpty) = (VMBool (False))
 
    (VMBool bool1)   |&&| (VMBool bool2) = (VMBool (bool1 && bool2))
 
@@ -117,6 +138,7 @@ data CPUState = CPUState
                     globalMemory :: Memory,
                     localMemory :: Memory,
                     objectMemory :: ObjectMemory,
+                    typeMap :: TypeMap,
                     returnAddresses :: [Address] -- Cuando se retornan valores en una funcion, se llena este arreglo
                 }
                 deriving (Show)
@@ -124,14 +146,16 @@ data CPUState = CPUState
 data CPUContext = CPUContext
                 {   currentInstructions :: [Quadruple], 
                     functionDirectory :: FunctionMemoryMap,
-                    isMainContext :: Bool
+                    isMainContext :: Bool,
+                    currentClass :: String
                 }
                 deriving (Show)
 
 data FunctionMemory = FunctionMemory
                       {   instructions :: [Quadruple],
                           funcMainMemory :: Memory,
-                          funcObjectMemory :: ObjectMemory
+                          funcObjectMemory :: ObjectMemory,
+                          funcTypeMapMemory :: TypeMap
                       } deriving (Show)
 
 type Memory = Map.HashMap Address VMValue
@@ -149,12 +173,12 @@ type VM =  VirtualMachine ()
 printMessage :: String -> IO ()
 printMessage str = putStrLn $ (color Cyan $ style Bold $ "[VM] ") ++ str  
 
-startVM :: [Quadruple] -> Memory -> Memory -> ObjectMemory -> FunctionMemoryMap -> IO ()
-startVM quads globalMemory localMemory objectMemory funcMemMap = 
+startVM :: [Quadruple] -> Memory -> Memory -> ObjectMemory -> FunctionMemoryMap -> TypeMap -> IO ()
+startVM quads globalMemory localMemory objectMemory funcMemMap typeMap = 
     do 
        printMessage $ color White $ style Bold $ "Execution in process..."
        start <- getCPUTime
-       (a,w) <- evalRWST (runVM) (CPUContext quads funcMemMap True) (setInitialCPUState globalMemory localMemory objectMemory []) 
+       (a,w) <- evalRWST (runVM) (CPUContext quads funcMemMap True "") (setInitialCPUState globalMemory localMemory objectMemory typeMap [] ) 
        end   <- getCPUTime
        mapM_ (putStrLn) $ w 
        let diff = (fromIntegral (end - start)) / (10^12)
@@ -162,18 +186,18 @@ startVM quads globalMemory localMemory objectMemory funcMemMap =
        printMessage msg1
        -- putStrLn $ msg1 
 
-setInitialCPUState :: Memory -> Memory -> ObjectMemory -> [Address] -> CPUState
-setInitialCPUState globalMem localMem objMemory returnAddresses = CPUState OK 0 globalMem localMem objMemory returnAddresses
+setInitialCPUState :: Memory -> Memory -> ObjectMemory -> TypeMap -> [Address] -> CPUState
+setInitialCPUState globalMem localMem objMemory typeMap returnAddresses = CPUState OK 0 globalMem localMem objMemory typeMap returnAddresses
 
-getCPUState :: CPUState -> (ExitState,Int,Memory,Memory,ObjectMemory,[Address])
-getCPUState (CPUState eState ip globalMemory localMemory objectMemory returnAddresses) = (eState,ip,globalMemory,localMemory,objectMemory,returnAddresses)
+getCPUState :: CPUState -> (ExitState,Int,Memory,Memory,ObjectMemory,TypeMap,[Address])
+getCPUState (CPUState eState ip globalMemory localMemory objectMemory typeMap returnAddresses) = (eState,ip,globalMemory,localMemory,objectMemory,typeMap,returnAddresses)
 
 runVM :: VM
 runVM = do
         context <-  ask
         let quadruples = (currentInstructions context)
         cpuState <-  get
-        let (exitState,currentInstructionPointer,_,_,_,_) = getCPUState cpuState
+        let (exitState,currentInstructionPointer,globalMemory,localMemory,objectMemory,_,_) = getCPUState cpuState
         if (exitState == PANIC) 
             then do 
                 tell $ [("Ended execution with an error at quadruple number " ++ (style Bold (show currentInstructionPointer)) )]
@@ -183,6 +207,9 @@ runVM = do
         else do
             if currentInstructionPointer < (length quadruples) then do
                 let currentInstruction = quadruples !! currentInstructionPointer
+                -- liftIO $ putStrLn $ "MEMO"
+                -- liftIO $ putStrLn.ppShow $ globalMemory
+                -- liftIO $ putStrLn.ppShow $ currentInstruction
                 (runInstruction currentInstruction)
                 runVM 
                 return ()
@@ -194,7 +221,7 @@ runInstruction :: Quadruple -> VM
 -- Si es un NOP, solamente aumentamos a uno el instruction pointer
 runInstruction (QuadrupleEmpty _ _) = do 
                                         cpuState <- get
-                                        let (_,currentIP,_,_,_,_) = getCPUState cpuState
+                                        let (_,currentIP,_,_,_,_,_) = getCPUState cpuState
                                         let s' = (cpuState { ip = (ip cpuState) + 1 })
                                         put s'
                                         return ()
@@ -212,16 +239,24 @@ runInstruction (QuadrupleThreeAddresses quadNum EQ_ a1 a2 a3) |
                     a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
                     || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory = do
                                                                                         insertValueInAddress (VMBool True) a3
-                                                                                        doDeepEqualityOperation (|==|) a1 a2 a3
+                                                                                        doDeepEqualityOperation (|==|) (|&&|) a1 a2 a3
                                                                                         modify $ \s -> (s { ip = (ip s) + 1 }) 
                    | otherwise = do 
                                   doAbstractOperation (|==|) a1 a2 a3 
-runInstruction (QuadrupleThreeAddresses quadNum NOTEQ_ a1 a2 a3) =  do doAbstractOperation (|!=|) a1 a2 a3 
+runInstruction (QuadrupleThreeAddresses quadNum NOTEQ_ a1 a2 a3) | 
+                    a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
+                    || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory = do
+                                                                                        insertValueInAddress (VMBool False) a3
+                                                                                        doDeepEqualityOperation (|!=|) (|-||-|) a1 a2 a3
+                                                                                        modify $ \s -> (s { ip = (ip s) + 1 }) 
+                   | otherwise = do 
+                                  do doAbstractOperation (|!=|) a1 a2 a3 
+
 runInstruction (QuadrupleThreeAddresses quadNum AND_ a1 a2 a3) =  do doAbstractOperation (|&&|) a1 a2 a3 
 runInstruction (QuadrupleThreeAddresses quadNum OR_ a1 a2 a3) =  do doAbstractOperation (|-||-|) a1 a2 a3 
 runInstruction (QuadrupleTwoAddresses quadNum NOT_ a1 a2) =  do doAbstractUnaryOp (|!|) a1 a2
 runInstruction (QuadrupleTwoAddresses quadNum NEG_ a1 a2) = do  cpuState <- get
-                                                                let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
+                                                                let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                                                                 case (Map.lookup a1 (Map.union globalMemory localMemory)) of
                                                                     Just (VMInteger int) -> 
                                                                                               do 
@@ -234,11 +269,12 @@ runInstruction (QuadrupleTwoAddresses quadNum NEG_ a1 a2) = do  cpuState <- get
 runInstruction (QuadrupleTwoAddresses quadNum ASSIGNMENT a1 a2) =  do 
                                                                     doAssignment a1 a2 
                                                                     modify $ \s -> (s { ip = (ip s) + 1 })
-runInstruction (QuadrupleOneAddressOneQuad quadNum GOTO_IF_FALSE a1 quadNumToJump) =  do doGotoIfFalse a1 quadNumToJump 
+runInstruction (QuadrupleOneAddressOneQuad quadNum GOTO_IF_FALSE a1 quadNumToJump) =  do doGotoIfCondition (not) a1 quadNumToJump 
+runInstruction (QuadrupleOneAddressOneQuad quadNum GOTO_IF_TRUE a1 quadNumToJump) =  do doGotoIfCondition (\l -> l == True) a1 quadNumToJump 
 runInstruction (QuadrupleOneQuad quadNum GOTO quadNumToJump) =  
                                                                 do
                                                                     cpuState <- get
-                                                                    let (_,currentIP,_,_,_,_) = getCPUState cpuState
+                                                                    let (_,currentIP,_,_,_,_,_) = getCPUState cpuState
                                                                     modify $ \s -> (cpuState { ip = fromIntegral quadNumToJump })
 runInstruction (QuadrupleOneAddress quadNum READ a1) 
                                     | a1 >= startIntGlobalMemory && a1 <= endIntGlobalMemory     
@@ -248,7 +284,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                                                     context <-  ask
                                                                     let quadruples = (currentInstructions context)
                                                                     tty <- liftIO $ openFile "/dev/tty" ReadMode
-                                                                    liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: Integer" ) ++ (style SlowBlink $ ">")
+                                                                    liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected input type: Integer" ) ++ (style SlowBlink $ ">")
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     case (checkInt x) of 
@@ -263,7 +299,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                       || a1 >= startDecimalLocalMemory && a1 <= endDecimalLocalMemory =
                                                                 do 
                                                                     tty <- liftIO $ openFile "/dev/tty" ReadMode
-                                                                    liftIO $ putStrLn $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: Decimal" ) ++ (style SlowBlink $ ">")
+                                                                    liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected input type: Decimal" ) ++ (style SlowBlink $ ">")
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     case (checkDecimal x) of 
@@ -278,7 +314,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                       || a1 >= startStringLocalMemory && a1 <= endStringLocalMemory =
                                                                 do 
                                                                     tty <- liftIO $ openFile "/dev/tty" ReadMode
-                                                                    liftIO $ putStrLn $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: String" ) ++ (style SlowBlink $ ">")
+                                                                    liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected input type: String" ) ++ (style SlowBlink $ ">")
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     insertValueInAddress (VMString x) a1
@@ -288,7 +324,7 @@ runInstruction (QuadrupleOneAddress quadNum READ a1)
                                       || a1 >= startBoolLocalMemory && a1 <= endBoolLocalMemory =
                                                                 do 
                                                                     tty <- liftIO $ openFile "/dev/tty" ReadMode
-                                                                    liftIO $ putStrLn $ (style SlowBlink $ "<") ++ (style Bold $ "Expected type: True | False" ) ++ (style SlowBlink $ ">")
+                                                                    liftIO $ printMessage $ (style SlowBlink $ "<") ++ (style Bold $ "Expected input type: True | False" ) ++ (style SlowBlink $ ">")
                                                                     x  <- liftIO $ hGetLine tty
                                                                     -- lift $ catch (seq (read x :: Integer) $ return()) showError
                                                                     case (checkBool x) of 
@@ -312,7 +348,7 @@ runInstruction (QuadrupleOneAddress quadNum DISPLAY_LINE a1) = do
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
 runInstruction (QuadrupleOneAddress quadNum DISPLAY_VALUE_IN_INDEX a1) = do 
                                                             cpuState <- get
-                                                            let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
+                                                            let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                                                             case (Map.lookup a1 (Map.union globalMemory localMemory)) of
                                                               Just (VMInteger addressFromArray) -> do 
                                                                                                       doDisplay addressFromArray 0
@@ -320,7 +356,7 @@ runInstruction (QuadrupleOneAddress quadNum DISPLAY_VALUE_IN_INDEX a1) = do
                                                             
 runInstruction (QuadrupleOneAddress quadNum DOUBLE a1) = do 
                                                             cpuState <- get
-                                                            let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState 
+                                                            let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState 
                                                             case (Map.lookup a1 (Map.union globalMemory localMemory)) of
                                                                 Just (VMDecimal dec) -> 
                                                                     let roundedDec = roundTo' (ceiling) 16 dec
@@ -328,7 +364,7 @@ runInstruction (QuadrupleOneAddress quadNum DOUBLE a1) = do
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
 runInstruction (QuadrupleOneAddress quadNum INT_64 a1) = do 
                                                             cpuState <- get
-                                                            let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState 
+                                                            let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState 
                                                             case (Map.lookup a1 (Map.union globalMemory localMemory)) of
                                                                 Just (VMInteger int) -> 
                                                                     do
@@ -344,7 +380,7 @@ runInstruction (QuadrupleOneAddress quadNum INT_64 a1) = do
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
 runInstruction (QuadrupleThreeAddresses quadNum ADD_INDEX index value a3) = do 
                                                             cpuState <- get
-                                                            let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
+                                                            let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                                                             case (Map.lookup value (Map.union globalMemory localMemory)) of
                                                               Just (VMInteger int) -> do 
                                                                                         -- liftIO $ putStrLn $ (show (index + int))  ++ " " ++ (show a3) 
@@ -354,7 +390,7 @@ runInstruction (QuadrupleThreeAddresses quadNum ADD_INDEX index value a3) = do
 
 runInstruction (QuadrupleTwoAddresses quadNum ACCESS_INDEX addressThatHasIndex a2) = do 
                                                             cpuState <- get
-                                                            let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
+                                                            let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                                                             case (Map.lookup addressThatHasIndex (Map.union globalMemory localMemory)) of
                                                               Just (VMInteger addressFromArray) -> do 
                                                                                                       -- liftIO $ putStrLn $ (show addressFromArray)  ++ " " ++ (show a2)
@@ -363,13 +399,16 @@ runInstruction (QuadrupleTwoAddresses quadNum ACCESS_INDEX addressThatHasIndex a
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
 runInstruction (QuadrupleTwoAddresses quadNum PUT_INDEX a1 addressThatHasIndex) = do 
                                                             cpuState <- get
-                                                            let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
+                                                            let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                                                             case (Map.lookup addressThatHasIndex (Map.union globalMemory localMemory)) of
-                                                              Just (VMInteger addressFromArray) -> doAssignment a1 addressFromArray
+                                                              Just (VMInteger addressFromArray) -> 
+                                                                                do 
+                                                                                  -- liftIO $ putStrLn.show $ addressFromArray
+                                                                                    doAssignment a1 addressFromArray
                                                             modify $ \s -> (s { ip = (ip s) + 1 })
 runInstruction (QuadrupleTwoAddresses quadNum BOUNDS a1 a2) = do 
                                                               cpuState <- get
-                                                              let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
+                                                              let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                                                               case (Map.lookup a1 (Map.union globalMemory localMemory)) of
                                                                 Just (VMInteger val) -> 
                                                                            do 
@@ -393,10 +432,16 @@ runInstruction (QuadrupleFunctionCall quadNum GO_SUB addressesObjParams addresse
                                                                                     context <-  ask
                                                                                     cpuState <- get
                                                                                     let funcMap = (functionDirectory context)
-                                                                                    case (Map.lookup funcName funcMap) of 
-                                                                                      Just (FunctionMemory funcInstructions funcIdMem funcObjMem) ->
+                                                                                    -- Buscar aqui que tipo de objeto es el de objParams
+                                                                                    -- liftIO $ putStrLn $ funcName
+                                                                                    let (classTypeOfCallingObj, updatedFuncName) = getClassNameAndFunctionName funcName (currentClass context) (typeMap cpuState)
+                                                                                    -- liftIO $ putStrLn $ classTypeOfCallingObj
+                                                                                    -- liftIO $ putStrLn $ updatedFuncName
+
+                                                                                    case (Map.lookup updatedFuncName funcMap) of 
+                                                                                      Just (FunctionMemory funcInstructions funcIdMem funcObjMem typeMapFunc) ->
                                                                                           do 
-                                                                                            let (_,currentIP,globalMemory,currentLocalMem,currentObjMem,_) = getCPUState cpuState
+                                                                                            let (_,currentIP,globalMemory,currentLocalMem,currentObjMem,currentTypeMap,_) = getCPUState cpuState
                                                                                             -- A continuacion se sustituira la currentLocalMemory por la local memory de la funcion. Sin embargo, se guarda el currentLocalMemory
                                                                                             let addressesCurrentContext = (map (\f-> fst f) addressesParams)
                                                                                             let addressesFuncContext = (map (\f-> snd f) addressesParams)
@@ -404,62 +449,94 @@ runInstruction (QuadrupleFunctionCall quadNum GO_SUB addressesObjParams addresse
                                                                                             let addressesObjParamsCurrentContext = (map (\f-> fst f) addressesObjParams)
                                                                                             let addressesObjFuncContext = (map (\f-> snd f) addressesObjParams)
 
-                                                                                            let localMemFunc = doDeepAssignmentMemories (Map.union globalMemory currentLocalMem) funcIdMem currentObjMem funcObjMem addressesCurrentContext addressesFuncContext
-                                                                                            let localMemFuncNew = doDeepAssignmentMemories (Map.union globalMemory currentLocalMem) localMemFunc currentObjMem funcObjMem addressesObjParamsCurrentContext addressesObjFuncContext   
+                                                                                            let (newTypeMapFunc,localMemFunc) = doDeepAssignmentMemories (Map.union globalMemory currentLocalMem) funcIdMem currentObjMem funcObjMem currentTypeMap typeMapFunc addressesCurrentContext addressesFuncContext
+                                                                                            let (finalTypeMapFunc,localMemFuncNew) = doDeepAssignmentMemories (Map.union globalMemory currentLocalMem) localMemFunc currentObjMem funcObjMem currentTypeMap newTypeMapFunc addressesObjParamsCurrentContext addressesObjFuncContext   
                                                             
-                                                                                            (stateAfterFunc,_) <- liftIO $ execRWST (runVM) (CPUContext funcInstructions funcMap False) (setInitialCPUState globalMemory localMemFuncNew funcObjMem [])
-                                                                                            let (_,_,_,localMemAfterFunc,objMemAfterFunc,returnAddresses) = getCPUState stateAfterFunc
-                                                                                            -- Se sustituyen
-                                                                                            if (currentIP + 1) < (length (currentInstructions context)) then do
-                                                                                                let returnInstruction = (currentInstructions context) !! (currentIP + 1)
-                                                                                                case returnInstruction of 
-                                                                                                  (QuadrupleReturnSet quadNum RETURN_SET addressesCurrentContext) ->
-                                                                                                        if ((isMainContext context)) then 
-                                                                                                          do
-                                                                                                            -- El orden es MUUUY importante, porque primero se deben actualizar los atributos de los objetos, y hasta el final
-                                                                                                            -- los return addresses, porque puede darse el caso que se este asignando un atributo de un objeto a la llamada de funcion
-                                                                                                            -- por lo que tendria que cambiarse de nuevo ese atributo de objeto
-                                                                                                            let newGlobalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext 
-                                                                                                            let newGlobalMemory = doDeepAssignmentMemories localMemAfterFunc newGlobalMemoryWithObjectAttributes objMemAfterFunc currentObjMem returnAddresses addressesCurrentContext
-                                                                                                             
-                                                                                                            modify $ \s -> (s { globalMemory =  newGlobalMemory })
-                                                                                                            modify $ \s -> (s { ip = (ip s) + 1 })
-                                                                                                        else do 
-                                                                                                               -- El orden es MUUUY importante, porque primero se deben actualizar los atributos de los objetos, y hasta el final
-                                                                                                               -- los return addresses, porque puede darse el caso que se este asignando un atributo de un objeto a la llamada de funcion
-                                                                                                               -- por lo que tendria que cambiarse de nuevo ese atributo de objeto
-                                                                                                               let newLocalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext
-                                                                                                               let newLocalMemory = doDeepAssignmentMemories localMemAfterFunc newLocalMemoryWithObjectAttributes objMemAfterFunc currentObjMem returnAddresses addressesCurrentContext
-   
-                                                                                                               modify $ \s -> (s { localMemory =  newLocalMemory })
-                                                                                                               modify $ \s -> (s { ip = (ip s) + 1 })
-                                                                                                  _ -> do 
-                                                                                                        if ((isMainContext context)) then 
-                                                                                                          do 
-                                                                                                              let newGlobalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext 
-                                                                                                              modify $ \s -> (s { globalMemory =  newGlobalMemoryWithObjectAttributes })
-                                                                                                              modify $ \s -> (s { ip = (ip s) + 1 })
-                                                                                                        else do 
-                                                                                                               let newLocalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext
-                                                                                                               modify $ \s -> (s { localMemory =  newLocalMemoryWithObjectAttributes })
-                                                                                                               modify $ \s -> (s { ip = (ip s) + 1 })
-                                                                                            else 
-                                                                                              do 
-                                                                                                if ((isMainContext context)) then 
-                                                                                                          do 
-                                                                                                              let newGlobalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext 
-                                                                                                              modify $ \s -> (s { globalMemory =  newGlobalMemoryWithObjectAttributes })
-                                                                                                              modify $ \s -> (s { ip = (ip s) + 1 })
-                                                                                                        else do 
-                                                                                                               let newLocalMemoryWithObjectAttributes = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem addressesObjFuncContext addressesObjParamsCurrentContext
-                                                                                                               modify $ \s -> (s { localMemory =  newLocalMemoryWithObjectAttributes })
-                                                                                                               modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                            (stateAfterFunc,logs) <- liftIO $ execRWST (runVM) (CPUContext funcInstructions funcMap False classTypeOfCallingObj) (setInitialCPUState globalMemory localMemFuncNew funcObjMem finalTypeMapFunc [])
+                                                                                            let (funcCPUState,_,_,localMemAfterFunc,objMemAfterFunc,typeMapAfterFunc,returnAddresses) = getCPUState stateAfterFunc
+                                                                                            case funcCPUState of 
+                                                                                              PANIC -> do 
+                                                                                                          modify $ \s -> (s { exitState = PANIC })
+                                                                                                          tell $ logs
+                                                                                                          return ()
+                                                                                              _ -> do 
+                                                                                                      -- Se sustituyen
+                                                                                                      if (currentIP + 1) < (length (currentInstructions context)) then do
+                                                                                                          let returnInstruction = (currentInstructions context) !! (currentIP + 1)
+                                                                                                          case returnInstruction of 
+                                                                                                            (QuadrupleReturnSet quadNum RETURN_SET addressesCurrentContext) ->
+                                                                                                                  if ((isMainContext context)) then 
+                                                                                                                    do
+                                                                                                                      -- El orden es MUUUY importante, porque primero se deben actualizar los atributos de los objetos, y hasta el final
+                                                                                                                      -- los return addresses, porque puede darse el caso que se este asignando un atributo de un objeto a la llamada de funcion
+                                                                                                                      -- por lo que tendria que cambiarse de nuevo ese atributo de objeto
+                                                                                                                      let (newTypeMap,newGlobalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext 
+                                                                                                                      let (finalTypeMap,newGlobalMemory) = doDeepAssignmentMemories localMemAfterFunc newGlobalMemoryWithObjectAttributes objMemAfterFunc currentObjMem typeMapAfterFunc newTypeMap returnAddresses addressesCurrentContext
+                                                                                                                       
+                                                                                                                      modify $ \s -> (s { globalMemory =  newGlobalMemory })
+                                                                                                                      modify $ \s -> (s { typeMap =  finalTypeMap })
+                                                                                                                      modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                                  else do 
+                                                                                                                         -- El orden es MUUUY importante, porque primero se deben actualizar los atributos de los objetos, y hasta el final
+                                                                                                                         -- los return addresses, porque puede darse el caso que se este asignando un atributo de un objeto a la llamada de funcion
+                                                                                                                         -- por lo que tendria que cambiarse de nuevo ese atributo de objeto
+                                                                                                                         let (newTypeMap,newLocalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext
+                                                                                                                         let (finalTypeMap,newLocalMemory) = doDeepAssignmentMemories localMemAfterFunc newLocalMemoryWithObjectAttributes objMemAfterFunc currentObjMem typeMapAfterFunc newTypeMap returnAddresses addressesCurrentContext
+             
+                                                                                                                         modify $ \s -> (s { localMemory =  newLocalMemory })
+                                                                                                                         modify $ \s -> (s { typeMap =  finalTypeMap })
+                                                                                                                         modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                            _ -> do 
+                                                                                                                  if ((isMainContext context)) then 
+                                                                                                                    do 
+                                                                                                                        let (finalTypeMap,newGlobalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext 
+                                                                                                                        modify $ \s -> (s { globalMemory =  newGlobalMemoryWithObjectAttributes })
+                                                                                                                        modify $ \s -> (s { typeMap =  finalTypeMap })
+                                                                                                                        modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                                  else do 
+                                                                                                                         let (finalTypeMap,newLocalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext
+                                                                                                                         modify $ \s -> (s { localMemory =  newLocalMemoryWithObjectAttributes })
+                                                                                                                         modify $ \s -> (s { typeMap =  finalTypeMap })
+                                                                                                                         modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                      else 
+                                                                                                        do 
+                                                                                                          if ((isMainContext context)) then 
+                                                                                                                    do 
+                                                                                                                        let (finalTypeMap,newGlobalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc globalMemory objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext 
+                                                                                                                        modify $ \s -> (s { globalMemory =  newGlobalMemoryWithObjectAttributes })
+                                                                                                                        modify $ \s -> (s { typeMap =  finalTypeMap })
+                                                                                                                        modify $ \s -> (s { ip = (ip s) + 1 })
+                                                                                                                  else do 
+                                                                                                                         let (finalTypeMap,newLocalMemoryWithObjectAttributes) = doDeepAssignmentMemories localMemAfterFunc currentLocalMem objMemAfterFunc currentObjMem typeMapAfterFunc currentTypeMap addressesObjFuncContext addressesObjParamsCurrentContext
+                                                                                                                         modify $ \s -> (s { localMemory =  newLocalMemoryWithObjectAttributes })
+                                                                                                                         modify $ \s -> (s { typeMap =  finalTypeMap })
+                                                                                                                         modify $ \s -> (s { ip = (ip s) + 1 })
                                                                                             
                                         
 
 runInstruction _ =  do
                         modify $ \s -> (s { ip = (ip s) + 1 })
                         return ()
+
+-- Se consigue la clase y la llamada a funcion
+getClassNameAndFunctionName :: String -> String -> TypeMap -> (String,String)
+getClassNameAndFunctionName funcNameString currentClass typeMap | (getClassNameFromCurrentModule funcNameString) == "main" = ("",funcNameString)
+                                       | otherwise = 
+                                            let indexEnd = findIndex(`elem` "_") funcNameString
+                                            in case (checkInt (take (fromJust indexEnd) funcNameString)) of 
+                                              Just objAddress -> 
+                                                   -- + 1 porque despues de la direccion del objeto viene un _... ej: 13002_Point_setPoint
+                                                  let newFuncString = drop ((fromJust indexEnd) + 1) funcNameString
+                                                      indexEndClass = findIndex(`elem` "_") newFuncString
+                                                      funcStringOnly = drop ((fromJust indexEndClass)) newFuncString
+                                                      currentTypeOfObject = (fromJust (Map.lookup objAddress typeMap))
+                                                  in (currentTypeOfObject,(currentTypeOfObject ++ (drop 1 funcStringOnly)))
+                                              Nothing ->
+                                                  let className =  (getClassNameFromCurrentModule funcNameString)
+                                                      funcStringOnly = drop ((length className) + 2) funcNameString
+                                                  in (currentClass,(currentClass ++ funcStringOnly))
+
+                                                
 
 
 doDisplay :: Address -> Int -> VM
@@ -470,7 +547,7 @@ doDisplay a1 nestFactor
                                                                             cpuState <- get
                                                                             liftIO $ putStr $ take nestFactor $ cycle "\t"
                                                                             liftIO $ putStrLn $ (color  Black . style Bold $ "<object>" ) ++ (color White $ "{")
-                                                                            let (panic,currentIP,globalMemory,localMemory,objectMemory,_) = getCPUState cpuState
+                                                                            let (panic,currentIP,globalMemory,localMemory,objectMemory,_,_) = getCPUState cpuState
                                                                             case (Map.lookup a1 objectMemory) of
                                                                                 Just addressesFromObject -> do 
                                                                                         doDeepDisplay addressesFromObject (nestFactor + 1)
@@ -479,7 +556,7 @@ doDisplay a1 nestFactor
                                                                             liftIO $ putStrLn $ color White $ "}"
      | otherwise = do 
                 cpuState <- get
-                let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
+                let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                 let memories = (Map.union globalMemory localMemory) 
                 liftIO $ putStr $ take nestFactor $ cycle "\t"
                 case (Map.lookup a1 memories) of 
@@ -497,31 +574,31 @@ doDisplay a1 nestFactor
                             
                             -- tell $ [show val]  
                     Just VMEmpty ->
-                                do liftIO $ putStr $ " " 
+                                -- do liftIO $ putStr $ " " 
                                    return ()
                     _ -> do 
                             return ()
                 return ()
 
-doDeepEqualityOperation :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM
-doDeepEqualityOperation f a1 a2 a3 
+doDeepEqualityOperation :: (VMValue -> VMValue -> VMValue) -> (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM
+doDeepEqualityOperation f f2 a1 a2 a3 
         -- Si es un objeto, la asignacion debe hacerse considerando todos sus atributos
      | a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
         || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory  = do
                                                                              
                                                                             cpuState <- get
                                                                             
-                                                                            let (panic,currentIP,globalMemory,localMemory,objectMemory,_) = getCPUState cpuState
+                                                                            let (panic,currentIP,globalMemory,localMemory,objectMemory,_,_) = getCPUState cpuState
                                                                             case (Map.lookup a1 objectMemory) of
                                                                                 Just addresses1 ->
                                                                                   case (Map.lookup a2 objectMemory) of
                                                                                      Just addresses2 -> do 
                                                                                         -- liftIO $ putStrLn.show $ addresses1
                                                                                         -- liftIO $ putStrLn.show $ addresses2
-                                                                                        doDeepEqualityOperation2 f addresses1 addresses2 a3
+                                                                                        doDeepEqualityOperation2 f f2 addresses1 addresses2 a3
      | otherwise = do 
                 cpuState <- get
-                let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
+                let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                 let memories = (Map.union globalMemory localMemory) 
                 case (Map.lookup a1 memories) of 
                     Just val1 -> do 
@@ -529,19 +606,19 @@ doDeepEqualityOperation f a1 a2 a3
                               Just val2 -> 
                                 case (Map.lookup a3 memories) of 
                                   Just val3 -> do 
-                                                  let val = (f val1 val2) |&&| val3
+                                                  let val = (f2 (f val1 val2) val3)
                                                   insertValueInAddress val a3
                                                   
                     _ -> do 
                             return ()
                 return ()
 
-doDeepEqualityOperation2 :: (VMValue -> VMValue -> VMValue) -> [Address] -> [Address] -> Address -> VM
-doDeepEqualityOperation2 f [] [] a3 = return ()
-doDeepEqualityOperation2 f (a1:a1s) (a2:a2s) a3 = 
+doDeepEqualityOperation2 :: (VMValue -> VMValue -> VMValue) -> (VMValue -> VMValue -> VMValue) -> [Address] -> [Address] -> Address -> VM
+doDeepEqualityOperation2 f f2 [] [] a3 = return ()
+doDeepEqualityOperation2 f f2 (a1:a1s) (a2:a2s) a3 = 
                                       do 
-                                        doDeepEqualityOperation f a1 a2 a3
-                                        doDeepEqualityOperation2 f a1s a2s a3
+                                        doDeepEqualityOperation f f2 a1 a2 a3
+                                        doDeepEqualityOperation2 f f2 a1s a2s a3
 
 
 
@@ -550,9 +627,15 @@ doAssignment a1 a2
     -- Si es un objeto, la asignacion debe hacerse considerando todos sus atributos
      | a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
      || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory = do 
+                                                                        -- liftIO $ putStrLn $ "khe"
                                                                         cpuState <- get
-                                                                        let (panic,currentIP,globalMemory,localMemory,objectMemory,_) = getCPUState cpuState
-                                                                        -- liftIO $ putStrLn $ (show a1)  ++ " " ++ (show a2) 
+                                                                        let (panic,currentIP,globalMemory,localMemory,objectMemory,typeMap,_) = getCPUState cpuState
+                                                                        -- Primero hay que cambiar su tipo en el type map
+                                                                        case (Map.lookup a1 typeMap) of 
+                                                                          Just typeClassGiver -> 
+                                                                                    do 
+                                                                                      let newTypeMap = (Map.insert a2 typeClassGiver typeMap)
+                                                                                      modify $ \s -> (s { typeMap = newTypeMap })
                                                                         case (Map.lookup a1 objectMemory) of
                                                                             Just addressesAttributesGiver ->
                                                                                 do 
@@ -568,7 +651,7 @@ doAssignment a1 a2
                                                                                                                                                            
     | otherwise = do 
                     cpuState <- get
-                    let (panic,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
+                    let (panic,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                     let memories = (Map.union globalMemory localMemory)
                     case (Map.lookup a1 memories) of
                         Just val -> do 
@@ -580,35 +663,42 @@ doAssignment a1 a2
                   
 doDeepAssignment :: [Address] -> [Address] -> VM
 doDeepAssignment [] [] = do return ()
+doDeepAssignment a [] = do return ()
+doDeepAssignment [] a = do return ()
 doDeepAssignment (addrGiver : addressesGiver ) (addrReceiver : addressesReceiver ) = do 
                                                                                     doAssignment addrGiver addrReceiver
                                                                                     doDeepAssignment addressesGiver addressesReceiver
                                                                                     return ()
 
 
-doAssignmentMemories :: Memory -> Memory -> ObjectMemory -> ObjectMemory -> Address -> Address -> Memory
-doAssignmentMemories memBase memDestiny objMemBase objMemDestiny a1 a2 
+doAssignmentMemories :: Memory -> Memory -> ObjectMemory -> ObjectMemory -> TypeMap -> TypeMap -> Address -> Address -> (TypeMap,Memory)
+doAssignmentMemories memBase memDestiny objMemBase objMemDestiny typeMapBase typeMapDestiny a1 a2 
     -- Si es un objeto, la asignacion debe hacerse considerando todos sus atributos
      | a1 >= startObjectLocalMemory && a1 <= endObjectLocalMemory 
-     || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory = case (Map.lookup a1 objMemBase) of
+     || a1 >= startObjectGlobalMemory && a1 <= endObjectGlobalMemory =  case (Map.lookup a1 objMemBase) of
                                                                             Just addressesAttributesGiver ->
                                                                                     case (Map.lookup a2 objMemDestiny) of
                                                                                         Just addressesAttributesReceiver ->
-                                                                                            doDeepAssignmentMemories memBase memDestiny objMemBase objMemDestiny addressesAttributesGiver addressesAttributesReceiver 
+                                                                                            case (Map.lookup a1 typeMapBase) of 
+                                                                                              Just typeClassGiver -> 
+                                                                                                          let newTypeMapDestiny = (Map.insert a2 typeClassGiver typeMapDestiny)
+                                                                                                          in doDeepAssignmentMemories memBase memDestiny objMemBase objMemDestiny typeMapBase newTypeMapDestiny addressesAttributesGiver addressesAttributesReceiver 
                                                                         
                                                                                                                                                            
     | otherwise = case (Map.lookup a1 memBase) of
                         Just valBase -> 
                           let newDestinyMemory = (Map.insert a2 valBase memDestiny)
-                          in newDestinyMemory
+                          in (typeMapDestiny,newDestinyMemory)
 
 
                   
-doDeepAssignmentMemories :: Memory -> Memory -> ObjectMemory -> ObjectMemory -> [Address] -> [Address] -> Memory
-doDeepAssignmentMemories _ memoryDestiny _ _ [] [] = memoryDestiny
-doDeepAssignmentMemories memBase memDestiny objMemBase objMemDestiny (addrGiver : addressesGiver ) (addrReceiver : addressesReceiver ) =
-                                                                                    let memDestinyNew = doAssignmentMemories memBase memDestiny objMemBase objMemDestiny addrGiver addrReceiver
-                                                                                    in doDeepAssignmentMemories memBase memDestinyNew objMemBase objMemDestiny addressesGiver addressesReceiver
+doDeepAssignmentMemories :: Memory -> Memory -> ObjectMemory -> ObjectMemory -> TypeMap -> TypeMap -> [Address] -> [Address] -> (TypeMap,Memory)
+doDeepAssignmentMemories _ memoryDestiny _ _ _ typeMapDestiny [] [] = (typeMapDestiny,memoryDestiny)
+doDeepAssignmentMemories _ memoryDestiny _ _ _ typeMapDestiny a [] = (typeMapDestiny,memoryDestiny)
+doDeepAssignmentMemories _ memoryDestiny _ _ _ typeMapDestiny [] a = (typeMapDestiny,memoryDestiny)
+doDeepAssignmentMemories memBase memDestiny objMemBase objMemDestiny typeMapBase typeMapDestiny (addrGiver : addressesGiver ) (addrReceiver : addressesReceiver ) =
+                                                                                    let (newTypeMapDestiny, memDestinyNew) = doAssignmentMemories memBase memDestiny objMemBase objMemDestiny typeMapBase typeMapDestiny addrGiver addrReceiver
+                                                                                    in doDeepAssignmentMemories memBase memDestinyNew objMemBase objMemDestiny typeMapBase newTypeMapDestiny addressesGiver addressesReceiver
                                                                                     
 
 doDeepDisplay :: [Address] -> Int -> VM
@@ -627,7 +717,7 @@ doDeepDisplay (addr : addresses ) nestFactor = do
 doAbstractOperation :: (VMValue -> VMValue -> VMValue) -> Address -> Address -> Address -> VM
 doAbstractOperation f a1 a2 a3 = do 
                                         cpuState <- get
-                                        let (_,_,globalMemory,localMemory,_,_) = getCPUState cpuState
+                                        let (_,_,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                                             memories = (Map.union globalMemory localMemory) 
                                             valResult = doOperation f a1 a2 memories
                                         case valResult of 
@@ -652,7 +742,7 @@ doOperation f a1 a2 memory = case (Map.lookup a1 memory) of
 insertValueInAddress :: VMValue -> Address -> VM
 insertValueInAddress val address = do
                             cpuState <- get
-                            let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState 
+                            let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState 
                             if (address >= startIntGlobalMemory && address <= endBoolGlobalMemory) 
                                 then do
                                     let newGlobalMemory = (Map.insert address val globalMemory)
@@ -667,15 +757,15 @@ insertValueInAddress val address = do
                                     tell $ [("Address " ++ show address  ++  " assignment underflow/overflow ")]
                             return ()
 
-doGotoIfFalse :: Address -> QuadNum -> VM
-doGotoIfFalse a1 quadNum = do 
+doGotoIfCondition ::(Bool -> Bool) -> Address -> QuadNum -> VM
+doGotoIfCondition f a1 quadNum = do 
                             cpuState <- get
-                            let (_,currentIP,globalMemory,localMemory,_,_) = getCPUState cpuState
+                            let (_,currentIP,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                             let memories = (Map.union globalMemory localMemory)
                             case (Map.lookup a1 memories) of 
                                 Just (VMBool bool) -> do
                                     -- Si es falso, entonces si hago el jump
-                                    if not bool then 
+                                    if (f bool) then 
                                         modify $ \s -> (cpuState { ip = fromIntegral quadNum })
                                     -- Si no solo sigo al siguiente cuadruplo
                                     else modify $ \s -> (cpuState { ip = currentIP + 1  })
@@ -689,7 +779,7 @@ doGotoIfFalse a1 quadNum = do
 doAbstractUnaryOp :: (VMValue -> VMValue) -> Address  -> Address -> VM
 doAbstractUnaryOp f a1 a2 = do 
                                         cpuState <- get
-                                        let (_,_,globalMemory,localMemory,_,_) = getCPUState cpuState
+                                        let (_,_,globalMemory,localMemory,_,_,_) = getCPUState cpuState
                                         let memories = (Map.union globalMemory localMemory) 
                                         case (Map.lookup a1 memories) of 
                                             Just val -> 

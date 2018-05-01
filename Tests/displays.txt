@@ -33,12 +33,13 @@ main{
     perrow.l = strings;
     cosaChida.coso = "Juguete perrosss";
     perrow.l = strings;
-    perrow.cosa = cosaChida;
+    perrow.cosa = cosaChida;                                    
     perrow.dineros = 1.2222222;
     h1.edad = 28229383 + 9999 * 19220;
     h1.nombre = "Eduardo";
     h1.perro = perrow;
     h2 = h1;
+    displayLn(h2);
     ilolo = h2.edad;
     h2.edad = 13;
     h1.edad = ilolo;

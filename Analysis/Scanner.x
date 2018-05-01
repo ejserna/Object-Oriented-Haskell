@@ -20,6 +20,8 @@ $alphaUpper = [A-Z]
 -- Se definen los tokens de la gramática
 tokens :-
   $white+	; --ignorar todos los espacios, newlines y caracteres vacios
+  "//".*; -- ignoramos los comentarios
+  "#".*; -- ignoramos los comentarios
   "="                               { \p s -> TEquals p }
   ","                               { \p s -> TComma p }
   "if"                              { \p s -> TIf p }

@@ -1,0 +1,54 @@
+quicksort => Int[10] :: Int low -> Int high -> Int[10] n{
+    Int i,j,pivot;
+    i = low;
+    j = high;
+    pivot = n[j];
+
+    if(high == 0){
+        return n;
+    }
+
+    while(i<=j){
+        while(n[i] < pivot){
+            i++;
+        }
+
+        while(n[j] > pivot){
+            j--;
+        }
+
+        if(i<=j){
+           Int temp;
+           temp = n[i];
+           n[i] = n[j];
+           n[j] = temp;
+           i++;
+           j--;
+        }
+    }
+
+    // Este arreglo lo hacemos en el caso
+    // que se sortee al entrar al primer if
+    // Si esto sucede, le enviamos al segundo if
+    // a este arreglo sorteado
+    Int [10] sortedArray = n;
+    if(low <= j){
+        sortedArray = quicksort(low,j,sortedArray);
+    }
+    if(i <= high){
+        return quicksort(i,high,sortedArray);
+    }
+    return n;
+} 
+
+main{
+    Int [10] n = [111,4,6,2,1,7,8,10,5,9];
+    Int n1 = 10;
+    Int currNum;
+    n = quicksort(0,n1-1,n);
+    for i in [0..9]{
+        currNum = n[i];
+        displayLn(currNum);
+
+    }
+}
