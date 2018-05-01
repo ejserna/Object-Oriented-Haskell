@@ -36,8 +36,8 @@ import  System.Console.Pretty (Color (..), Style (..), bgColor, color,
 data SymbolEnvironment = SymbolEnvironment
                 {   symTabMem :: SymbolTable, 
                     classTabMem :: ClassSymbolTable,
-                    deepness :: Integer,
-                    aMapMem :: AncestorsMap  -- Esto es para tipos de datos recursivos
+                    deepness :: Integer, -- Esto es para tipos de datos recursivos
+                    aMapMem :: AncestorsMap  
                 }
                 deriving (Show)
 
@@ -86,10 +86,6 @@ startMemoryAllocation (Program classes functions variables (Block statements)) s
             let constantAddressMap = (constTable stateAfterConstants5)
             (stateAfterVariablesInStatements,_) <- execRWST (prepareAddressMapsFromSymbolTable "_main_") env stateAfterConstants5
             let (idMap,constMap, objMap, funcMap, varCounters, litCounters, typeMap) = getCurrentMemoryState stateAfterVariablesInStatements
-            -- putStrLn $ ppShow $(sortBy (compare `on` fst) (Map.toList funcMap) )
-            -- putStrLn $ ppShow $(sortBy (compare `on` fst) (Map.toList typeMap) ) 
-            -- let (varCountersMem,newIdMap,objectAddressMap) = (prepareAddressMapsFromSymbolTable symTab classSymTab (startIntGlobalMemory,startDecimalGlobalMemory,startStringGlobalMemory,startBoolGlobalMemory, startObjectGlobalMemory)
-            --                                                     (Map.empty) (Map.empty))
             startCodeGen (Program classes functions variables (Block ( globalVariablesAsStatements ++ statements ))) symTab classSymTab varCounters idMap constMap objMap funcMap "_main_" aMap typeMap
 
 prepareConstantAddressMap :: [Statement] -> MA
@@ -380,7 +376,6 @@ fillIdentifierAddressMap ( (identifier,(SymbolVar (TypePrimitive prim (("[",rows
 
 fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statements) p2 p3 p4 symTabFunc)) : rest) fromModule =
                                                     do 
-                                                        -- liftIO $ putStrLn $ identifier
                                                         env <- ask
                                                         memState <- get
                                                         let funcMap = (funcMapMem memState)
@@ -396,10 +391,6 @@ fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statement
                                                                     -- Obtenemos las dependencias de la funcion, para primero realizar los metodos de las funciones que utiliza la funcion
                                                                     let funcs1 = (Map.filter getFuncs symTabFunc)
                                                                     let functionDependenciesMap = updateDependenciesForChildClasses fromModule funcs1 (classTabMem env)
-                                                                    
-                                                                    -- liftIO $ putStrLn.ppShow $ (functionDependenciesMap)
-                                                                    -- let functionDependenciesMapNoSelf = (Map.filter )
-                                                                    -- liftIO $ putStrLn.ppShow $ (fromModule ++ identifier)
                                                                     let functionSymTabNoFuncs = (Map.filter filterFuncs symTabFunc)
                                                                     -- Para herencia, tenemos que meter los atritibutos de la clase de la funcion hijo
                                                                     let attributesWithSymbols = getAttributesOfCurrentClassWithSymbol fromModule (classTabMem env)
@@ -427,9 +418,6 @@ fillIdentifierAddressMap ((identifier,(SymbolFunction params p1 (Block statement
                                                                     modify $ \s -> (s { literalCounters = newLiteralCounters }) 
                                                                     modify $ \s -> (s { constTable = newConstTable })
                                                                     modify $ \s -> (s { funcMapMem = newFuncMap })
-                                                                   
-                                                                    -- liftIO $ putStrLn $ (fromModule ++ identifier)
-                                                                    -- liftIO $ putStrLn.ppShow $ funcData
                                                                     fillIdentifierAddressMap rest fromModule
 
 
@@ -632,8 +620,6 @@ insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) fromModule =
                                                                                 -- Esos son los que tenemos que ahora generar
                                                                                 let symTabOfParent =  (fromJust (Map.lookup nearestParent classSymTab))
                                                                                 let symTabUniqueAttributes = (Map.difference symbolTableOfClass symTabOfParent)
-                                                                                -- liftIO $ putStrLn $ classId
-                                                                                -- liftIO $ putStrLn.ppShow $ (idAddressMapMem stateAfterSharedAttributesInserted)
                                                                                 (stateAfterUniqueAttributes,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable ("_" ++ classId ++ "_")) 
                                                                                                                                                                                       (setEnvironment symTabUniqueAttributes classSymTab (deepness env) (aMapMem env)) 
                                                                                                                                                                                       -- La mandamos vacia porque lo que obtendremos es una IDMap llena con los
@@ -642,24 +628,9 @@ insertObjectInObjectAddressMap (TypeClassId classId arrayAccess) fromModule =
 
                                                                                 -- Tenemos que obtener el IdentifierAddressMap de los atributos de esta clase
                                                                                 let (idMapObject,constMap2, objMap2, funcMap2, varCounters2, litCounters2, typeMap) = getCurrentMemoryState stateAfterUniqueAttributes
-                                                                                
-                                                                                -- liftIO $ putStrLn.show $ idMapObject 
                                                                                 let updatedState = (setMemoryState idMap constMap2 objMap2 funcMap2 varCounters2 litCounters2 typeMap)
                                                                                 modify $ \s -> updatedState -- Usamos el nuevo estado con los nuevos contadores!!
                                                                                 return idMapObject
-
-
-                                                -- (stateAfterAttributesInserted,_) <- liftIO $ execRWST (prepareAddressMapsFromSymbolTable ("_" ++ classId ++ "_")) 
-                                                --                                                       (setEnvironment symbolTableOfClass classSymTab (deepness env) (aMapMem env)) 
-                                                --                                                       -- La mandamos vacia porque lo que obtendremos es una IDMap llena con los
-                                                --                                                       -- atributos de esa clase!
-                                                --                                                       (setMemoryState (Map.empty) constMap objMap funcMap varCounters litCounters)
-
-                                                -- -- Tenemos que obtener el IdentifierAddressMap de los atributos de esta clase
-                                                -- let (idMapObject,constMap2, objMap2, funcMap2, varCounters2, litCounters2) = getCurrentMemoryState stateAfterAttributesInserted
-                                                -- let updatedState = (setMemoryState idMap constMap2 objMap2 funcMap2 varCounters2 litCounters2)
-                                                -- modify $ \s -> updatedState -- Usamos el nuevo estado con los nuevos contadores!!!
-                                                -- return idMapObject
 
 
 fillFirstFromParents :: ClassIdentifier ->[ClassIdentifier] -> MA
@@ -679,7 +650,6 @@ fillFirstFromParents classId (parentClassId : ps) =   do
                                                                                               -- La mandamos vacia porque lo que obtendremos es una IDMap llena con los
                                                                                               -- atributos de esa clase!
                                                                                               (setMemoryState idMapObject constMap objMap funcMap varCounters litCounters typeMap)
-                                                                    -- liftIO $ putStrLn $ color White $ ppShow  $ (idAddressMapMem stateAfterAttributesInserted)
                                                                     modify $ \s -> stateAfterAttributesInserted
                                                                     fillFirstFromParents classId ps
                             
