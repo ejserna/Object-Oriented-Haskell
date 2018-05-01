@@ -1,3 +1,8 @@
+func => Nothing :: Int i{
+    displayLn(i);
+}
+
+
 main{
     Int [10][10] iMatriz = [[1,2,3,4,5,6,7,8,9],
                             [11,22,33,44,55,66,77,88,99]];
@@ -5,6 +10,8 @@ main{
     iMatrizCopia = iMatriz;
     iMatriz[1][1] = iMatriz[0][ (iMatriz[0][0] * 2) / 2 ] ^ iMatriz[0][2];
     displayLn(iMatriz);
+    func(iMatriz[1][1]);
     iMatriz = iMatrizCopia;
     displayLn(iMatrizCopia);
+    func(iMatriz[1][1]);
 }

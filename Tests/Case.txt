@@ -2,7 +2,7 @@ main{
     Integer i = 100;
     Integer j = 50;
     read(i);
-    case i of 
+    case (i + 1) of 
         1 => displayLn("weon");
         2 + 2 => displayLn("weon2");
         j * 2 => displayLn("weonazo");
