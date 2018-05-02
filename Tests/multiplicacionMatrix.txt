@@ -1,0 +1,35 @@
+multmatrix => Int[2][2] :: Int[2][2] n1 -> Int[2][2] n2{
+    Int n1ColLength, n2RowLength;
+    n1ColLength = 2;
+    n2RowLength = 2;
+
+    Int nRRowLength = 2;
+    Int nRColLength = 2;
+
+    Int [2][2] c;
+
+    for o in [0..2){
+        for l in [0..2){
+            c[o][l] = 0;
+        }
+    }
+
+
+    for i in [0..2){
+        for j in [0..2){
+            for p in [0..2){
+                c[i][j] = c[i][j] + n1[i][p] * n2[p][j];
+            }
+        }
+    }
+
+    return c;
+}
+
+main{
+    Int [2][2] a = [[2,3],[3,4]];
+    Int [2][2] b = [[3,6],[7,6]];
+    Int [2][2] result2;
+    result2 = multmatrix(a,b); 
+    display(result2);
+}
