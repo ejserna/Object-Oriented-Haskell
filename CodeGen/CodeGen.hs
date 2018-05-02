@@ -114,7 +114,6 @@ makeMemory ((str,address) : addresses ) mem =
 -- Humano h = p, donde p es un objeto cuya clase hereda de Humano, los primeros N atributos de Humano son equivalente
 -- a los primeros M atributos de p, por lo que la asignaci'on polimorfica siempre funcionara y no
 -- agarrara atributos que no le correspondan
-
 prepareOrderedMemory :: IdentifierAddressMap -> OrderedMemory
 prepareOrderedMemory idTable = makeOrderedMemory (OMap.toList idTable) emptyOrderedMemory
 
@@ -258,16 +257,12 @@ generateCodeFromStatements ((CaseStatement (Case expressionToMatch expAndStateme
                 let caseExpressions = (map (\f -> fst f) expAndStatements )
                 let caseStatements = (map (\f -> snd f) expAndStatements )
                 (stateQuadsExp,quadsExp) <- liftIO $ execRWST (expCodeGen (reduceExpression expressionToMatch)) cgEnv cgState
-                -- let (symTab,varCounters,quadNumAfterExp) = getCGState stateQuadsExp
-                -- liftIO $ putStrLn.ppShow $ quadsExp
 
                 (quadsAfterCaseExpressions,stateAfterCaseExpressions,_) <- liftIO $ runRWST (generateCodeFromCaseExpressions (getLastAddress  $ last $ quadsExp) caseExpressions) cgEnv stateQuadsExp
                 (quadsAfterCaseStatements,stateAfterCaseStatements,_) <- liftIO $ runRWST (generateCodeFromCaseStatements caseStatements) cgEnv stateAfterCaseExpressions
                 (stateAfterOtherwise,quadsOtherwise) <- liftIO $ execRWST (generateCodeFromStatements otherwiseStatements) cgEnv stateAfterCaseStatements
                 (stateQuadsSts,quadsStatements) <- liftIO $ execRWST (generateCodeFromStatements sts)
                                                                                cgEnv stateAfterOtherwise
-                -- liftIO $ putStrLn.ppShow $ quadsAfterCaseExpressions
-                -- liftIO $ putStrLn.ppShow $ quadsAfterCaseStatements
 
                 let quadsExpsWithGoTosIfTrue = generateCodeForGotosCase quadsAfterCaseExpressions quadsAfterCaseStatements
                 let quadGotoOtherwise = [buildGoto ((getQuadNum $ last $ last $ quadsAfterCaseExpressions) + 2) ((getQuadNum $ head $ quadsOtherwise))]

@@ -407,23 +407,7 @@ expCodeGen (ExpressionVarArray identifier ((ArrayAccessExpression rowsIndexExp) 
                                                                                                                                             tell $ boundRowQuad ++ boundColQuad ++ positionRow ++ positionCol ++ baseAddQuad ++ quadAssignment
                                                                                                                                             modify $ \s -> (s { currentQuadNum = quadNum + 6})
                                                                                                                                             modify $ \s -> (s { varCounters = (intGC + 3, decGC, strGC, boolGC + 1,objGC)})
-                                                                                                    -- Just (SymbolVar (TypeClassIdTypeClassId _ (("[",rows,"]") : ("[",cols,"]") : [] )) _ _) ->
-                                                                                                    --     case (Map.lookup ("<int>" ++ (show $ rows)) constTable) of
-                                                                                                    --         Just addressRowsSize ->
-                                                                                                    --             case (Map.lookup ("<int>" ++ (show $ cols)) constTable) of
-                                                                                                    --                 Just addressColsSize -> 
-                                                                                                    --                         case (OMap.lookup (identifier ++ "[0][0]") idTable) of
-                                                                                                    --                             Just addressBase -> 
-                                                                                                    --                                     do 
-                                                                                                    --                                         let boundRowQuad = ([(buildQuadrupleTwoAddresses quadNum BOUNDS ((getLastAddress $ last $ quadsRowExp), addressRowsSize ))])
-                                                                                                    --                                         let boundColQuad = ([(buildQuadrupleTwoAddresses (quadNum + 1) BOUNDS ((getLastAddress $ last $ quadsColExp), addressColsSize ))])
-                                                                                                    --                                         let positionRow = [(buildQuadrupleThreeAddresses (quadNum + 2) MULTIPLY_ ((getLastAddress $ last $ quadsRowExp), addressColsSize, intGC))] 
-                                                                                                    --                                         let positionCol = [(buildQuadrupleThreeAddresses (quadNum + 3) ADD_ (intGC, (getLastAddress $ last $ quadsColExp), (intGC + 1) ))] 
-                                                                                                    --                                         let baseAddQuad = [(buildQuadrupleThreeAddresses (quadNum + 4) ADD_INDEX (addressBase, (intGC + 1), intGC + 2 ))]
-                                                                                                    --                                         let quadAssignment = ([(buildQuadrupleTwoAddresses (quadNum + 5) ACCESS_INDEX (intGC + 2,objGC))])
-                                                                                                    --                                         tell $ boundRowQuad ++ boundColQuad ++ positionRow ++ positionCol ++ baseAddQuad ++ quadAssignment
-                                                                                                    --                                         modify $ \s -> (s { currentQuadNum = quadNum + 6})
-                                                                                                    --                                         modify $ \s -> (s { varCounters = (intGC + 3, decGC, strGC, boolGC,objGC)})
+
 
 genQuadrupleArithmetic ::  Expression -> Expression -> Operation -> CG
 genQuadrupleArithmetic exp1 exp2 op =
