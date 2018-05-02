@@ -78,7 +78,7 @@ Variables are the mutable state of a program. They are limited through their typ
 Money m;
 Double d = 2.1;
 String s = "Hello World";
-Class h;
+Human h;
 Human h1 = Human();
 
 Money [10] arrayOfMoney;
@@ -87,7 +87,7 @@ String [10][10] names = [["Juan","Elda","Hector"],
                          ["Minerva","Alitzel"],
                          ["Liliana"]];
 Human [2] humans = [h,h1];
-Class [2][2] matrixOfHumans = [[h,h1]];
+Human [2][2] matrixOfHumans = [[h,h1]];
 ```
 Currently, it is not possible to declare a variable and assign it an expression. This feature will be added in further releases. For doing this, you need to declare the variable and assign the expression in an **Assignment**
 
