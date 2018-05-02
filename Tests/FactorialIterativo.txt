@@ -1,0 +1,16 @@
+factorial => Int :: Int n {
+    Int p,j;
+    p = 1;
+    j = 1;
+    while(j<=n){
+        p = p * j;
+        j++;
+    }
+    return p;
+}
+
+main{
+    Int result;
+    result = factorial(10);
+    displayLn(result);
+}
