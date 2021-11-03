@@ -1,5 +1,5 @@
-factorial => Int :: Int n {
-    Int p,j;
+factorial => Integer :: Integer n {
+    Integer p,j;
     p = 1;
     j = 1;
     while(j<=n){
@@ -10,7 +10,7 @@ factorial => Int :: Int n {
 }
 
 main{
-    Int result;
-    result = factorial(10);
+    Integer result;
+    result = factorial(100);
     displayLn(result);
 }

@@ -7,7 +7,7 @@ factorial => Int :: Int n {
 }
 
 main{
-    Int result;
-    result = factorial(10);
+    Integer result;
+    result = factorial(100);
     displayLn(result);
 }
