@@ -41,7 +41,7 @@ install_dependencies:
 	fi
 	@PATH="$(TOOLPATH):$$PATH"; export PATH; \
 	cabal update && \
-	cabal install alex happy && \
+	cabal install alex happy --overwrite-policy=always && \
 	cabal install --lib Stack Decimal pretty-show pretty-terminal ordered-containers either \
 		--allow-newer=Stack:deepseq
 	@echo '==> Done. If your shell cannot find ghc/cabal, add this to your profile: source ~/.ghcup/env'
