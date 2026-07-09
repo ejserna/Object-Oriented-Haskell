@@ -19,7 +19,7 @@ SRCS = OrderedMap.hs CodeGen/MemoryLimits.hs CodeGen/Quadruple.hs DataTypes.hs \
 default: ooh
 
 ooh: Analysis/Scanner.hs Analysis/Parser.hs
-	$(GHC) -o ooh $(SRCS)
+	$(GHC) -O2 -o ooh $(SRCS)
 
 Analysis/Scanner.hs: Analysis/Scanner.x
 	@test -n "$(ALEX)" || { echo "error: alex not found. Install it (cabal install alex) or pass ALEX=/path/to/alex"; exit 1; }
