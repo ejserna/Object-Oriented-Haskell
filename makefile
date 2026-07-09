@@ -43,6 +43,7 @@ install_dependencies:
 	cabal update && \
 	cabal install alex happy --overwrite-policy=always && \
 	cabal install --lib Stack Decimal pretty-show pretty-terminal ordered-containers either \
+		containers unordered-containers hashable mtl transformers array bytestring text \
 		--allow-newer=Stack:deepseq
 	@echo '==> Done. If your shell cannot find ghc/cabal, add this to your profile: source ~/.ghcup/env'
 
